@@ -29,12 +29,9 @@ def _as_raw_text(value: str | Path, *, field_name: str) -> str:
     return raw
 
 
-def _resolve_path(value: str | Path, *, field_name: str) -> Path:
+def _normalize_path_text(value: str | Path, *, field_name: str) -> str:
     raw = _as_raw_text(value, field_name=field_name)
-    path = Path(raw).expanduser()
-    if not path.is_absolute():
-        path = Path.cwd() / path
-    return Path(os.path.normpath(str(path)))
+    return os.path.normpath(os.path.abspath(os.path.expanduser(raw)))
 
 
 def _is_within(root: Path, candidate: Path) -> bool:
@@ -49,7 +46,7 @@ def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
     normalized: list[Path] = []
     seen: set[str] = set()
     for root in roots:
-        path = _resolve_path(root, field_name="scope root")
+        path = Path(_normalize_path_text(root, field_name="scope root"))
         if not path.exists() or not path.is_dir():
             raise PathPolicyError(f"Scope root must exist as a directory: {path}")
         key = str(path)
@@ -63,7 +60,7 @@ def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
 
 
 def resolve_scan_root(root: str | Path) -> Path:
-    path = _resolve_path(root, field_name="scan root")
+    path = Path(_normalize_path_text(root, field_name="scan root"))
     if not path.exists() or not path.is_dir():
         raise PathPolicyError(f"Scan root must exist as a directory: {path}")
     return path
@@ -80,7 +77,7 @@ def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
     if not target.startswith("dotenv:"):
         raise PathPolicyError("Expected target with 'dotenv:' prefix.")
     raw = target[len("dotenv:") :]
-    path = _resolve_path(raw, field_name="dotenv target path")
+    path = Path(_normalize_path_text(raw, field_name="dotenv target path"))
     _validate_dotenv_name(path)
 
     if not any(_is_within(root, path) for root in roots):
@@ -92,7 +89,7 @@ def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
 
 
 def validate_backup_path(backup: str | Path, *, backups_dir: Path) -> Path:
-    backup_path = _resolve_path(backup, field_name="backup path")
+    backup_path = Path(_normalize_path_text(backup, field_name="backup path"))
     backups_root = resolve_scan_root(backups_dir)
     if not _is_within(backups_root, backup_path):
         raise PathPolicyError("Backup path is outside managed backup directory.")
