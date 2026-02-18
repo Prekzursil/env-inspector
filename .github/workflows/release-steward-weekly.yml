@@ -1,0 +1,40 @@
+name: Release Steward Weekly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 6 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  checklist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open weekly release stewardship issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const date = new Date().toISOString().slice(0, 10);
+            const title = `Weekly release stewardship checklist (${date})`;
+            const body = [
+              "## Weekly Release Stewardship Checklist",
+              "",
+              "- [ ] Run deterministic verification (`make verify`).",
+              "- [ ] Review dependency update opportunities and risk notes.",
+              "- [ ] Validate release artifact path for `env-inspector.exe` and checksum flow.",
+              "- [ ] Confirm rollback notes for medium/high-risk open PRs.",
+              "- [ ] Update changelog/release notes where needed.",
+              "",
+              "This issue is generated automatically to keep release quality and maintenance debt visible."
+            ].join("\n");
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["area:release", "risk:low"]
+            });
