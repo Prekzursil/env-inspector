@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -30,7 +31,10 @@ def _as_raw_text(value: str | Path, *, field_name: str) -> str:
 
 def _resolve_path(value: str | Path, *, field_name: str) -> Path:
     raw = _as_raw_text(value, field_name=field_name)
-    return Path(raw).expanduser().resolve()
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return Path(os.path.normpath(str(path)))
 
 
 def _is_within(root: Path, candidate: Path) -> bool:

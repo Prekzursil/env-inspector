@@ -185,21 +185,10 @@ class EnvInspectorService:
         )
         return "\n".join(diff)
 
-    @staticmethod
-    def _load_text(path: Path) -> str:
-        if not path.exists():
-            return ""
-        return path.read_text(encoding="utf-8", errors="ignore")
-
-    @staticmethod
-    def _write_text(path: Path, text: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-
     def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
         path = Path("/etc/environment")
         try:
-            self._write_text(path, text)
+            path.write_text(text, encoding="utf-8")
             return
         except PermissionError:
             pass
@@ -307,15 +296,16 @@ class EnvInspectorService:
 
         if target == "linux:bashrc":
             path = Path.home() / ".bashrc"
-            before = self._load_text(path)
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = upsert_export(before, key, value or "") if action == "set" else remove_export(before, key)
             if apply_changes:
-                self._write_text(path, after)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(after, encoding="utf-8")
             return before, after, str(path), False, None
 
         if target == "linux:etc_environment":
             path = Path("/etc/environment")
-            before = self._load_text(path)
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
             if apply_changes:
                 self._write_linux_etc_environment_with_privilege(after)
@@ -350,14 +340,15 @@ class EnvInspectorService:
 
         if target.startswith("powershell:"):
             path = self._powershell_profile_path(target)
-            before = self._load_text(path)
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = (
                 upsert_powershell_env(before, key, value or "")
                 if action == "set"
                 else remove_powershell_env(before, key)
             )
             if apply_changes:
-                self._write_text(path, after)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(after, encoding="utf-8")
             requires_priv = "all_users" in target
             return before, after, str(path), requires_priv, None
 
@@ -576,7 +567,9 @@ class EnvInspectorService:
                 scoped.path.parent.mkdir(parents=True, exist_ok=True)
                 scoped.path.write_text(text, encoding="utf-8")
             elif target == "linux:bashrc":
-                self._write_text(Path.home() / ".bashrc", text)
+                path_out = Path.home() / ".bashrc"
+                path_out.parent.mkdir(parents=True, exist_ok=True)
+                path_out.write_text(text, encoding="utf-8")
             elif target == "linux:etc_environment":
                 self._write_linux_etc_environment_with_privilege(text)
             elif target.startswith("wsl_dotenv:"):
@@ -590,7 +583,9 @@ class EnvInspectorService:
                 distro = target.split(":", 2)[1]
                 self.wsl.write_file_with_privilege(distro, "/etc/environment", text)
             elif target.startswith("powershell:"):
-                self._write_text(self._powershell_profile_path(target), text)
+                profile = self._powershell_profile_path(target)
+                profile.parent.mkdir(parents=True, exist_ok=True)
+                profile.write_text(text, encoding="utf-8")
             elif target in {"windows:user", "windows:machine"}:
                 # For registry backups (json snapshot), apply key-by-key best effort.
                 if self.win_provider is None:
