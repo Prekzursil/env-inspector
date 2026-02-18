@@ -27,7 +27,9 @@ jobs:
               { name: "area:infra", color: "0366D6", description: "Infrastructure/CI/tooling related work." },
               { name: "area:docs", color: "0075CA", description: "Documentation/process related work." },
               { name: "area:security", color: "B60205", description: "Security hardening or vulnerability-related work." },
-              { name: "area:release", color: "C2E0C6", description: "Release/build/distribution related work." }
+              { name: "area:release", color: "C2E0C6", description: "Release/build/distribution related work." },
+              { name: "kpi-digest", color: "D4C5F9", description: "Weekly KPI digest issue for tracking team metrics." },
+              { name: "escaped-regression", color: "E99695", description: "Bug that escaped to production/main post-merge." }
             ];
 
             for (const label of labels) {
