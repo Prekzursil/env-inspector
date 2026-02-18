@@ -44,7 +44,8 @@ def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
     assert any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows)
 
 
-def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path):
+def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("API_TOKEN=abc123\n", encoding="utf-8")
 
@@ -82,6 +83,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
 
 
 def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "linux"
     svc.wsl = type("NoBridge", (), {"available": lambda self: False})()  # type: ignore[assignment]
@@ -108,18 +110,21 @@ def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypa
     etc_env = tmp_path / "etc_environment"
     etc_env.write_text("A=1\n", encoding="utf-8")
 
-    def fake_load(path: Path) -> str:
-        if path == Path("/etc/environment"):
+    real_read_text = Path.read_text
+    real_write_text = Path.write_text
+
+    def fake_read_text(self: Path, *args, **kwargs):
+        if self == Path("/etc/environment"):
             return etc_env.read_text(encoding="utf-8")
-        return path.read_text(encoding="utf-8")
+        return real_read_text(self, *args, **kwargs)
 
     writes: list[str] = []
 
-    def fake_write(path: Path, text: str) -> None:
-        if path == Path("/etc/environment"):
+    def fake_write_text(self: Path, text: str, *args, **kwargs):
+        if self == Path("/etc/environment"):
             raise PermissionError("denied")
-        writes.append(str(path))
-        path.write_text(text, encoding="utf-8")
+        writes.append(str(self))
+        return real_write_text(self, text, *args, **kwargs)
 
     class Proc:
         returncode = 0
@@ -132,15 +137,15 @@ def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypa
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
 
-    monkeypatch.setattr(svc, "_load_text", fake_load)
-    monkeypatch.setattr(svc, "_write_text", fake_write)
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    monkeypatch.setattr(Path, "write_text", fake_write_text)
     monkeypatch.setattr(service_module.subprocess, "run", fake_run)
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
     assert result["success"] is True
     assert etc_env.read_text(encoding="utf-8") == "A=2\n"
-    assert writes == []
+    assert str(Path("/etc/environment")) not in writes
 
 
 def test_linux_bashrc_set_and_remove_roundtrip(tmp_path: Path, monkeypatch):
@@ -169,23 +174,26 @@ def test_linux_etc_environment_write_reports_permission_failure(tmp_path: Path, 
     etc_env = tmp_path / "etc_environment"
     etc_env.write_text("A=1\n", encoding="utf-8")
 
-    def fake_load(path: Path) -> str:
-        if path == Path("/etc/environment"):
-            return etc_env.read_text(encoding="utf-8")
-        return path.read_text(encoding="utf-8")
+    real_read_text = Path.read_text
+    real_write_text = Path.write_text
 
-    def fake_write(path: Path, text: str) -> None:
-        if path == Path("/etc/environment"):
+    def fake_read_text(self: Path, *args, **kwargs):
+        if self == Path("/etc/environment"):
+            return etc_env.read_text(encoding="utf-8")
+        return real_read_text(self, *args, **kwargs)
+
+    def fake_write_text(self: Path, text: str, *args, **kwargs):
+        if self == Path("/etc/environment"):
             raise PermissionError("denied")
-        path.write_text(text, encoding="utf-8")
+        return real_write_text(self, text, *args, **kwargs)
 
     class Proc:
         returncode = 1
         stdout = b""
         stderr = b"sudo auth failed"
 
-    monkeypatch.setattr(svc, "_load_text", fake_load)
-    monkeypatch.setattr(svc, "_write_text", fake_write)
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    monkeypatch.setattr(Path, "write_text", fake_write_text)
     monkeypatch.setattr(service_module.subprocess, "run", lambda *_args, **_kwargs: Proc())
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])

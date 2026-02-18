@@ -23,6 +23,12 @@ from .constants import (
     SOURCE_WSL_ETC_ENV,
 )
 from .models import EnvRecord, OperationResult
+from .path_policy import (
+    normalize_scope_roots,
+    parse_scoped_dotenv_target,
+    resolve_scan_root,
+    validate_backup_path,
+)
 from .parsing import (
     remove_export,
     remove_key_value,
@@ -57,6 +63,7 @@ class EnvInspectorService:
         self.state_dir = Path(state_dir or (Path.cwd() / ".env-inspector-state"))
         self.backup_mgr = BackupManager(self.state_dir / "backups", retention=backup_retention)
         self.audit = AuditLogger(self.state_dir)
+        self.default_scope_roots = normalize_scope_roots([Path.cwd()])
         self.runtime_context = get_runtime_context()
         self.current_wsl_distro = current_wsl_distro_name()
 
@@ -67,6 +74,12 @@ class EnvInspectorService:
                 self.win_provider = WindowsRegistryProvider()
             except Exception:
                 self.win_provider = None
+
+    def _effective_scope_roots(self, scope_roots: list[str | Path] | None = None) -> list[Path]:
+        roots: list[Path] = list(self.default_scope_roots)
+        if scope_roots:
+            roots.extend(normalize_scope_roots(scope_roots))
+        return normalize_scope_roots(roots)
 
     @staticmethod
     def get_powershell_profile_paths() -> list[Path]:
@@ -104,7 +117,7 @@ class EnvInspectorService:
     ) -> list[dict[str, Any]]:
         rows: list[EnvRecord] = []
 
-        root_path = Path(root or Path.cwd())
+        root_path = resolve_scan_root(root or Path.cwd())
         rows.extend(collect_process_records(context=self.runtime_context))
         rows.extend(collect_dotenv_records(root_path, max_depth=scan_depth, context=self.runtime_context))
 
@@ -172,21 +185,10 @@ class EnvInspectorService:
         )
         return "\n".join(diff)
 
-    @staticmethod
-    def _load_text(path: Path) -> str:
-        if not path.exists():
-            return ""
-        return path.read_text(encoding="utf-8", errors="ignore")
-
-    @staticmethod
-    def _write_text(path: Path, text: str) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
-
     def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
         path = Path("/etc/environment")
         try:
-            self._write_text(path, text)
+            path.write_text(text, encoding="utf-8")
             return
         except PermissionError:
             pass
@@ -280,26 +282,30 @@ class EnvInspectorService:
         action: str,
         *,
         apply_changes: bool,
+        scope_roots: list[Path],
     ) -> tuple[str, str, str | None, bool, str | None]:
         if target.startswith("dotenv:"):
-            path = Path(target[len("dotenv:") :])
-            before = self._load_text(path)
+            scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
+            path = scoped.path
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
             if apply_changes:
-                self._write_text(path, after)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(after, encoding="utf-8")
             return before, after, str(path), False, None
 
         if target == "linux:bashrc":
             path = Path.home() / ".bashrc"
-            before = self._load_text(path)
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = upsert_export(before, key, value or "") if action == "set" else remove_export(before, key)
             if apply_changes:
-                self._write_text(path, after)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(after, encoding="utf-8")
             return before, after, str(path), False, None
 
         if target == "linux:etc_environment":
             path = Path("/etc/environment")
-            before = self._load_text(path)
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
             if apply_changes:
                 self._write_linux_etc_environment_with_privilege(after)
@@ -334,14 +340,15 @@ class EnvInspectorService:
 
         if target.startswith("powershell:"):
             path = self._powershell_profile_path(target)
-            before = self._load_text(path)
+            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = (
                 upsert_powershell_env(before, key, value or "")
                 if action == "set"
                 else remove_powershell_env(before, key)
             )
             if apply_changes:
-                self._write_text(path, after)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(after, encoding="utf-8")
             requires_priv = "all_users" in target
             return before, after, str(path), requires_priv, None
 
@@ -355,10 +362,11 @@ class EnvInspectorService:
         action: str,
         *,
         apply_changes: bool,
+        scope_roots: list[Path],
     ) -> tuple[str, str, str | None, bool, str | None]:
         if target in {"windows:user", "windows:machine"}:
             return self._registry_write(target, key, value, action, apply_changes=apply_changes)
-        return self._file_update(target, key, value, action, apply_changes=apply_changes)
+        return self._file_update(target, key, value, action, apply_changes=apply_changes, scope_roots=scope_roots)
 
     def _apply(
         self,
@@ -368,11 +376,13 @@ class EnvInspectorService:
         value: str | None,
         targets: list[str],
         preview_only: bool = False,
+        scope_roots: list[str | Path] | None = None,
     ) -> list[OperationResult]:
         validate_env_key(key)
         if action == "set":
             validate_env_value(value or "")
         secret_operation = looks_secret(key, value or "")
+        resolved_scope_roots = self._effective_scope_roots(scope_roots)
 
         results: list[OperationResult] = []
         for target in targets:
@@ -386,6 +396,7 @@ class EnvInspectorService:
                     value=value,
                     action=action,
                     apply_changes=False,
+                    scope_roots=resolved_scope_roots,
                 )
                 diff_preview = self._diff(before, after, target)
 
@@ -410,6 +421,7 @@ class EnvInspectorService:
                         value=value,
                         action=action,
                         apply_changes=True,
+                        scope_roots=resolved_scope_roots,
                     )
 
                     result = OperationResult(
@@ -447,20 +459,59 @@ class EnvInspectorService:
         redacted_diff = "[secret diff masked]"
         return replace(result, diff_preview=redacted_diff)
 
-    def preview_set(self, *, key: str, value: str, targets: list[str]) -> list[dict[str, Any]]:
-        return [r.to_dict() for r in self._apply("set", key=key, value=value, targets=targets, preview_only=True)]
+    def preview_set(
+        self,
+        *,
+        key: str,
+        value: str,
+        targets: list[str],
+        scope_roots: list[str | Path] | None = None,
+    ) -> list[dict[str, Any]]:
+        return [
+            r.to_dict()
+            for r in self._apply("set", key=key, value=value, targets=targets, preview_only=True, scope_roots=scope_roots)
+        ]
 
-    def preview_remove(self, *, key: str, targets: list[str]) -> list[dict[str, Any]]:
-        return [r.to_dict() for r in self._apply("remove", key=key, value=None, targets=targets, preview_only=True)]
+    def preview_remove(
+        self,
+        *,
+        key: str,
+        targets: list[str],
+        scope_roots: list[str | Path] | None = None,
+    ) -> list[dict[str, Any]]:
+        return [
+            r.to_dict()
+            for r in self._apply(
+                "remove",
+                key=key,
+                value=None,
+                targets=targets,
+                preview_only=True,
+                scope_roots=scope_roots,
+            )
+        ]
 
-    def set_key(self, *, key: str, value: str, targets: list[str]) -> dict[str, Any]:
-        results = self._apply("set", key=key, value=value, targets=targets, preview_only=False)
+    def set_key(
+        self,
+        *,
+        key: str,
+        value: str,
+        targets: list[str],
+        scope_roots: list[str | Path] | None = None,
+    ) -> dict[str, Any]:
+        results = self._apply("set", key=key, value=value, targets=targets, preview_only=False, scope_roots=scope_roots)
         if len(results) == 1:
             return results[0].to_dict()
         return {"success": all(r.success for r in results), "results": [r.to_dict() for r in results]}
 
-    def remove_key(self, *, key: str, targets: list[str]) -> dict[str, Any]:
-        results = self._apply("remove", key=key, value=None, targets=targets, preview_only=False)
+    def remove_key(
+        self,
+        *,
+        key: str,
+        targets: list[str],
+        scope_roots: list[str | Path] | None = None,
+    ) -> dict[str, Any]:
+        results = self._apply("remove", key=key, value=None, targets=targets, preview_only=False, scope_roots=scope_roots)
         if len(results) == 1:
             return results[0].to_dict()
         return {"success": all(r.success for r in results), "results": [r.to_dict() for r in results]}
@@ -496,18 +547,29 @@ class EnvInspectorService:
             return [str(p) for p in self.backup_mgr.list_backups(target)]
         return [str(p) for p in self.backup_mgr.list_all_backups()]
 
-    def restore_backup(self, *, backup: str) -> dict[str, Any]:
-        path = Path(backup)
-        payload = self.backup_mgr.read_backup_payload(path)
-        target = payload["target"]
-        text = payload["text"]
-
+    def restore_backup(
+        self,
+        *,
+        backup: str,
+        scope_roots: list[str | Path] | None = None,
+    ) -> dict[str, Any]:
         operation_id = f"restore-{uuid.uuid4().hex[:10]}"
+        path = Path(backup)
         try:
+            resolved_scope_roots = self._effective_scope_roots(scope_roots)
+            path = validate_backup_path(backup, backups_dir=self.backup_mgr.base_dir)
+            payload = self.backup_mgr.read_backup_payload(path)
+            target = payload["target"]
+            text = payload["text"]
+
             if target.startswith("dotenv:"):
-                self._write_text(Path(target[len("dotenv:") :]), text)
+                scoped = parse_scoped_dotenv_target(target, roots=resolved_scope_roots)
+                scoped.path.parent.mkdir(parents=True, exist_ok=True)
+                scoped.path.write_text(text, encoding="utf-8")
             elif target == "linux:bashrc":
-                self._write_text(Path.home() / ".bashrc", text)
+                path_out = Path.home() / ".bashrc"
+                path_out.parent.mkdir(parents=True, exist_ok=True)
+                path_out.write_text(text, encoding="utf-8")
             elif target == "linux:etc_environment":
                 self._write_linux_etc_environment_with_privilege(text)
             elif target.startswith("wsl_dotenv:"):
@@ -521,7 +583,9 @@ class EnvInspectorService:
                 distro = target.split(":", 2)[1]
                 self.wsl.write_file_with_privilege(distro, "/etc/environment", text)
             elif target.startswith("powershell:"):
-                self._write_text(self._powershell_profile_path(target), text)
+                profile = self._powershell_profile_path(target)
+                profile.parent.mkdir(parents=True, exist_ok=True)
+                profile.write_text(text, encoding="utf-8")
             elif target in {"windows:user", "windows:machine"}:
                 # For registry backups (json snapshot), apply key-by-key best effort.
                 if self.win_provider is None:
@@ -552,7 +616,7 @@ class EnvInspectorService:
         except Exception as exc:
             result = OperationResult(
                 operation_id=operation_id,
-                target=target,
+                target="restore",
                 action="restore",
                 success=False,
                 backup_path=str(path),

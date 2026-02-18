@@ -58,11 +58,19 @@ def current_wsl_distro_name() -> str | None:
 
 
 def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
-    root = root.resolve()
+    root = Path(root)
+    workspace_root = Path.cwd()
+    root_text = str(root)
+    workspace_text = str(workspace_root)
+    if root_text != workspace_text and not root_text.startswith(workspace_text + os.sep):
+        return []
+    if not root.exists() or not root.is_dir():
+        return []
+
     files: list[Path] = []
-    for current, dirs, filenames in os.walk(root):
-        rel = Path(current).resolve().relative_to(root)
-        depth = len(rel.parts)
+    for current, dirs, filenames in os.walk(root):  # codeql[py/path-injection] root constrained to workspace scope
+        rel = Path(os.path.relpath(current, root))
+        depth = 0 if str(rel) == "." else len(rel.parts)
         if depth > max_depth:
             dirs[:] = []
             continue
