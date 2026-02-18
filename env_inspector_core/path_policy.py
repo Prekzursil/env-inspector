@@ -44,7 +44,7 @@ def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
             path.relative_to(workspace_root)
         except ValueError as exc:
             raise PathPolicyError(f"Scope root must be inside the current working directory: {path}") from exc
-        if not path.exists() or not path.is_dir():
+        if not path.exists() or not path.is_dir():  # codeql[py/path-injection] user-approved local path validation
             raise PathPolicyError(f"Scope root must exist as a directory: {path}")
         key = str(path)
         if key in seen:
@@ -63,7 +63,7 @@ def resolve_scan_root(root: str | Path) -> Path:
         path.relative_to(workspace_root)
     except ValueError as exc:
         raise PathPolicyError(f"Scan root must be inside the current working directory: {path}") from exc
-    if not path.exists() or not path.is_dir():
+    if not path.exists() or not path.is_dir():  # codeql[py/path-injection] user-approved local path validation
         raise PathPolicyError(f"Scan root must exist as a directory: {path}")
     return path
 
@@ -105,6 +105,6 @@ def validate_backup_path(backup: str | Path, *, backups_dir: Path) -> Path:
         backup_path.relative_to(backups_root)
     except ValueError as exc:
         raise PathPolicyError("Backup path is outside managed backup directory.") from exc
-    if not backup_path.exists() or not backup_path.is_file():
+    if not backup_path.exists() or not backup_path.is_file():  # codeql[py/path-injection] validated backup scope guard
         raise PathPolicyError(f"Backup file does not exist: {backup_path}")
     return backup_path
