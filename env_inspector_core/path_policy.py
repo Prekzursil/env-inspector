@@ -34,19 +34,16 @@ def _normalize_path_text(value: str | Path, *, field_name: str) -> str:
     return os.path.normpath(os.path.abspath(os.path.expanduser(raw)))
 
 
-def _is_within(root: Path, candidate: Path) -> bool:
-    try:
-        candidate.relative_to(root)
-        return True
-    except ValueError:
-        return False
-
-
 def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
     normalized: list[Path] = []
     seen: set[str] = set()
+    workspace_root = Path.cwd()
     for root in roots:
         path = Path(_normalize_path_text(root, field_name="scope root"))
+        try:
+            path.relative_to(workspace_root)
+        except ValueError as exc:
+            raise PathPolicyError(f"Scope root must be inside the current working directory: {path}") from exc
         if not path.exists() or not path.is_dir():
             raise PathPolicyError(f"Scope root must exist as a directory: {path}")
         key = str(path)
@@ -61,6 +58,11 @@ def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
 
 def resolve_scan_root(root: str | Path) -> Path:
     path = Path(_normalize_path_text(root, field_name="scan root"))
+    workspace_root = Path.cwd()
+    try:
+        path.relative_to(workspace_root)
+    except ValueError as exc:
+        raise PathPolicyError(f"Scan root must be inside the current working directory: {path}") from exc
     if not path.exists() or not path.is_dir():
         raise PathPolicyError(f"Scan root must exist as a directory: {path}")
     return path
@@ -80,7 +82,15 @@ def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
     path = Path(_normalize_path_text(raw, field_name="dotenv target path"))
     _validate_dotenv_name(path)
 
-    if not any(_is_within(root, path) for root in roots):
+    in_scope = False
+    for root in roots:
+        try:
+            path.relative_to(root)
+            in_scope = True
+            break
+        except ValueError:
+            continue
+    if not in_scope:
         raise PathPolicyError(
             "dotenv target path is outside approved roots. "
             "Re-run with --root <parent> or choose that folder in GUI."
@@ -91,8 +101,10 @@ def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
 def validate_backup_path(backup: str | Path, *, backups_dir: Path) -> Path:
     backup_path = Path(_normalize_path_text(backup, field_name="backup path"))
     backups_root = resolve_scan_root(backups_dir)
-    if not _is_within(backups_root, backup_path):
-        raise PathPolicyError("Backup path is outside managed backup directory.")
+    try:
+        backup_path.relative_to(backups_root)
+    except ValueError as exc:
+        raise PathPolicyError("Backup path is outside managed backup directory.") from exc
     if not backup_path.exists() or not backup_path.is_file():
         raise PathPolicyError(f"Backup file does not exist: {backup_path}")
     return backup_path

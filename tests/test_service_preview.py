@@ -3,7 +3,8 @@ from pathlib import Path
 from env_inspector_core.service import EnvInspectorService
 
 
-def test_preview_set_does_not_mutate_file(tmp_path: Path):
+def test_preview_set_does_not_mutate_file(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("A=1\n", encoding="utf-8")
 
@@ -23,6 +24,7 @@ def test_preview_set_does_not_mutate_file(tmp_path: Path):
 
 
 def test_set_does_not_write_when_backup_fails(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("A=1\n", encoding="utf-8")
 
@@ -39,7 +41,8 @@ def test_set_does_not_write_when_backup_fails(tmp_path: Path, monkeypatch):
     assert env_file.read_text(encoding="utf-8") == "A=1\n"
 
 
-def test_audit_log_redacts_secret_diff(tmp_path: Path):
+def test_audit_log_redacts_secret_diff(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("API_TOKEN=old\n", encoding="utf-8")
 
@@ -52,10 +55,11 @@ def test_audit_log_redacts_secret_diff(tmp_path: Path):
     assert "supersecretvalue" not in log_text
 
 
-def test_set_rejects_dotenv_target_outside_approved_roots(tmp_path: Path):
+def test_set_rejects_dotenv_target_outside_approved_roots(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     allowed_root = tmp_path / "allowed"
     allowed_root.mkdir()
-    outside_root = tmp_path / "outside"
+    outside_root = tmp_path.parent / f"{tmp_path.name}-outside"
     outside_root.mkdir()
     env_file = outside_root / ".env"
     env_file.write_text("A=1\n", encoding="utf-8")

@@ -44,7 +44,8 @@ def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
     assert any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows)
 
 
-def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path):
+def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("API_TOKEN=abc123\n", encoding="utf-8")
 
@@ -82,6 +83,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
 
 
 def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "linux"
     svc.wsl = type("NoBridge", (), {"available": lambda self: False})()  # type: ignore[assignment]

@@ -43,7 +43,8 @@ def test_audit_logger_writes_masked_values(tmp_path: Path):
     assert "abc********xyz" in text
 
 
-def test_restore_rejects_backup_file_outside_state_directory(tmp_path: Path):
+def test_restore_rejects_backup_file_outside_state_directory(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     external_backup = tmp_path / "external.backup.json"
     external_backup.write_text(json.dumps({"target": "linux:bashrc", "text": "export A='1'\n"}), encoding="utf-8")
