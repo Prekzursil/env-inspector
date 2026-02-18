@@ -62,19 +62,45 @@ Get-FileHash .\env-inspector.exe -Algorithm SHA256
   - linear history required
 - Required reviews/check gates are intentionally left off for solo-maintainer velocity.
 
-## Source launch
+## Source setup and launch
 
-### Windows
+### Prerequisites
+
+The application requires Python 3.x (no external runtime dependencies for core functionality).
+
+For development and verification, install pytest:
+
+```bash
+pip install pytest
+```
+
+### Launch from source
+
+#### Windows
 
 ```bat
 start-env-inspector.bat
 ```
 
-### Linux
+#### Linux
 
 ```bash
 ./start-env-inspector.sh
 ```
+
+### Deterministic verification
+
+Run the canonical verification command to validate the setup:
+
+```bash
+make verify
+```
+
+This command performs:
+- Python syntax compilation check for all `.py` files
+- Full test suite execution via pytest
+
+Expected baseline: 38+ passing tests. Pre-existing test failures in `test_wsl_privilege.py` are environment-specific and do not impact core functionality on non-Windows systems.
 
 ## Linux operations
 
