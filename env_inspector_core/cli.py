@@ -30,11 +30,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_set.add_argument("--key", required=True)
     p_set.add_argument("--value", required=True)
     p_set.add_argument("--target", action="append", required=True)
+    p_set.add_argument("--root", action="append", default=[], help="Additional approved root for dotenv targets")
     p_set.add_argument("--preview-only", action="store_true")
 
     p_remove = sub.add_parser("remove", help="Remove variable")
     p_remove.add_argument("--key", required=True)
     p_remove.add_argument("--target", action="append", required=True)
+    p_remove.add_argument("--root", action="append", default=[], help="Additional approved root for dotenv targets")
     p_remove.add_argument("--preview-only", action="store_true")
 
     p_export = sub.add_parser("export", parents=[common_parent], help="Export records")
@@ -77,19 +79,29 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         return 0
 
     if args.command == "set":
-        payload = service.preview_set(key=args.key, value=args.value, targets=args.target) if args.preview_only else service.set_key(
-            key=args.key,
-            value=args.value,
-            targets=args.target,
+        payload = (
+            service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
+            if args.preview_only
+            else service.set_key(
+                key=args.key,
+                value=args.value,
+                targets=args.target,
+                scope_roots=args.root,
+            )
         )
         print(json.dumps(payload, ensure_ascii=True, indent=2))
         success = payload.get("success", True) if isinstance(payload, dict) else all(x.get("success", False) for x in payload)
         return 0 if success else 1
 
     if args.command == "remove":
-        payload = service.preview_remove(key=args.key, targets=args.target) if args.preview_only else service.remove_key(
-            key=args.key,
-            targets=args.target,
+        payload = (
+            service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root)
+            if args.preview_only
+            else service.remove_key(
+                key=args.key,
+                targets=args.target,
+                scope_roots=args.root,
+            )
         )
         print(json.dumps(payload, ensure_ascii=True, indent=2))
         success = payload.get("success", True) if isinstance(payload, dict) else all(x.get("success", False) for x in payload)

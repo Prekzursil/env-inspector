@@ -17,6 +17,7 @@ from typing import Any
 
 from env_inspector_core.cli import run_cli
 from env_inspector_core.models import EnvRecord
+from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
 from env_inspector_core.secrets import mask_value
 from env_inspector_core.service import EnvInspectorService
 
@@ -227,7 +228,7 @@ class EnvInspectorApp:
         self.messagebox = messagebox
 
         self.service = EnvInspectorService()
-        self.root_path = root_path.resolve()
+        self.root_path = resolve_scan_root(root_path)
 
         self.records_raw: list[EnvRecord] = []
         self.rows_by_item: dict[str, EnvRecord] = {}
@@ -387,7 +388,7 @@ class EnvInspectorApp:
         selected = self.filedialog.askdirectory(initialdir=str(self.root_path))
         if not selected:
             return
-        self.root_path = Path(selected).resolve()
+        self.root_path = resolve_scan_root(selected)
         self.root_label.configure(text=str(self.root_path))
         self.refresh_data()
 
@@ -559,9 +560,9 @@ class EnvInspectorApp:
 
         try:
             if action == "set":
-                previews = self.service.preview_set(key=key, value=value, targets=targets)
+                previews = self.service.preview_set(key=key, value=value, targets=targets, scope_roots=[self.root_path])
             else:
-                previews = self.service.preview_remove(key=key, targets=targets)
+                previews = self.service.preview_remove(key=key, targets=targets, scope_roots=[self.root_path])
         except Exception as exc:
             self.messagebox.showerror("Env Inspector", f"Failed to compute preview: {exc}")
             return
@@ -577,9 +578,9 @@ class EnvInspectorApp:
 
         try:
             if action == "set":
-                result = self.service.set_key(key=key, value=value, targets=targets)
+                result = self.service.set_key(key=key, value=value, targets=targets, scope_roots=[self.root_path])
             else:
-                result = self.service.remove_key(key=key, targets=targets)
+                result = self.service.remove_key(key=key, targets=targets, scope_roots=[self.root_path])
         except Exception as exc:
             self.messagebox.showerror("Env Inspector", f"{action.title()} failed: {exc}")
             return
@@ -679,7 +680,7 @@ class EnvInspectorApp:
         if not dialog.result:
             return
 
-        result = self.service.restore_backup(backup=dialog.result)
+        result = self.service.restore_backup(backup=dialog.result, scope_roots=[self.root_path])
         if result.get("success"):
             self.status.configure(text=f"Restored backup ({result.get('operation_id')})")
             self.refresh_data()
@@ -713,7 +714,11 @@ def main() -> int:
         return run_cli(argv)
 
     args = _parse_gui_args(argv)
-    root = Path(args.root).resolve()
+    try:
+        root = resolve_scan_root(args.root)
+    except PathPolicyError as exc:
+        print(f"Invalid --root: {exc}", file=sys.stderr)
+        return 2
 
     if args.print_secrets:
         return _legacy_print_secrets(root)
