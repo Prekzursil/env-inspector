@@ -4,6 +4,10 @@ from env_inspector_core.cli import build_parser, run_cli
 
 
 class FakeService:
+    def __init__(self):
+        self.last_set: dict | None = None
+        self.last_remove: dict | None = None
+
     def list_records(self, **kwargs):
         return [
             {
@@ -19,9 +23,11 @@ class FakeService:
         return "name,value\\nAPI_TOKEN,abc***123\\n"
 
     def set_key(self, **kwargs):
+        self.last_set = kwargs
         return {"success": True, "operation_id": "op-set"}
 
     def remove_key(self, **kwargs):
+        self.last_remove = kwargs
         return {"success": True, "operation_id": "op-remove"}
 
     def list_backups(self, **kwargs):
@@ -58,3 +64,41 @@ def test_run_cli_set_and_remove(capsys):
     out = capsys.readouterr().out
     assert "op-set" in out
     assert "op-remove" in out
+
+
+def test_run_cli_set_and_remove_forward_scope_roots():
+    svc = FakeService()
+
+    run_cli(
+        [
+            "set",
+            "--key",
+            "A",
+            "--value",
+            "1",
+            "--target",
+            "dotenv:/tmp/.env",
+            "--root",
+            "/tmp",
+            "--root",
+            "/var/tmp",
+        ],
+        service=svc,
+    )
+    run_cli(
+        [
+            "remove",
+            "--key",
+            "A",
+            "--target",
+            "dotenv:/tmp/.env",
+            "--root",
+            "/tmp",
+        ],
+        service=svc,
+    )
+
+    assert svc.last_set is not None
+    assert svc.last_set["scope_roots"] == ["/tmp", "/var/tmp"]
+    assert svc.last_remove is not None
+    assert svc.last_remove["scope_roots"] == ["/tmp"]

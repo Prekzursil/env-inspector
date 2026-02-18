@@ -49,8 +49,18 @@ Get-FileHash .\env-inspector.exe -Algorithm SHA256
 
 - Secrets are masked by default in UI and exports unless explicitly revealed.
 - File/target content is backed up before write operations.
+- Local `dotenv:` writes are restricted to approved roots (`cwd` by default, plus explicit `--root` overrides).
 - `/etc/environment` writes try root-mode first and then sudo fallback.
 - Existing open shell sessions may need restart to pick up changed values.
+
+## Repository Governance
+
+- Default branch: `main`
+- Baseline protection policy:
+  - force pushes disabled
+  - branch deletion disabled
+  - linear history required
+- Required reviews/check gates are intentionally left off for solo-maintainer velocity.
 
 ## Source launch
 
@@ -96,6 +106,7 @@ If `sudo -n` is unavailable (no cached credentials/passwordless sudo), the comma
 python env_inspector.py list --output json
 python env_inspector.py export --output csv --root .
 python env_inspector.py set --key API_TOKEN --value xyz --target dotenv:/path/to/.env
+python env_inspector.py set --key API_TOKEN --value xyz --target dotenv:/path/to/.env --root /path/to
 python env_inspector.py remove --key API_TOKEN --target wsl:Ubuntu:bashrc
 python env_inspector.py backup
 python env_inspector.py restore --backup /path/to/file.backup.json
