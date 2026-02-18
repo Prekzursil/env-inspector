@@ -1,0 +1,88 @@
+name: env-inspector-exe-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional release tag (for example v1.0.0). If set, a release is created/updated."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+
+      - name: Build env-inspector.exe
+        shell: pwsh
+        run: |
+          ./build-windows-exe.ps1
+          if (!(Test-Path "dist/env-inspector.exe")) {
+            throw "Expected dist/env-inspector.exe was not generated."
+          }
+
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Path "dist/env-inspector.exe" -Algorithm SHA256).Hash.ToLower()
+          "$hash  env-inspector.exe" | Out-File -FilePath "dist/env-inspector.exe.sha256" -Encoding ascii
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-inspector-exe
+          path: |
+            dist/env-inspector.exe
+            dist/env-inspector.exe.sha256
+          if-no-files-found: error
+
+      - name: Resolve release tag
+        id: release_tag
+        shell: pwsh
+        run: |
+          $tag = ""
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $tag = "${{ github.ref_name }}"
+          } elseif ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.tag }}" -ne "") {
+            $tag = "${{ inputs.tag }}"
+          }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Create or update release
+        if: ${{ steps.release_tag.outputs.tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: ${{ steps.release_tag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          body: |
+            ## Env Inspector Release
+            Cross-platform environment variable inspector/editor for Windows, WSL, and Linux.
+
+            ### Assets
+            - `env-inspector.exe`
+            - `env-inspector.exe.sha256`
+          files: |
+            dist/env-inspector.exe
+            dist/env-inspector.exe.sha256

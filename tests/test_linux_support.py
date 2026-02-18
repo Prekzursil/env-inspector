@@ -1,0 +1,195 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+import env_inspector_core.service as service_module
+from env_inspector_core.models import EnvRecord
+from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
+from env_inspector_core.service import EnvInspectorService
+
+
+def _record(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
+    return EnvRecord(
+        source_type=source_type,
+        source_id=source_type,
+        source_path=source_type,
+        context=context,
+        name=name,
+        value=value,
+        is_secret=False,
+        is_persistent=True,
+        is_mutable=True,
+        precedence_rank=precedence,
+        writable=True,
+        requires_privilege=False,
+        last_error=None,
+    )
+
+
+def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
+    bashrc = tmp_path / ".bashrc"
+    etc_env = tmp_path / "etc_environment"
+    bashrc.write_text("export API_TOKEN='abc123'\nexport PATH='/usr/bin'\n", encoding="utf-8")
+    etc_env.write_text("LANG=en_US.UTF-8\nEDITOR=vim\n", encoding="utf-8")
+
+    rows = collect_linux_records(bashrc_path=bashrc, etc_environment_path=etc_env, context="linux")
+
+    source_types = {r.source_type for r in rows}
+    assert "linux_bashrc" in source_types
+    assert "linux_etc_environment" in source_types
+    assert all(r.context == "linux" for r in rows)
+    assert any(r.name == "API_TOKEN" and r.value == "abc123" for r in rows)
+    assert any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows)
+
+
+def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("API_TOKEN=abc123\n", encoding="utf-8")
+
+    rows = collect_dotenv_records(tmp_path, max_depth=2, context="linux")
+    assert rows
+    assert all(r.context == "linux" for r in rows)
+
+
+def test_service_available_targets_always_include_linux_targets_for_linux_context(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    targets = svc.available_targets([], context="linux")
+
+    assert "linux:bashrc" in targets
+    assert "linux:etc_environment" in targets
+
+
+def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "linux"
+    svc.current_wsl_distro = "Ubuntu"
+
+    class _FakeWsl:
+        def available(self) -> bool:
+            return True
+
+        def list_distros_for_ui(self) -> list[str]:
+            return ["Ubuntu", "Debian"]
+
+    svc.wsl = _FakeWsl()  # type: ignore[assignment]
+
+    contexts = svc.list_contexts()
+
+    assert contexts == ["linux", "wsl:Debian"]
+
+
+def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "linux"
+    svc.wsl = type("NoBridge", (), {"available": lambda self: False})()  # type: ignore[assignment]
+
+    linux_rows = [
+        _record("linux_bashrc", "linux", "MY_KEY", "from-bashrc", 20),
+        _record("linux_etc_environment", "linux", "LANG", "en_US.UTF-8", 30),
+    ]
+    monkeypatch.setattr(service_module, "collect_linux_records", lambda **_kwargs: linux_rows)
+    monkeypatch.setattr(service_module, "collect_process_records", lambda context="linux": [])
+    monkeypatch.setattr(service_module, "collect_dotenv_records", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(service_module, "collect_powershell_profile_records", lambda *_args, **_kwargs: [])
+
+    rows = svc.list_records(root=tmp_path, context="linux", include_raw_secrets=True)
+
+    assert any(r["source_type"] == "linux_bashrc" for r in rows)
+    assert any(r["source_type"] == "linux_etc_environment" for r in rows)
+
+
+def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "linux"
+
+    etc_env = tmp_path / "etc_environment"
+    etc_env.write_text("A=1\n", encoding="utf-8")
+
+    def fake_load(path: Path) -> str:
+        if path == Path("/etc/environment"):
+            return etc_env.read_text(encoding="utf-8")
+        return path.read_text(encoding="utf-8")
+
+    writes: list[str] = []
+
+    def fake_write(path: Path, text: str) -> None:
+        if path == Path("/etc/environment"):
+            raise PermissionError("denied")
+        writes.append(str(path))
+        path.write_text(text, encoding="utf-8")
+
+    class Proc:
+        returncode = 0
+        stdout = b""
+        stderr = b""
+
+    def fake_run(cmd, **kwargs):
+        assert cmd[:3] == ["sudo", "-n", "tee"]
+        assert kwargs.get("input") == b"A=2\n"
+        etc_env.write_text("A=2\n", encoding="utf-8")
+        return Proc()
+
+    monkeypatch.setattr(svc, "_load_text", fake_load)
+    monkeypatch.setattr(svc, "_write_text", fake_write)
+    monkeypatch.setattr(service_module.subprocess, "run", fake_run)
+
+    result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
+
+    assert result["success"] is True
+    assert etc_env.read_text(encoding="utf-8") == "A=2\n"
+    assert writes == []
+
+
+def test_linux_bashrc_set_and_remove_roundtrip(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "linux"
+
+    bashrc = tmp_path / ".bashrc"
+    bashrc.write_text("export A='1'\n", encoding="utf-8")
+
+    monkeypatch.setattr(service_module.Path, "home", lambda: tmp_path)
+
+    set_result = svc.set_key(key="MY_TEST_VAR", value="hello", targets=["linux:bashrc"])
+    assert set_result["success"] is True
+    assert "MY_TEST_VAR" in bashrc.read_text(encoding="utf-8")
+    assert set_result["backup_path"]
+
+    remove_result = svc.remove_key(key="MY_TEST_VAR", targets=["linux:bashrc"])
+    assert remove_result["success"] is True
+    assert "MY_TEST_VAR" not in bashrc.read_text(encoding="utf-8")
+
+
+def test_linux_etc_environment_write_reports_permission_failure(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "linux"
+
+    etc_env = tmp_path / "etc_environment"
+    etc_env.write_text("A=1\n", encoding="utf-8")
+
+    def fake_load(path: Path) -> str:
+        if path == Path("/etc/environment"):
+            return etc_env.read_text(encoding="utf-8")
+        return path.read_text(encoding="utf-8")
+
+    def fake_write(path: Path, text: str) -> None:
+        if path == Path("/etc/environment"):
+            raise PermissionError("denied")
+        path.write_text(text, encoding="utf-8")
+
+    class Proc:
+        returncode = 1
+        stdout = b""
+        stderr = b"sudo auth failed"
+
+    monkeypatch.setattr(svc, "_load_text", fake_load)
+    monkeypatch.setattr(svc, "_write_text", fake_write)
+    monkeypatch.setattr(service_module.subprocess, "run", lambda *_args, **_kwargs: Proc())
+
+    result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
+
+    assert result["success"] is False
+    assert "sudo" in (result["error_message"] or "").lower()
+    assert etc_env.read_text(encoding="utf-8") == "A=1\n"

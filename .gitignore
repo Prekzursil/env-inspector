@@ -1,0 +1,21 @@
+# Runtime state and local logs
+.env-inspector-state/
+*.log
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Build outputs
+build/
+dist/*
+!dist/
+!dist/env-inspector.exe
+
+# Editor and OS noise
+.vscode/
+.DS_Store
+Thumbs.db
