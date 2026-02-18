@@ -60,9 +60,9 @@ def current_wsl_distro_name() -> str | None:
 def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
     root = Path(root)
     workspace_root = Path.cwd()
-    try:
-        root.relative_to(workspace_root)
-    except ValueError:
+    root_text = str(root)
+    workspace_text = str(workspace_root)
+    if root_text != workspace_text and not root_text.startswith(workspace_text + os.sep):
         return []
     if not root.exists() or not root.is_dir():
         return []
