@@ -7,12 +7,13 @@ Set-Location $scriptDir
 $py = $null
 $pyArgs = @()
 
-if (Get-Command py -ErrorAction SilentlyContinue) {
-  $py = "py"
-  $pyArgs = @("-3")
-} elseif (Get-Command python -ErrorAction SilentlyContinue) {
+# Prefer the currently active "python" (for CI setup-python) before py launcher.
+if (Get-Command python -ErrorAction SilentlyContinue) {
   $py = "python"
   $pyArgs = @()
+} elseif (Get-Command py -ErrorAction SilentlyContinue) {
+  $py = "py"
+  $pyArgs = @("-3")
 } else {
   $candidatePaths = @(
     "$env:LocalAppData\Programs\Python\Launcher\py.exe",
