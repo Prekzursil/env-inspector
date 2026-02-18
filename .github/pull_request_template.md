@@ -1,16 +1,34 @@
 ## Summary
 
-- What changed:
-- Why:
+- What changed?
+- Why was it needed?
 
-## Verification
+## Risk
 
-- [ ] `python3 -m py_compile env_inspector.py env_inspector_core/*.py tests/*.py`
-- [ ] `pytest -q -s`
-- [ ] Manual validation (if required for GUI/WSL/elevation paths)
+- Risk level: `low | medium | high`
+- Regression surface (files/flows most likely affected):
+- Security/privacy impact:
 
-## Scope Check
+## Evidence
 
-- [ ] No runtime state files committed (`.env-inspector-state/`)
-- [ ] No secrets or tokens included in code/docs/logs
-- [ ] Docs updated (`README.md` / `CHANGELOG.md`) when behavior changed
+- [ ] `make verify`
+- [ ] Additional targeted checks (if needed)
+
+### Commands / Results
+
+Paste the exact commands and outcomes used for validation.
+
+## Rollback
+
+- Rollback steps if this change causes regressions:
+
+## Scope Guard
+
+- [ ] Change is minimal and task-focused
+- [ ] No secrets/tokens were introduced
+- [ ] Runtime state files are not committed (`.env-inspector-state/`)
+- [ ] Docs updated when behavior changed (`README.md`, `CHANGELOG.md`)
+
+## Linked Issues
+
+Closes #
