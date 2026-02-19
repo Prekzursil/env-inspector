@@ -10,5 +10,5 @@ Rules:
 - Update docs only where behavior/contracts changed.
 - Preserve concise, actionable documentation style.
 - Avoid speculative architecture edits.
-- Add verification references (`make verify`) where relevant.
+- Reference deterministic verification command `make verify` when relevant.
 - Never include secrets or environment-specific private values.
