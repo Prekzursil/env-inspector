@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Phase 3: KPI Instrumentation**
+  - Weekly KPI digest workflow (`.github/workflows/kpi-weekly-digest.yml`) tracking lead time, cycle time, rework rate, queue failure rate, and evidence completeness.
+  - Branch protection policy documentation (`.github/BRANCH_PROTECTION.md`) with human approval requirements and status checks.
+  - Escaped regression tracking labels and reporting cadence.
+  - New labels: `kpi-digest` and `escaped-regression` in label sync workflow.
+- **Phase 4: Fleet Baseline Lite Packaging**
+  - Comprehensive baseline export guide (`.github/FLEET_BASELINE_LITE.md`) documenting reusable components for multi-repo adoption.
+  - Export checklist for AGENTS.md, agent_task.yml, PR template, workflows, and agent profiles.
+  - Documentation of repo-specific overlay exceptions for env-inspector.
+
 ## [1.0.0] - 2026-02-18
 
 ### Added
