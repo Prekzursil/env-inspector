@@ -1,132 +1,78 @@
-name: Weekly KPI Digest
+name: KPI Weekly Digest
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 9 * * 1"  # Every Monday at 9 AM UTC
+    - cron: '15 6 * * 1'
 
 permissions:
   contents: read
   issues: write
-  actions: read
+  pull-requests: read
 
 jobs:
-  kpi-digest:
+  digest:
     runs-on: ubuntu-latest
     steps:
-      - name: Generate Weekly KPI Digest
+      - name: Publish weekly KPI digest issue
         uses: actions/github-script@v7
         with:
           script: |
-            const date = new Date().toISOString().slice(0, 10);
-            const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            
-            // Fetch PRs merged in the last week
-            const { data: mergedPRs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 100
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const now = new Date();
+            const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const sinceIso = since.toISOString();
+
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "all",
+              sort: "updated",
+              direction: "desc",
+              per_page: 100,
             });
-            
-            const recentMergedPRs = mergedPRs.filter(pr => 
-              pr.merged_at && new Date(pr.merged_at) > new Date(oneWeekAgo)
-            );
-            
-            // Fetch workflow runs from the last week
-            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              created: `>=${oneWeekAgo}`,
-              per_page: 100
+
+            const mergedLast7d = pulls.filter(pr => pr.merged_at && new Date(pr.merged_at) >= since).length;
+            const openedLast7d = pulls.filter(pr => new Date(pr.created_at) >= since).length;
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
             });
-            
-            // Calculate KPIs
-            let totalLeadTime = 0;
-            let totalCycleTime = 0;
-            let reworkCount = 0;
-            let evidenceCompleteCount = 0;
-            let escapedRegressions = 0;
-            
-            for (const pr of recentMergedPRs) {
-              // Lead time: time from PR creation to merge
-              const createdAt = new Date(pr.created_at);
-              const mergedAt = new Date(pr.merged_at);
-              const leadTimeHours = (mergedAt - createdAt) / (1000 * 60 * 60);
-              totalLeadTime += leadTimeHours;
-              
-              // Cycle time: time from first commit to merge (approximated by PR age)
-              totalCycleTime += leadTimeHours;
-              
-              // Rework detection: PRs with multiple commits or review iterations
-              if (pr.commits > 3) {
-                reworkCount++;
-              }
-              
-              // Evidence completeness: check if PR body contains verification evidence
-              const prBody = pr.body || '';
-              if (prBody.includes('make verify') || prBody.includes('Evidence')) {
-                evidenceCompleteCount++;
-              }
-              
-              // Escaped regressions: PRs with 'bug' label added after merge
-              // (This is a simplified heuristic)
-            }
-            
-            const avgLeadTime = recentMergedPRs.length > 0 ? 
-              (totalLeadTime / recentMergedPRs.length).toFixed(2) : 0;
-            const avgCycleTime = recentMergedPRs.length > 0 ? 
-              (totalCycleTime / recentMergedPRs.length).toFixed(2) : 0;
-            const reworkRate = recentMergedPRs.length > 0 ? 
-              ((reworkCount / recentMergedPRs.length) * 100).toFixed(2) : 0;
-            const evidenceRate = recentMergedPRs.length > 0 ? 
-              ((evidenceCompleteCount / recentMergedPRs.length) * 100).toFixed(2) : 0;
-            
-            // Queue failure rate: failed workflow runs
-            const failedRuns = workflowRuns.workflow_runs.filter(run => 
-              run.conclusion === 'failure'
-            );
-            const queueFailureRate = workflowRuns.workflow_runs.length > 0 ? 
-              ((failedRuns.length / workflowRuns.workflow_runs.length) * 100).toFixed(2) : 0;
-            
-            // Create the KPI digest issue
-            const title = `Weekly KPI Digest (${date})`;
+
+            const openAgentIssues = openIssues.filter(i => !i.pull_request && (i.labels || []).some(l => ["agent:ready", "agent:in-progress", "agent:blocked"].includes(l.name))).length;
+
+            const title = `Weekly KPI Digest - ${now.toISOString().slice(0, 10)}`;
             const body = [
-              "## 📊 Weekly KPI Digest",
+              "## Summary",
+              `- Window start: ${sinceIso}`,
+              `- Window end: ${now.toISOString()}`,
               "",
-              `**Period:** ${new Date(oneWeekAgo).toISOString().slice(0, 10)} to ${date}`,
+              "## Automated Snapshot",
+              `- PRs opened (7d): ${openedLast7d}`,
+              `- PRs merged (7d): ${mergedLast7d}`,
+              `- Open agent-tracked issues: ${openAgentIssues}`,
               "",
-              "### Delivery Metrics",
-              `- **Lead Time (avg):** ${avgLeadTime} hours`,
-              `- **Cycle Time (avg):** ${avgCycleTime} hours`,
-              `- **Merged PRs:** ${recentMergedPRs.length}`,
+              "## KPI Fields (fill/verify)",
+              "- Intake-to-PR lead time:",
+              "- PR cycle time:",
+              "- Queue failure rate:",
+              "- Agent rework rate:",
+              "- Evidence completeness rate:",
+              "- Regression incident count:",
               "",
-              "### Quality Metrics",
-              `- **Rework Rate:** ${reworkRate}% (${reworkCount}/${recentMergedPRs.length} PRs with >3 commits)`,
-              `- **Evidence Completeness:** ${evidenceRate}% (${evidenceCompleteCount}/${recentMergedPRs.length} PRs)`,
-              `- **Queue Failure Rate:** ${queueFailureRate}% (${failedRuns.length}/${workflowRuns.workflow_runs.length} runs)`,
-              `- **Escaped Regressions:** ${escapedRegressions} (tracked via post-merge bug reports)`,
-              "",
-              "### Action Items",
-              "- [ ] Review PRs with high lead time (>72 hours)",
-              "- [ ] Address patterns in failed workflow runs",
-              "- [ ] Follow up on PRs missing verification evidence",
-              "- [ ] Track and triage any escaped regressions",
-              "",
-              "### Escaped Regression Tracking",
-              "**Signal:** Issues labeled `bug` + `escaped-regression` opened within 7 days of a release/merge.",
-              "**Reporting Cadence:** Weekly via this digest + immediate Slack notification (when configured).",
-              "",
-              "---",
-              "*This digest is generated automatically to track team velocity and quality trends.*"
+              "## Notes",
+              "- Add blockers, regressions, and remediation actions.",
             ].join("\n");
-            
+
             await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              owner,
+              repo,
               title,
               body,
-              labels: ["area:infra", "kpi-digest"]
+              labels: ["area:infra", "risk:low"],
             });
