@@ -128,6 +128,15 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     with pytest.raises(RuntimeError, match="Unsupported WSL target"):
         svc._update_wsl_file(target="wsl:Ubuntu:profile", key="A", value="1", action="set", apply_changes=False)
 
+    with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
+        svc._update_wsl_file(
+            target="wsl_dotenv:Ubuntu:/home/user/../outside.env",
+            key="A",
+            value="1",
+            action="set",
+            apply_changes=False,
+        )
+
     profile = tmp_path / "profile.ps1"
     monkeypatch.setattr(EnvInspectorService, "_powershell_profile_path", lambda _self, _target: profile)
     _before, _after, out_path, _requires_priv, _ = svc._update_powershell_file(

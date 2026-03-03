@@ -122,3 +122,18 @@ def test_linux_etc_environment_path_guard_non_windows_branch(tmp_path: Path, mon
     resolved = EnvInspectorService._linux_etc_environment_path()
 
     assert resolved.as_posix() == r"\etc\environment"
+
+
+def test_restore_wsl_dotenv_backup_rejects_path_traversal(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    calls: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(svc.wsl, "write_file", lambda distro, path, text: calls.append((distro, path, text)))
+
+    backup_path = svc.backup_mgr.backup_text("wsl_dotenv:Ubuntu:/home/user/../outside.env", "A=1\n")
+    result = svc.restore_backup(backup=str(backup_path))
+
+    assert result["success"] is False
+    assert "Unsupported WSL dotenv target path" in (result["error_message"] or "")
+    assert calls == []
