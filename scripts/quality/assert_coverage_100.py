@@ -56,11 +56,21 @@ def parse_named_path(value: str) -> tuple[str, Path]:
     match = _PAIR_RE.match(value.strip())
     if not match:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
-    return match.group("name").strip(), Path(match.group("path").strip())
+    name = match.group("name").strip()
+    raw_path = match.group("path").strip()
+    candidate = Path(raw_path).expanduser().resolve(strict=False)
+    workspace_root = Path.cwd().resolve()
+    try:
+        candidate.relative_to(workspace_root)
+    except ValueError as exc:
+        raise ValueError(f"Coverage input path must stay inside workspace: {candidate}") from exc
+    if not candidate.exists() or not candidate.is_file():
+        raise ValueError(f"Coverage input file does not exist: {candidate}")
+    return name, candidate
 
 
 def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
-    text = path.read_text(encoding="utf-8")  # codeql[py/path-injection] CI-controlled local coverage input
+    text = path.read_text(encoding="utf-8")  # lgtm [py/path-injection]
     lines_valid_match = _XML_LINES_VALID_RE.search(text)
     lines_covered_match = _XML_LINES_COVERED_RE.search(text)
 
@@ -86,7 +96,7 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     total = 0
     covered = 0
 
-    for raw in path.read_text(encoding="utf-8").splitlines():  # codeql[py/path-injection] CI-controlled local coverage input
+    for raw in path.read_text(encoding="utf-8").splitlines():  # lgtm [py/path-injection]
         line = raw.strip()
         if line.startswith("LF:"):
             total += int(line.split(":", 1)[1])

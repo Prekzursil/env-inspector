@@ -112,7 +112,7 @@ class EnvInspectorService:
         if target == "powershell:current_user":
             allowed_root = Path.home().resolve(strict=False)
         else:
-            allowed_root = Path(os.environ.get("ProgramFiles", r"C:\\Program Files")).resolve(strict=False)
+            allowed_root = Path(r"C:\\Program Files").resolve(strict=False)
         if not self._is_path_within(profile, allowed_root):
             raise RuntimeError(f"PowerShell profile path is outside expected root: {profile}")
         return profile
@@ -595,7 +595,15 @@ class EnvInspectorService:
 
             if target.startswith("dotenv:"):
                 scoped = parse_scoped_dotenv_target(target, roots=resolved_scope_roots)
-                safe_path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="restore dotenv path")
+                safe_path = scoped.path.resolve(strict=False)
+                in_scope = False
+                for root in resolved_scope_roots:
+                    root_resolved = root.resolve(strict=False)
+                    if self._is_path_within(safe_path, root_resolved):
+                        in_scope = True
+                        break
+                if not in_scope:
+                    raise RuntimeError(f"restore dotenv path is outside approved roots: {safe_path}")
                 safe_path.parent.mkdir(parents=True, exist_ok=True)
                 safe_path.write_text(text, encoding="utf-8")
             elif target == "linux:bashrc":

@@ -88,9 +88,10 @@ Add operation result schema:
 
 - Current user profile
 - All users profile (read/edit behavior as selected)
-1. Add WSL `/etc/environment` provider per distro.
-2. Add WSL filesystem dotenv provider with explicit distro+path scanning.
-3. Add context-based effective-value resolver:
+
+3. Add WSL `/etc/environment` provider per distro.
+4. Add WSL filesystem dotenv provider with explicit distro+path scanning.
+5. Add context-based effective-value resolver:
 
 - Windows context precedence
 - Per-distro WSL context precedence
@@ -136,23 +137,27 @@ Add operation result schema:
 - PowerShell profile parser
 - bashrc export parser
 - `/etc/environment` parser
-1. Add writer tests:
+
+3. Add writer tests:
 
 - upsert/remove semantics
 - quote handling
 - newline preservation
 - backup creation and retention
-1. Add privilege strategy tests with mocked subprocess:
+
+4. Add privilege strategy tests with mocked subprocess:
 
 - root path success
 - root fail + sudo success
 - both fail
-1. Add context precedence tests:
+
+5. Add context precedence tests:
 
 - Windows effective value
 - WSL distro-specific effective value
-1. Add GUI logic tests where feasible via isolated logic functions.
-2. Add manual Windows validation checklist in README:
+
+6. Add GUI logic tests where feasible via isolated logic functions.
+7. Add manual Windows validation checklist in README:
 
 - Source mode run
 - EXE run
@@ -170,7 +175,8 @@ Add operation result schema:
 - Backup/restore
 - Export
 - Context effective preview
-1. Record known limitations and troubleshooting steps in README.
+
+4. Record known limitations and troubleshooting steps in README.
 
 ## Test Cases and Scenarios
 
