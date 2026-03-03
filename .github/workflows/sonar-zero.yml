@@ -16,13 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
       - name: Assert SonarCloud PR status context is green
         run: |
           python3 scripts/quality/check_required_checks.py \
             --repo "${GITHUB_REPOSITORY}" \
-            --sha "${GITHUB_SHA}" \
+            --sha "${CHECK_SHA}" \
             --required-context "SonarCloud Code Analysis" \
             --timeout-seconds 1200 \
             --poll-seconds 20 \
