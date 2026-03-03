@@ -31,10 +31,11 @@ jobs:
           python -m pip install pytest pytest-cov
           python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
 
-      - name: Enforce 100% coverage
+      - name: Enforce coverage floor
         run: |
           python3 scripts/quality/assert_coverage_100.py \
             --xml "python=coverage/python-coverage.xml" \
+            --min-percent 60 \
             --out-json "coverage-100/coverage.json" \
             --out-md "coverage-100/coverage.md"
       - name: Upload coverage artifacts

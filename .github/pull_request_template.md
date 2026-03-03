@@ -6,29 +6,22 @@
 ## Risk
 
 - Risk level: `low | medium | high`
-- Regression surface (files/flows most likely affected):
-- Security/privacy impact:
+- Regression surface (frontend/backend/infra/docs/security/release):
+- Security/runtime safety impact:
 
 ## Evidence
 
-- [ ] `make verify`
-- [ ] Additional targeted checks (if needed)
-
-### Commands / Results
-
-Paste the exact commands and outcomes used for validation.
+- Deterministic verification command: `make verify`
+- Command output summary:
+- Any justified skips:
 
 ## Rollback
 
-- Rollback steps if this change causes regressions:
+- Rollback command or steps:
+- Data/schema/runtime rollback impact:
 
 ## Scope Guard
 
 - [ ] Change is minimal and task-focused
-- [ ] No secrets/tokens were introduced
-- [ ] Runtime state files are not committed (`.env-inspector-state/`)
-- [ ] Docs updated when behavior changed (`README.md`, `CHANGELOG.md`)
-
-## Linked Issues
-
-Closes #
+- [ ] No unrelated refactors included
+- [ ] No secrets or private tokens added

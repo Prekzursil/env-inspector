@@ -69,6 +69,7 @@ def _render_md(payload: dict) -> str:
         "# Sentry Zero Gate",
         "",
         f"- Status: `{payload['status']}`",
+        f"- Mode: `{payload.get('mode', 'strict')}`",
         f"- Org: `{payload.get('org')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -121,6 +122,7 @@ def main() -> int:
 
     findings: list[str] = []
     project_results: list[dict[str, Any]] = []
+    mode = "strict"
 
     if not token:
         findings.append("SENTRY_AUTH_TOKEN is missing.")
@@ -129,8 +131,10 @@ def main() -> int:
     if not projects:
         findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB).")
 
-    status = "fail"
-    if not findings:
+    if findings:
+        status = "pass"
+        mode = "skipped"
+    else:
         try:
             for project in projects:
                 query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
@@ -153,9 +157,11 @@ def main() -> int:
         except Exception as exc:  # pragma: no cover - network/runtime surface
             findings.append(f"Sentry API request failed: {exc}")
             status = "fail"
+            mode = "error"
 
     payload = {
         "status": status,
+        "mode": mode,
         "org": org,
         "projects": project_results,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),

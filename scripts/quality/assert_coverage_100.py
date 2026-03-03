@@ -31,9 +31,15 @@ _XML_LINE_HITS_RE = re.compile(r"<line\\b[^>]*\\bhits=\"([0-9]+(?:\\.[0-9]+)?)\"
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert 100% coverage for all declared components.")
+    parser = argparse.ArgumentParser(description="Assert minimum coverage for all declared components.")
     parser.add_argument("--xml", action="append", default=[], help="Coverage XML input: name=path")
     parser.add_argument("--lcov", action="append", default=[], help="LCOV input: name=path")
+    parser.add_argument(
+        "--min-percent",
+        type=float,
+        default=100.0,
+        help="Minimum required coverage percentage for each component and combined summary.",
+    )
     parser.add_argument("--out-json", default="coverage-100/coverage.json", help="Output JSON path")
     parser.add_argument("--out-md", default="coverage-100/coverage.md", help="Output markdown path")
     return parser.parse_args()
@@ -83,18 +89,22 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     return CoverageStats(name=name, path=str(path), covered=covered, total=total)
 
 
-def evaluate(stats: list[CoverageStats]) -> tuple[str, list[str]]:
+def evaluate(stats: list[CoverageStats], min_percent: float) -> tuple[str, list[str]]:
     findings: list[str] = []
     for item in stats:
-        if item.percent < 100.0:
-            findings.append(f"{item.name} coverage below 100%: {item.percent:.2f}% ({item.covered}/{item.total})")
+        if item.percent < min_percent:
+            findings.append(
+                f"{item.name} coverage below {min_percent:.2f}%: {item.percent:.2f}% ({item.covered}/{item.total})"
+            )
 
     combined_total = sum(item.total for item in stats)
     combined_covered = sum(item.covered for item in stats)
     combined = 100.0 if combined_total <= 0 else (combined_covered / combined_total) * 100.0
 
-    if combined < 100.0:
-        findings.append(f"combined coverage below 100%: {combined:.2f}% ({combined_covered}/{combined_total})")
+    if combined < min_percent:
+        findings.append(
+            f"combined coverage below {min_percent:.2f}%: {combined:.2f}% ({combined_covered}/{combined_total})"
+        )
 
     status = "pass" if not findings else "fail"
     return status, findings
@@ -105,6 +115,7 @@ def _render_md(payload: dict) -> str:
         "# Coverage 100 Gate",
         "",
         f"- Status: `{payload['status']}`",
+        f"- Minimum required coverage: `{payload['min_percent']:.2f}%`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
         "## Components",
@@ -155,10 +166,12 @@ def main() -> int:
     if not stats:
         raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
 
-    status, findings = evaluate(stats)
+    min_percent = max(0.0, min(100.0, float(args.min_percent)))
+    status, findings = evaluate(stats, min_percent)
     payload = {
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "min_percent": min_percent,
         "components": [
             {
                 "name": item.name,

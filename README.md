@@ -1,132 +1,81 @@
-# Env Inspector (Windows EXE + Source Mode)
+# Env Inspector
 
 [![Release](https://img.shields.io/github/v/release/Prekzursil/env-inspector?display_name=tag)](https://github.com/Prekzursil/env-inspector/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/Prekzursil/env-inspector/env-inspector-exe-release.yml?label=build)](https://github.com/Prekzursil/env-inspector/actions/workflows/env-inspector-exe-release.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/Prekzursil/env-inspector/env-inspector-exe-release.yml?label=exe-build)](https://github.com/Prekzursil/env-inspector/actions/workflows/env-inspector-exe-release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Local desktop app for inspecting and managing environment variables and token-like values across Windows and WSL.
+Desktop + CLI utility for inspecting and editing environment variables across Windows, WSL, and Linux contexts.
 
-## Releases
+## Why this tool exists
 
-- Repository: `https://github.com/Prekzursil/env-inspector`
-- Download page: `https://github.com/Prekzursil/env-inspector/releases`
-- Release assets:
-  - `env-inspector.exe`
-  - `env-inspector.exe.sha256`
+Environment values often live in multiple places at once: process env, shell profiles, registry, `.env` files, and WSL distro files. Env Inspector gives one view across those sources and a safer write flow with previews, backups, and audit logging.
 
-Checksum verification (PowerShell):
+## Quickstart
 
-```powershell
-Get-FileHash .\env-inspector.exe -Algorithm SHA256
-```
+### Run from source
 
-## Features
-
-- GUI + CLI entrypoint from the same script (`env_inspector.py`).
-- CLI subcommands:
-  - `list`
-  - `set`
-  - `remove`
-  - `export`
-  - `backup`
-  - `restore`
-- Source coverage:
-  - Process environment
-  - Windows User/Machine persistent env (registry)
-  - PowerShell profile entries
-  - WSL `~/.bashrc` exports
-  - WSL `/etc/environment`
-  - Editable `.env` / `.env.*` files on Windows paths
-  - Optional WSL filesystem `.env` scan/edit per distro + path
-- Secret-like values masked by default (with reveal toggle).
-- Context-aware view (`windows` or `wsl:<distro>`) with effective-value preview.
-- Multi-target set/remove operations with diff preview before apply.
-- Automatic backups + restore and audit logging:
-  - Backups: `./.env-inspector-state/backups`
-  - Audit log: `./.env-inspector-state/audit.log`
-
-## Security / behavior notes
-
-- Secrets are masked by default in UI and exports unless explicitly revealed.
-- File/target content is backed up before write operations.
-- Local `dotenv:` writes are restricted to approved roots (`cwd` by default, plus explicit `--root` overrides).
-- `/etc/environment` writes try root-mode first and then sudo fallback.
-- Existing open shell sessions may need restart to pick up changed values.
-
-## Repository Governance
-
-- Default branch: `main`
-- Baseline protection policy:
-  - force pushes disabled
-  - branch deletion disabled
-  - linear history required
-- Required reviews/check gates are intentionally left off for solo-maintainer velocity.
-
-## Source setup and launch
-
-### Prerequisites
-
-The application requires Python 3.x (no external runtime dependencies for core functionality).
-
-For development and verification, install pytest:
-
-```bash
-pip install pytest
-```
-
-### Launch from source
-
-#### Windows
+Windows:
 
 ```bat
 start-env-inspector.bat
 ```
 
-#### Linux
+Linux:
 
 ```bash
 ./start-env-inspector.sh
 ```
 
-### Deterministic verification
-
-Run the canonical verification command to validate the setup:
+### Basic CLI sanity check
 
 ```bash
-make verify
+python env_inspector.py list --output json --root .
 ```
 
-This command performs:
-- Python syntax compilation check for all `.py` files
-- Full test suite execution via pytest
+## Capabilities
 
-Expected baseline: 38+ passing tests. Pre-existing test failures in `test_wsl_privilege.py` are environment-specific and do not impact core functionality on non-Windows systems.
+### Read and inspect
 
-## Linux operations
+- Unified inventory across process, Windows registry, PowerShell profile, Linux shell files, WSL shell files, and local/WSL dotenv files.
+- Context switcher (`windows`, `linux`, `wsl:<distro>`) with immediate refresh.
+- Effective value preview for the selected key.
+- Sortable table columns with persistent sort state.
+- Filter and secret-only view support.
 
-List Linux-context records:
+### Edit with safety
 
-```bash
-python env_inspector.py list --context linux --output table --root .
-```
+- Set/remove operations always preview diffs before apply.
+- Tabbed diff previews for multi-target edits.
+- Automatic backups before writes.
+- Restore flow for previous backups.
+- Audit logging in `.env-inspector-state/audit.log`.
 
-Set/remove in local `~/.bashrc`:
+### Secret-aware UX
 
-```bash
-python env_inspector.py set --key MY_TEST_VAR --value hello --target linux:bashrc
-python env_inspector.py remove --key MY_TEST_VAR --target linux:bashrc
-```
+- Secret-like values are masked by default.
+- Hidden secret copy/load actions require explicit confirmation for raw value use.
+- Hidden-secret search uses masked representation instead of raw secret text.
 
-Set/remove in local `/etc/environment` (uses direct write, then `sudo -n` fallback):
+### Operator-focused GUI quality
 
-```bash
-python env_inspector.py set --key MY_TEST_VAR --value hello --target linux:etc_environment
-python env_inspector.py remove --key MY_TEST_VAR --target linux:etc_environment
-```
+- Right-side details panel for selected row metadata and actions.
+- Source path actions: copy path and open local file-backed sources.
+- Busy indicator and status line with visible counts, context, and last refresh timestamp.
+- Keyboard shortcuts:
+  - `Ctrl+F` focuses filter
+  - `F5` refreshes data
+  - `Esc` clears filter field
+  - `Ctrl+C` in table copies selected value using secret policy
 
-If `sudo -n` is unavailable (no cached credentials/passwordless sudo), the command fails with an explicit remediation error instead of silently succeeding.
+## UI state and local artifacts
 
-## CLI usage examples
+Env Inspector stores runtime state under `./.env-inspector-state/`:
+
+- `config.json` for UI state (window geometry, context, filters, targets, sort, WSL scan controls)
+- `backups/` for auto-generated write backups
+- `audit.log` for operation history
+
+## CLI examples
 
 ```bash
 python env_inspector.py list --output json
@@ -138,73 +87,68 @@ python env_inspector.py backup
 python env_inspector.py restore --backup /path/to/file.backup.json
 ```
 
-## Build portable Windows EXE locally
+Linux-target examples:
+
+```bash
+python env_inspector.py list --context linux --output table --root .
+python env_inspector.py set --key MY_TEST_VAR --value hello --target linux:bashrc
+python env_inspector.py remove --key MY_TEST_VAR --target linux:bashrc
+python env_inspector.py set --key MY_TEST_VAR --value hello --target linux:etc_environment
+python env_inspector.py remove --key MY_TEST_VAR --target linux:etc_environment
+```
+
+If `sudo -n` is unavailable, `linux:etc_environment` writes fail explicitly by design.
+
+## Build and verify
+
+### Build portable Windows EXE
 
 ```powershell
 .\build-windows-exe.ps1
 ```
 
-Output:
+Expected output:
 
 ```text
 dist/env-inspector.exe
 ```
 
-## Reliability verification checklist
-
-### Source mode verification
+### Verify from source
 
 ```bash
-python env_inspector.py list --output json --root .
-python env_inspector.py export --output csv --root .
+python3 -m py_compile env_inspector.py env_inspector_core/*.py env_inspector_gui/*.py tests/*.py
+pytest -q -s
 ```
 
-Manual checks:
-
-1. Launch GUI (`start-env-inspector.bat` on Windows).
-2. Confirm context dropdown includes Windows and available WSL distros.
-3. Confirm rows appear from expected sources.
-4. For a test key, run Set with diff preview and verify backup file is created.
-5. Remove the key and verify operation log entry is appended.
-6. Restore from a backup and confirm key/value returns.
-
-### EXE verification
-
-After build, run:
+### Verify EXE
 
 ```powershell
 .\dist\env-inspector.exe list --output json --root .
 ```
 
-Manual checks (same as source mode):
+## CI, reviews, and merges
 
-1. GUI launches.
-2. Read operations work across selected sources.
-3. Set/remove with diff preview works.
-4. Backup/restore flow works.
-5. Export JSON/CSV works with masked secrets by default.
+- Pull requests are expected to pass all required repository checks before merge.
+- Keep changes scoped and include evidence from deterministic local verification commands.
+- Update docs (`README.md`, `CHANGELOG.md`) when behavior changes.
 
-### Linux verification
+## Releases and artifacts
 
-```bash
-python env_inspector.py list --context linux --output table --root .
-python env_inspector.py set --key __ENV_INSPECTOR_TEST__ --value 1 --target linux:bashrc
-python env_inspector.py remove --key __ENV_INSPECTOR_TEST__ --target linux:bashrc
+Repository: `https://github.com/Prekzursil/env-inspector`
+
+Release page: `https://github.com/Prekzursil/env-inspector/releases`
+
+Release assets:
+
+- `env-inspector.exe`
+- `env-inspector.exe.sha256`
+
+Checksum verification (PowerShell):
+
+```powershell
+Get-FileHash .\env-inspector.exe -Algorithm SHA256
 ```
 
-Optional privilege-path check:
+Workflow responsible for EXE artifact/release publishing:
 
-```bash
-python env_inspector.py set --key __ENV_INSPECTOR_TEST__ --value 1 --target linux:etc_environment
-python env_inspector.py remove --key __ENV_INSPECTOR_TEST__ --target linux:etc_environment
-```
-
-Known limitation: when `sudo -n` cannot authenticate non-interactively, `/etc/environment` writes fail by design with a clear error message.
-
-## CI / release artifact
-
-Workflow: `.github/workflows/env-inspector-exe-release.yml`
-
-- Builds `dist/env-inspector.exe` on `windows-latest`
-- Uploads workflow artifact `env-inspector-exe`
-- On tag push (`v*`) or manual dispatch with `tag` input, attaches EXE to GitHub Release
+- `.github/workflows/env-inspector-exe-release.yml`
