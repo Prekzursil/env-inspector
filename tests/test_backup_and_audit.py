@@ -2,6 +2,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 import env_inspector_core.storage as storage_mod
 from env_inspector_core.storage import BackupManager, AuditLogger
 from env_inspector_core.models import OperationResult
@@ -68,23 +70,18 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Pat
         return original_exists(path)
 
     monkeypatch.setattr(Path, "exists", _always_exists)
+    assert Path.exists(tmp_path)
 
-    try:
+    with pytest.raises(RuntimeError, match="Could not allocate unique backup file name"):
         mgr._next_backup_path()
-        assert False, "expected RuntimeError when all backup name slots are used"
-    except RuntimeError as exc:
-        assert "Could not allocate unique backup file name" in str(exc)
 
 
 def test_normalize_backup_path_rejects_escape(tmp_path: Path):
     mgr = BackupManager(tmp_path / "backups", retention=5)
     outside = tmp_path.parent / "outside.backup.json"
 
-    try:
+    with pytest.raises(ValueError, match="escapes backup root"):
         mgr._normalize_backup_path(outside)
-        assert False, "expected ValueError when backup path escapes root"
-    except ValueError as exc:
-        assert "escapes backup root" in str(exc)
 
 
 def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
