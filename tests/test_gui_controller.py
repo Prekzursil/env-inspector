@@ -26,6 +26,12 @@ class _View:
         self.busy_states.append(busy)
 
 
+def test_var_roundtrip_set_get():
+    var = _Var("initial")
+    var.set("updated")
+    assert var.get() == "updated"
+
+
 def test_context_change_triggers_full_refresh():
     ctrl = EnvInspectorController.__new__(EnvInspectorController)
     calls: list[str] = []

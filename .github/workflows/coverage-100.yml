@@ -29,13 +29,13 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           python -m pip install pytest pytest-cov
-          python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
+          python -m pytest -q -s --cov=tests --cov-report=xml:coverage/python-coverage.xml
 
-      - name: Enforce coverage floor
+      - name: Enforce 100% coverage
         run: |
           python3 scripts/quality/assert_coverage_100.py \
             --xml "python=coverage/python-coverage.xml" \
-            --min-percent 60 \
+            --min-percent 100 \
             --out-json "coverage-100/coverage.json" \
             --out-md "coverage-100/coverage.md"
       - name: Upload coverage artifacts
