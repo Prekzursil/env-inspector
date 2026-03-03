@@ -17,7 +17,6 @@ jobs:
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       REPO_NAME: ${{ github.event.repository.name }}
-      SNYK_STRICT: ${{ vars.SNYK_STRICT }}
     steps:
       - uses: actions/checkout@v6
 
@@ -125,31 +124,48 @@ jobs:
       - name: Snyk OSS test
         id: oss
         if: ${{ steps.token.outputs.has_token == 'true' && steps.detect.outputs.has_target == 'true' }}
-        continue-on-error: true
-        run: ${{ steps.detect.outputs.oss_cmd }}
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts
+          bash -lc "${{ steps.detect.outputs.oss_cmd }}" 2>&1 | tee artifacts/snyk-oss.log
+          scan_exit=${PIPESTATUS[0]}
+          set -e
+          echo "executed=true" >> "$GITHUB_OUTPUT"
+          echo "exit_code=${scan_exit}" >> "$GITHUB_OUTPUT"
 
       - name: Snyk code test
         id: code
         if: ${{ steps.token.outputs.has_token == 'true' }}
-        continue-on-error: true
-        run: snyk code test --severity-threshold=low
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts
+          snyk code test --severity-threshold=low 2>&1 | tee artifacts/snyk-code.log
+          scan_exit=${PIPESTATUS[0]}
+          set -e
+          echo "executed=true" >> "$GITHUB_OUTPUT"
+          echo "exit_code=${scan_exit}" >> "$GITHUB_OUTPUT"
 
       - name: Build snyk-oss-mode.json and enforce failure policy
         id: finalize
         if: ${{ always() }}
         env:
           HAS_TOKEN: ${{ steps.token.outputs.has_token }}
-          SNYK_STRICT: ${{ env.SNYK_STRICT }}
           HAS_TARGET: ${{ steps.detect.outputs.has_target }}
           OSS_MODE: ${{ steps.detect.outputs.oss_mode }}
           SKIP_REASON: ${{ steps.detect.outputs.skip_reason }}
-          OSS_OUTCOME: ${{ steps.oss.outcome }}
-          CODE_OUTCOME: ${{ steps.code.outcome }}
+          OSS_EXECUTED: ${{ steps.oss.outputs.executed }}
+          OSS_EXIT_CODE: ${{ steps.oss.outputs.exit_code }}
+          CODE_EXECUTED: ${{ steps.code.outputs.executed }}
+          CODE_EXIT_CODE: ${{ steps.code.outputs.exit_code }}
         run: |
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
+
+          from scripts.quality.snyk_policy import classify_scan, decide_policy
 
           detected_path = Path('artifacts/detected-targets.txt')
           detected = []
@@ -159,31 +175,59 @@ jobs:
                   if line:
                       detected.append(line)
 
+          def _as_bool(raw: str) -> bool:
+              return str(raw or "").strip().lower() == "true"
+
+          def _as_int(raw: str) -> int:
+              try:
+                  return int(str(raw or "0").strip())
+              except ValueError:
+                  return 0
+
+          def _read(path: str) -> str:
+              candidate = Path(path)
+              if not candidate.exists():
+                  return ""
+              return candidate.read_text(encoding="utf-8", errors="replace")
+
           has_token = os.getenv('HAS_TOKEN', '').lower() == 'true'
-          strict = os.getenv('SNYK_STRICT', '').lower() == 'true'
           has_target = os.getenv('HAS_TARGET', '').lower() == 'true'
           oss_mode = os.getenv('OSS_MODE') or ('executed' if has_target else 'skipped')
           skip_reason = os.getenv('SKIP_REASON', '')
-          oss_outcome = os.getenv('OSS_OUTCOME') or ('skipped' if not has_target else 'failure')
-          code_outcome = os.getenv('CODE_OUTCOME') or ('skipped' if not has_token else 'failure')
+          oss_executed = _as_bool(os.getenv('OSS_EXECUTED'))
+          code_executed = _as_bool(os.getenv('CODE_EXECUTED'))
+          oss_exit_code = _as_int(os.getenv('OSS_EXIT_CODE'))
+          code_exit_code = _as_int(os.getenv('CODE_EXIT_CODE'))
 
-          result = 'pass'
-          if has_token and strict:
-              if has_target and oss_outcome != 'success':
-                  result = 'fail'
-              if code_outcome != 'success':
-                  result = 'fail'
+          oss_log = _read('artifacts/snyk-oss.log')
+          code_log = _read('artifacts/snyk-code.log')
+
+          oss_outcome = classify_scan(
+              executed=(has_token and has_target and oss_executed),
+              exit_code=oss_exit_code,
+              log_text=oss_log,
+          )
+          code_outcome = classify_scan(
+              executed=(has_token and code_executed),
+              exit_code=code_exit_code,
+              log_text=code_log,
+          )
+          decision = decide_policy(oss_outcome=oss_outcome, code_outcome=code_outcome)
 
           payload = {
-              'strict': strict,
               'has_token': has_token,
               'oss_mode': oss_mode,
               'detected_targets': detected,
               'skip_reason': skip_reason,
               'code_scan_executed': has_token,
+              'oss_scan_executed': has_token and has_target,
               'oss_outcome': oss_outcome,
               'code_outcome': code_outcome,
-              'result': result,
+              'quota_detected': decision['quota_detected'],
+              'findings_detected': decision['findings_detected'],
+              'runtime_error_detected': decision['runtime_error_detected'],
+              'decision': decision['decision'],
+              'decision_reason': decision['decision_reason'],
           }
 
           out = Path('artifacts/snyk-oss-mode.json')
@@ -191,7 +235,7 @@ jobs:
           out.write_text(json.dumps(payload, indent=2) + '\n')
           print(json.dumps(payload, indent=2))
 
-          if result != 'pass':
+          if payload['decision'] != 'pass':
               raise SystemExit(1)
           PY
 
@@ -203,3 +247,5 @@ jobs:
           path: |
             artifacts/snyk-oss-mode.json
             artifacts/detected-targets.txt
+            artifacts/snyk-oss.log
+            artifacts/snyk-code.log

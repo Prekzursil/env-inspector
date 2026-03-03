@@ -5,8 +5,6 @@ import argparse
 import json
 import sys
 import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,9 +14,9 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import encode_identifier, request_json_https
 
-SENTRY_API_BASE = "https://sentry.io/api/0"
+SENTRY_API_HOST = "sentry.io"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -36,10 +34,13 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sentry.io"})
-    req = urllib.request.Request(
-        safe_url,
+def _request_project_issues(org: str, project: str, token: str) -> tuple[list[Any], dict[str, str]]:
+    org_slug = encode_identifier(org, field_name="Sentry org")
+    project_slug = encode_identifier(project, field_name="Sentry project")
+    payload, headers = request_json_https(
+        host=SENTRY_API_HOST,
+        path=f"/api/0/projects/{org_slug}/{project_slug}/issues/",
+        query={"query": "is:unresolved", "limit": "1"},
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
@@ -47,12 +48,9 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
         },
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-        headers = {k.lower(): v for k, v in resp.headers.items()}
-    if not isinstance(body, list):
+    if not isinstance(payload, list):
         raise RuntimeError("Unexpected Sentry response payload")
-    return body, headers
+    return payload, headers
 
 
 def _hits_from_headers(headers: dict[str, str]) -> int | None:
@@ -112,7 +110,6 @@ def main() -> int:
     args = _parse_args()
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
-    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={"sentry.io"}).rstrip("/")
 
     projects = [p for p in args.project if p]
     if not projects:
@@ -138,12 +135,8 @@ def main() -> int:
         mode = "skipped"
     else:
         for project in projects:
-            query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
-            org_slug = urllib.parse.quote(org, safe="")
-            project_slug = urllib.parse.quote(project, safe="")
-            url = f"{api_base}/projects/{org_slug}/{project_slug}/issues/?{query}"
             try:
-                issues, headers = _request(url, token)
+                issues, headers = _request_project_issues(org, project, token)
                 unresolved = _hits_from_headers(headers)
                 if unresolved is None:
                     unresolved = len(issues)

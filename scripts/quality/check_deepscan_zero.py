@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,7 +13,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import request_json_https, split_validated_https_url
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
@@ -44,10 +43,11 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _request_json(url: str, token: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"deepscan.io"})
-    req = urllib.request.Request(
-        safe_url,
+def _request_json(*, host: str, path: str, query: dict[str, str], token: str) -> dict[str, Any]:
+    payload, _headers = request_json_https(
+        host=host,
+        path=path,
+        query=query,
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
@@ -55,8 +55,9 @@ def _request_json(url: str, token: str) -> dict[str, Any]:
         },
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected DeepScan response payload.")
+    return payload
 
 
 def _render_md(payload: dict) -> str:
@@ -107,7 +108,7 @@ def main() -> int:
         findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
     else:
         try:
-            open_issues_url = normalize_https_url(
+            host, path, query = split_validated_https_url(
                 open_issues_url,
                 allowed_host_suffixes={"deepscan.io"},
             )
@@ -117,7 +118,7 @@ def main() -> int:
     status = "fail"
     if not findings:
         try:
-            payload = _request_json(open_issues_url, token)
+            payload = _request_json(host=host, path=path, query=query, token=token)
             open_issues = extract_total_open(payload)
             if open_issues is None:
                 findings.append("DeepScan response did not include a parseable total issue count.")
