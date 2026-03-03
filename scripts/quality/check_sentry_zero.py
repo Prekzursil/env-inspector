@@ -63,6 +63,65 @@ def _hits_from_headers(headers: dict[str, str]) -> int | None:
         return None
 
 
+def _collect_projects(args: argparse.Namespace, env: dict[str, str]) -> list[str]:
+    projects = [p for p in args.project if p]
+    if projects:
+        return projects
+
+    resolved: list[str] = []
+    for env_name in ("SENTRY_PROJECT_BACKEND", "SENTRY_PROJECT_WEB"):
+        value = str(env.get(env_name, "")).strip()
+        if value:
+            resolved.append(value)
+    return resolved
+
+
+def _missing_config_findings(token: str, org: str, projects: list[str]) -> list[str]:
+    findings: list[str] = []
+    if not token:
+        findings.append("SENTRY_AUTH_TOKEN is missing.")
+    if not org:
+        findings.append("SENTRY_ORG is missing.")
+    if not projects:
+        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB).")
+    return findings
+
+
+def _scan_projects(org: str, projects: list[str], token: str) -> tuple[str, list[dict[str, Any]], list[str], list[str]]:
+    mode = "strict"
+    project_results: list[dict[str, Any]] = []
+    findings: list[str] = []
+    failures: list[str] = []
+
+    for project in projects:
+        try:
+            issues, headers = _request_project_issues(org, project, token)
+            unresolved = _hits_from_headers(headers)
+            if unresolved is None:
+                unresolved = len(issues)
+                if unresolved >= 1:
+                    failures.append(
+                        f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
+                    )
+            if unresolved != 0:
+                failures.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
+            project_results.append({"project": project, "unresolved": unresolved})
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                mode = "skipped"
+                findings.append(f"Sentry project {project} not found (HTTP 404). Skipping project.")
+                continue
+            failures.append(f"Sentry API request failed for project {project}: HTTP {exc.code}")
+            mode = "error"
+            break
+        except Exception as exc:  # pragma: no cover - network/runtime surface
+            failures.append(f"Sentry API request failed for project {project}: {exc}")
+            mode = "error"
+            break
+
+    return mode, project_results, findings, failures
+
+
 def _render_md(payload: dict) -> str:
     lines = [
         "# Sentry Zero Gate",
@@ -97,58 +156,20 @@ def main() -> int:
     args = _parse_args()
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
+    projects = _collect_projects(args, os.environ)
 
-    projects = [p for p in args.project if p]
-    if not projects:
-        for env_name in ("SENTRY_PROJECT_BACKEND", "SENTRY_PROJECT_WEB"):
-            value = str(os.environ.get(env_name, "")).strip()
-            if value:
-                projects.append(value)
-
-    findings: list[str] = []
-    failures: list[str] = []
+    findings = _missing_config_findings(token, org, projects)
     project_results: list[dict[str, Any]] = []
     mode = "strict"
-
-    if not token:
-        findings.append("SENTRY_AUTH_TOKEN is missing.")
-    if not org:
-        findings.append("SENTRY_ORG is missing.")
-    if not projects:
-        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB).")
 
     if findings:
         status = "pass"
         mode = "skipped"
     else:
-        for project in projects:
-            try:
-                issues, headers = _request_project_issues(org, project, token)
-                unresolved = _hits_from_headers(headers)
-                if unresolved is None:
-                    unresolved = len(issues)
-                    if unresolved >= 1:
-                        failures.append(
-                            f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
-                        )
-                if unresolved != 0:
-                    failures.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
-                project_results.append({"project": project, "unresolved": unresolved})
-            except urllib.error.HTTPError as exc:
-                if exc.code == 404:
-                    mode = "skipped"
-                    findings.append(f"Sentry project {project} not found (HTTP 404). Skipping project.")
-                    continue
-                failures.append(f"Sentry API request failed for project {project}: HTTP {exc.code}")
-                mode = "error"
-                break
-            except Exception as exc:  # pragma: no cover - network/runtime surface
-                failures.append(f"Sentry API request failed for project {project}: {exc}")
-                mode = "error"
-                break
-
-        status = "pass" if not failures else "fail"
+        mode, project_results, runtime_findings, failures = _scan_projects(org, projects, token)
+        findings.extend(runtime_findings)
         findings.extend(failures)
+        status = "pass" if not failures else "fail"
 
     payload = {
         "status": status,

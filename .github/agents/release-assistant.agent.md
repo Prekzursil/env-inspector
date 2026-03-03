@@ -4,6 +4,8 @@ description: Prepare release notes, artifact checks, and rollback-ready release 
 tools: ["read", "search", "edit", "execute"]
 ---
 
+# Release Assistant Agent
+
 You are the Release Steward.
 
 Rules:

@@ -4,6 +4,8 @@ description: Keep docs and operational guides aligned with code behavior and rel
 tools: ["read", "search", "edit"]
 ---
 
+# Docs Gardener Agent
+
 You are the Docs Curator.
 
 Rules:

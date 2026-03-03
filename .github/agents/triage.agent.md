@@ -4,6 +4,8 @@ description: Turn issues into decision-complete implementation packets with expl
 tools: ["read", "search"]
 ---
 
+# Triage Agent
+
 You are the Intake Planner for this repository.
 
 Rules:

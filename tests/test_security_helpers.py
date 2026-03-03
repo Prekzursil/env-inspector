@@ -106,3 +106,27 @@ def test_request_json_https_http_error(monkeypatch):
             headers={"Accept": "application/json"},
         )
     assert exc_info.value.code == 403
+
+def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    resolved = sec.safe_output_path_in_workspace("reports/out.json", "fallback.json")
+
+    assert resolved == (tmp_path / "reports" / "out.json").resolve(strict=False)
+
+
+def test_safe_output_path_in_workspace_rejects_workspace_escape(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    outside = tmp_path.parent / "escaped.json"
+
+    with pytest.raises(ValueError, match="escapes workspace root"):
+        sec.safe_output_path_in_workspace(str(outside), "fallback.json")
+
+
+def test_validate_hostname_allowlists_accepts_none_suffixes():
+    sec._validate_hostname_allowlists("api.codacy.com", allowed_host_suffixes=None)
+
+
+def test_validate_hostname_allowlists_rejects_mismatched_suffix():
+    with pytest.raises(ValueError, match="suffix allowlist"):
+        sec._validate_hostname_allowlists("api.codacy.com", allowed_host_suffixes={"example.com"})

@@ -14,7 +14,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import safe_output_path_in_workspace
+from security_helpers import safe_input_file_path_in_workspace, safe_output_path_in_workspace
 
 
 @dataclass
@@ -58,14 +58,7 @@ def parse_named_path(value: str) -> tuple[str, Path]:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
     name = match.group("name").strip()
     raw_path = match.group("path").strip()
-    candidate = Path(raw_path).expanduser().resolve(strict=False)
-    workspace_root = Path.cwd().resolve()
-    try:
-        candidate.relative_to(workspace_root)
-    except ValueError as exc:
-        raise ValueError(f"Coverage input path must stay inside workspace: {candidate}") from exc
-    if not candidate.exists() or not candidate.is_file():
-        raise ValueError(f"Coverage input file does not exist: {candidate}")
+    candidate = safe_input_file_path_in_workspace(raw_path)
     return name, candidate
 
 
@@ -207,3 +200,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

@@ -65,30 +65,26 @@ def _request_json(
     return payload
 
 
+def _walk_nodes(payload: Any) -> list[Any]:
+    stack: list[Any] = [payload]
+    nodes: list[Any] = []
+    while stack:
+        node = stack.pop()
+        nodes.append(node)
+        if isinstance(node, dict):
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return nodes
+
+
 def extract_total_open(payload: Any) -> int | None:
-    if isinstance(payload, dict):
-        for key, value in payload.items():
+    for node in _walk_nodes(payload):
+        if not isinstance(node, dict):
+            continue
+        for key, value in node.items():
             if key in TOTAL_KEYS and isinstance(value, (int, float)):
                 return int(value)
-
-        # common pagination structures
-        for key in ("pagination", "page", "meta"):
-            nested = payload.get(key)
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
-
-        for value in payload.values():
-            total = extract_total_open(value)
-            if total is not None:
-                return total
-
-    if isinstance(payload, list):
-        for item in payload:
-            total = extract_total_open(item)
-            if total is not None:
-                return total
-
     return None
 
 
@@ -194,3 +190,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
