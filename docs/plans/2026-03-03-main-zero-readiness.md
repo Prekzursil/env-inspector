@@ -1,6 +1,7 @@
 # Main Zero Readiness (2026-03-03)
 
 ## Environment
+
 - Workspace: `C:\Users\prekzursil\Desktop\workspace\env-inspector-main-zero`
 - Branch: `fix/main-zero`
 - Git binary: `C:\Program Files\Git\cmd\git.exe`
