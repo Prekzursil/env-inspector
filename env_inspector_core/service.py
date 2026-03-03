@@ -680,15 +680,23 @@ class EnvInspectorService:
 
     def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: list[Path]) -> None:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
+        candidate_abs = os.path.realpath(os.path.normpath(str(scoped.path)))
+        allowed_roots_abs = [os.path.realpath(os.path.normpath(str(root))) for root in scope_roots]
 
-        candidate_abs = os.path.abspath(os.path.normpath(str(scoped.path)))
-        allowed_roots_abs = [os.path.abspath(os.path.normpath(str(root))) for root in scope_roots]
-        if not any(os.path.commonpath([candidate_abs, root_abs]) == root_abs for root_abs in allowed_roots_abs):
+        allowed = False
+        for root_abs in allowed_roots_abs:
+            root_prefix = root_abs if root_abs.endswith(os.sep) else root_abs + os.sep
+            if candidate_abs == root_abs or candidate_abs.startswith(root_prefix):
+                allowed = True
+                break
+
+        if not allowed:
             raise RuntimeError(f"restore dotenv path is outside approved roots: {candidate_abs}")
 
-        safe_path = Path(candidate_abs).resolve(strict=False)
+        safe_path = Path(candidate_abs)
         safe_path.parent.mkdir(parents=True, exist_ok=True)
-        safe_path.write_text(text, encoding="utf-8")
+        with safe_path.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
 
     def _restore_linux_target(self, *, target: str, text: str) -> None:
         if target == "linux:bashrc":
