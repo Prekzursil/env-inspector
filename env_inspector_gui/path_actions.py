@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-import subprocess
+import webbrowser
 from pathlib import Path
 
 
@@ -50,11 +50,15 @@ def _open_path(source_path: str, *, platform: str | None = None, run_command=Non
         os.startfile(source_path)  # type: ignore[attr-defined]
         return
 
-    cmd = ["open", source_path] if system == "darwin" else ["xdg-open", source_path]
     if run_command is not None:
+        cmd = ["open", source_path] if system == "darwin" else ["xdg-open", source_path]
         run_command(cmd)
         return
-    subprocess.run(cmd, check=False)
+
+    uri = Path(source_path).resolve().as_uri()
+    opened = webbrowser.open(uri)
+    if not opened:
+        raise RuntimeError("Failed to open source path")
 
 
 def _platform_name() -> str:

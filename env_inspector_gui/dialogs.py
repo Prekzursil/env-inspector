@@ -26,22 +26,8 @@ class TargetPickerDialog:
         frame.pack(fill="both", expand=True)
 
         ttk.Label(frame, text="Choose one or more targets for this operation:").pack(anchor="w", pady=(0, 8))
-
-        search_row = ttk.Frame(frame)
-        search_row.pack(fill="x", pady=(0, 8))
-        ttk.Label(search_row, text="Search:").pack(side="left")
-        self.search_var = tk.StringVar(value="")
-        self.search_entry = ttk.Entry(search_row, textvariable=self.search_var)
-        self.search_entry.pack(side="left", fill="x", expand=True, padx=(6, 0))
-        self.search_entry.bind("<KeyRelease>", lambda _e: self._apply_filter())
-
-        preset_row = ttk.Frame(frame)
-        preset_row.pack(fill="x", pady=(0, 8))
-        ttk.Button(preset_row, text="Select All", command=self._select_all).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select None", command=self._select_none).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select Dotenv Only", command=self._select_dotenv).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select Windows Only", command=self._select_windows).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select WSL Only", command=self._select_wsl).pack(side="left", padx=(0, 6))
+        self._build_search_row(frame, tk, ttk)
+        self._build_preset_row(frame, ttk)
 
         canvas = tk.Canvas(frame, highlightthickness=0)
         scroll = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
@@ -53,9 +39,39 @@ class TargetPickerDialog:
 
         canvas.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
+        self._build_target_checks(body, selected_set, selected is not None, tk, ttk)
 
+        self.selected_count_label = ttk.Label(frame, text="")
+        self.selected_count_label.pack(anchor="w", pady=(8, 0))
+        self._build_buttons(frame, ttk)
+
+        self.win.bind("<Escape>", lambda _e: self._cancel())
+
+        self._apply_filter()
+        self._update_selected_count()
+        self.search_entry.focus_set()
+
+    def _build_search_row(self, frame: Any, tk: Any, ttk: Any) -> None:
+        search_row = ttk.Frame(frame)
+        search_row.pack(fill="x", pady=(0, 8))
+        ttk.Label(search_row, text="Search:").pack(side="left")
+        self.search_var = tk.StringVar(value="")
+        self.search_entry = ttk.Entry(search_row, textvariable=self.search_var)
+        self.search_entry.pack(side="left", fill="x", expand=True, padx=(6, 0))
+        self.search_entry.bind("<KeyRelease>", lambda _e: self._apply_filter())
+
+    def _build_preset_row(self, frame: Any, ttk: Any) -> None:
+        preset_row = ttk.Frame(frame)
+        preset_row.pack(fill="x", pady=(0, 8))
+        ttk.Button(preset_row, text="Select All", command=self._select_all).pack(side="left", padx=(0, 6))
+        ttk.Button(preset_row, text="Select None", command=self._select_none).pack(side="left", padx=(0, 6))
+        ttk.Button(preset_row, text="Select Dotenv Only", command=self._select_dotenv).pack(side="left", padx=(0, 6))
+        ttk.Button(preset_row, text="Select Windows Only", command=self._select_windows).pack(side="left", padx=(0, 6))
+        ttk.Button(preset_row, text="Select WSL Only", command=self._select_wsl).pack(side="left", padx=(0, 6))
+
+    def _build_target_checks(self, body: Any, selected_set: set[str], has_selected: bool, tk: Any, ttk: Any) -> None:
         for target in self._targets:
-            default = target in selected_set if selected else True
+            default = target in selected_set if has_selected else True
             var = tk.BooleanVar(value=default)
             var.trace_add("write", lambda *_args: self._update_selected_count())
             check = ttk.Checkbutton(body, text=target, variable=var)
@@ -63,19 +79,11 @@ class TargetPickerDialog:
             self._vars[target] = var
             self._checks[target] = check
 
-        self.selected_count_label = ttk.Label(frame, text="")
-        self.selected_count_label.pack(anchor="w", pady=(8, 0))
-
+    def _build_buttons(self, frame: Any, ttk: Any) -> None:
         btns = ttk.Frame(frame)
         btns.pack(fill="x", pady=(10, 0))
         ttk.Button(btns, text="Cancel", command=self._cancel).pack(side="right", padx=(6, 0))
         ttk.Button(btns, text="Apply", command=self._apply).pack(side="right")
-
-        self.win.bind("<Escape>", lambda _e: self._cancel())
-
-        self._apply_filter()
-        self._update_selected_count()
-        self.search_entry.focus_set()
 
     def _apply_filter(self) -> None:
         text = self.search_var.get().strip().lower()

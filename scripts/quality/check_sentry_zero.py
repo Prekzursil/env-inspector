@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -121,6 +122,7 @@ def main() -> int:
                 projects.append(value)
 
     findings: list[str] = []
+    failures: list[str] = []
     project_results: list[dict[str, Any]] = []
     mode = "strict"
 
@@ -135,29 +137,38 @@ def main() -> int:
         status = "pass"
         mode = "skipped"
     else:
-        try:
-            for project in projects:
-                query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
-                org_slug = urllib.parse.quote(org, safe="")
-                project_slug = urllib.parse.quote(project, safe="")
-                url = f"{api_base}/projects/{org_slug}/{project_slug}/issues/?{query}"
+        for project in projects:
+            query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
+            org_slug = urllib.parse.quote(org, safe="")
+            project_slug = urllib.parse.quote(project, safe="")
+            url = f"{api_base}/projects/{org_slug}/{project_slug}/issues/?{query}"
+            try:
                 issues, headers = _request(url, token)
                 unresolved = _hits_from_headers(headers)
                 if unresolved is None:
                     unresolved = len(issues)
                     if unresolved >= 1:
-                        findings.append(
+                        failures.append(
                             f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
                         )
                 if unresolved != 0:
-                    findings.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
+                    failures.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
                 project_results.append({"project": project, "unresolved": unresolved})
+            except urllib.error.HTTPError as exc:
+                if exc.code == 404:
+                    mode = "skipped"
+                    findings.append(f"Sentry project {project} not found (HTTP 404). Skipping project.")
+                    continue
+                failures.append(f"Sentry API request failed for project {project}: HTTP {exc.code}")
+                mode = "error"
+                break
+            except Exception as exc:  # pragma: no cover - network/runtime surface
+                failures.append(f"Sentry API request failed for project {project}: {exc}")
+                mode = "error"
+                break
 
-            status = "pass" if not findings else "fail"
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            findings.append(f"Sentry API request failed: {exc}")
-            status = "fail"
-            mode = "error"
+        status = "pass" if not failures else "fail"
+        findings.extend(failures)
 
     payload = {
         "status": status,

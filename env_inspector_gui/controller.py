@@ -9,21 +9,37 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
 from env_inspector_core.service import EnvInspectorService
 
-from .dialogs import BackupPickerDialog, DiffPreviewDialog, DotenvTargetDialog, TargetPickerDialog
+from .controller_actions import APP_NAME, EnvInspectorControllerActionsMixin
+from .dialogs import DiffPreviewDialog, DotenvTargetDialog, TargetPickerDialog
 from .models import DisplayedRow, PersistedUiState, SortState
-from .path_actions import is_openable_local_path, open_source_path
-from .secret_policy import resolve_copy_payload, resolve_load_value
+from .path_actions import is_openable_local_path
+from .secret_policy import resolve_copy_payload
 from .state_store import load_ui_state, sanitize_loaded_state, save_ui_state
 from .table_logic import build_display_rows, sort_display_rows, toggle_sort
 from .view import EnvInspectorView
 
-APP_NAME = "Env Inspector"
-MSG_SELECT_ROW_FIRST = "Select a row first."
-COPY_SECRET_TITLE = "Copy Secret"
 
-
-class EnvInspectorController:
+class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def __init__(self, root_path: Path) -> None:
+        tk, filedialog, messagebox, ttk = self._load_tk_modules()
+        self._assign_tk_modules(tk, filedialog, messagebox, ttk)
+        self.service = EnvInspectorService()
+        self.state_dir = self.service.state_dir
+
+        self._init_root_window(tk)
+        self._apply_theme()
+
+        boot_state, fallback_root = self._load_boot_state(root_path)
+        self._initialize_runtime_state(tk, boot_state, fallback_root)
+        self.sort_state = SortState(column=boot_state.sort_column, descending=boot_state.sort_descending)
+        self._initialize_view(tk, ttk, boot_state)
+        self._bind_shortcuts()
+        self.tk.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        self.refresh_data()
+        self.tk.after_idle(self.view.focus_filter)
+
+    def _load_tk_modules(self):
         try:
             import tkinter as tk
             from tkinter import filedialog, messagebox, ttk
@@ -31,68 +47,60 @@ class EnvInspectorController:
             raise RuntimeError(
                 "Tkinter is not available in this Python installation. Install tkinter/python3-tk and retry."
             ) from exc
+        return tk, filedialog, messagebox, ttk
 
+    def _assign_tk_modules(self, tk: Any, filedialog: Any, messagebox: Any, ttk: Any) -> None:
         self.tkmod = tk
         self.ttk = ttk
         self.filedialog = filedialog
         self.messagebox = messagebox
 
-        self.service = EnvInspectorService()
-        self.state_dir = self.service.state_dir
-
+    def _init_root_window(self, tk: Any) -> None:
         self.tk = tk.Tk()
         self.tk.title(f"{APP_NAME} (Core + GUI)")
 
-        self._apply_theme()
-
+    def _load_boot_state(self, root_path: Path) -> tuple[PersistedUiState, Path]:
         loaded = load_ui_state(self.state_dir)
         fallback_root = resolve_scan_root(root_path)
-
-        boot_contexts = self.service.list_contexts()
         boot_state = sanitize_loaded_state(
             loaded,
-            available_contexts=boot_contexts,
+            available_contexts=self.service.list_contexts(),
             available_targets=[],
             fallback_root=fallback_root,
         )
+        return boot_state, fallback_root
 
-        try:
-            self.root_path = resolve_scan_root(boot_state.root_path or fallback_root)
-        except PathPolicyError:
-            self.root_path = fallback_root
-
-        self.records_raw: list[EnvRecord] = []
-        self.displayed_rows: list[DisplayedRow] = []
-        self.rows_by_item: dict[str, DisplayedRow] = {}
-        self.selected_targets: list[str] = list(boot_state.selected_targets)
-        self.last_refresh_at: datetime | None = None
+    def _initialize_runtime_state(self, tk: Any, boot_state: PersistedUiState, fallback_root: Path) -> None:
+        self.root_path = self._resolve_root_path(boot_state, fallback_root)
+        self.records_raw = []
+        self.displayed_rows = []
+        self.rows_by_item = {}
+        self.selected_targets = list(boot_state.selected_targets)
+        self.last_refresh_at = None
 
         self.filter_text = tk.StringVar(value=boot_state.filter_text)
         self.show_secrets = tk.BooleanVar(value=boot_state.show_secrets)
         self.only_secrets = tk.BooleanVar(value=boot_state.only_secrets)
-
         self.context_var = tk.StringVar(value=boot_state.context)
         self.wsl_distro_var = tk.StringVar(value=boot_state.wsl_distro)
         self.wsl_path_var = tk.StringVar(value=boot_state.wsl_path)
         self.scan_depth_var = tk.IntVar(value=boot_state.scan_depth)
-
         self.key_text = tk.StringVar(value="")
         self.value_text = tk.StringVar(value="")
         self.effective_value_var = tk.StringVar(value="Effective: (select key)")
         self.targets_summary_var = tk.StringVar(value="Targets: (none selected)")
 
-        self.sort_state = SortState(column=boot_state.sort_column, descending=boot_state.sort_descending)
+    def _resolve_root_path(self, boot_state: PersistedUiState, fallback_root: Path) -> Path:
+        try:
+            return resolve_scan_root(boot_state.root_path or fallback_root)
+        except PathPolicyError:
+            return fallback_root
 
+    def _initialize_view(self, tk: Any, ttk: Any, boot_state: PersistedUiState) -> None:
         self.view = EnvInspectorView(tk, ttk, self)
         self.view.set_root_label(str(self.root_path))
         self.view.configure_row_styles()
         self.tk.geometry(boot_state.window_geometry or "1480x860")
-
-        self._bind_shortcuts()
-        self.tk.protocol("WM_DELETE_WINDOW", self.on_close)
-
-        self.refresh_data()
-        self.tk.after_idle(self.view.focus_filter)
 
     def _apply_theme(self) -> None:
         style = self.ttk.Style(self.tk)
@@ -217,7 +225,7 @@ class EnvInspectorController:
         self.view.detail_open_button.configure(state=("normal" if is_openable_local_path(rec.source_path) else "disabled"))
 
     def _clear_details(self) -> None:
-        self._set_detail_values({key: "" for key in self.view.details_vars})
+        self._set_detail_values(dict.fromkeys(self.view.details_vars, ""))
         self.view.update_details_value("")
         self.view.set_details_enabled(False)
 
@@ -487,167 +495,6 @@ class EnvInspectorController:
             self._set_status(f"{action.title()} succeeded ({result.get('operation_id')})")
         else:
             self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {result.get('error_message')}")
-
-    def load_selected(self) -> None:
-        row = self._selected_row()
-        if not row:
-            self._show_select_row_required()
-            return
-
-        rec = row.record
-        self.key_text.set(rec.name)
-
-        loaded, raw = resolve_load_value(
-            rec,
-            show_secrets=bool(self.show_secrets.get()),
-            confirm_raw=lambda: self._confirm_hidden_secret(
-                "This value appears to be a secret and is hidden. Load raw value into the editor?"
-            ),
-        )
-
-        if loaded is not None:
-            self.value_text.set(loaded)
-            if rec.is_secret and not raw:
-                self._set_status(f"Loaded masked value for: {rec.name}")
-            else:
-                self._set_status(f"Loaded value for: {rec.name}")
-        else:
-            self._set_status(f"Skipped loading hidden secret for: {rec.name}")
-
-        self._update_effective(rec.name)
-
-    def _selected_record(self) -> EnvRecord | None:
-        row = self._selected_row()
-        return row.record if row else None
-
-    def copy_selected_name(self) -> None:
-        rec = self._selected_record()
-        if rec is None:
-            self._show_select_row_required()
-            return
-
-        self.tk.clipboard_clear()
-        self.tk.clipboard_append(rec.name)
-        self._set_status(f"Copied name: {rec.name}")
-
-    def copy_selected_value(self) -> None:
-        rec = self._selected_record()
-        if rec is None:
-            self._show_select_row_required()
-            return
-
-        payload, raw = resolve_copy_payload(
-            rec,
-            show_secrets=bool(self.show_secrets.get()),
-            confirm_raw=lambda: self._confirm_hidden_secret(
-                "This value appears to be a secret and is hidden. Copy raw value to clipboard?"
-            ),
-            as_pair=False,
-        )
-
-        self.tk.clipboard_clear()
-        self.tk.clipboard_append(payload)
-        if rec.is_secret and not raw:
-            self._set_status(f"Copied masked value for: {rec.name}")
-        else:
-            self._set_status(f"Copied value for: {rec.name}")
-
-    def copy_selected_pair(self) -> None:
-        rec = self._selected_record()
-        if rec is None:
-            self._show_select_row_required()
-            return
-
-        payload, raw = resolve_copy_payload(
-            rec,
-            show_secrets=bool(self.show_secrets.get()),
-            confirm_raw=lambda: self._confirm_hidden_secret(
-                "This value appears to be a secret and is hidden. Copy raw name=value to clipboard?"
-            ),
-            as_pair=True,
-        )
-
-        self.tk.clipboard_clear()
-        self.tk.clipboard_append(payload)
-        if rec.is_secret and not raw:
-            self._set_status(f"Copied masked pair for: {rec.name}")
-        else:
-            self._set_status(f"Copied pair: {rec.name}=...")
-
-    def copy_selected_source_path(self) -> None:
-        rec = self._selected_record()
-        if rec is None:
-            self._show_select_row_required()
-            return
-
-        self.tk.clipboard_clear()
-        self.tk.clipboard_append(rec.source_path)
-        self._set_status("Copied source path")
-
-    def open_selected_source(self) -> None:
-        rec = self._selected_record()
-        if rec is None:
-            self._show_select_row_required()
-            return
-
-        ok, err = open_source_path(rec.source_path)
-        if ok:
-            self._set_status("Opened source path")
-        else:
-            self.messagebox.showinfo(APP_NAME, err or "Cannot open this source path")
-
-    def export_records(self, output: str) -> None:
-        context = self.context_var.get() or None
-        distro = self.wsl_distro_var.get().strip() or None
-        wsl_path = self.wsl_path_var.get().strip() or None
-
-        content = self.service.export_records(
-            output=output,
-            include_raw_secrets=bool(self.show_secrets.get()),
-            root=self.root_path,
-            context=context,
-            distro=distro,
-            wsl_path=wsl_path,
-            scan_depth=int(self.scan_depth_var.get() or 5),
-        )
-
-        ext = {"json": ".json", "csv": ".csv"}.get(output, ".txt")
-        path = self.filedialog.asksaveasfilename(
-            title=f"Export {output.upper()}",
-            defaultextension=ext,
-            filetypes=[(f"{output.upper()} files", f"*{ext}"), ("All files", "*.*")],
-            initialfile=f"env-inspector-export{ext}",
-        )
-        if not path:
-            return
-
-        Path(path).write_text(content, encoding="utf-8")
-        self._set_status(f"Exported {output.upper()} to {path}")
-
-    def restore_backup(self) -> None:
-        backups = self.service.list_backups()
-        if not backups:
-            self.messagebox.showinfo(APP_NAME, "No backups found.")
-            return
-
-        dialog = BackupPickerDialog(self.tk, backups)
-        self.tk.wait_window(dialog.win)
-        if not dialog.result:
-            return
-
-        result = self.service.restore_backup(backup=dialog.result, scope_roots=[self.root_path])
-        if result.get("success"):
-            self._set_status(f"Restored backup ({result.get('operation_id')})")
-            self.refresh_data()
-        else:
-            self.messagebox.showerror(APP_NAME, f"Restore failed: {result.get('error_message')}")
-
-    def _show_select_row_required(self) -> None:
-        self.messagebox.showinfo(APP_NAME, MSG_SELECT_ROW_FIRST)
-
-    def _confirm_hidden_secret(self, prompt: str) -> bool:
-        return bool(self.messagebox.askyesno(COPY_SECRET_TITLE, prompt))
-
 
 class EnvInspectorApp:
     def __init__(self, root_path: Path) -> None:

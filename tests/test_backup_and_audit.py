@@ -1,6 +1,8 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
+import env_inspector_core.storage as storage_mod
 from env_inspector_core.storage import BackupManager, AuditLogger
 from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
@@ -22,6 +24,29 @@ def test_backup_manager_retention_and_restore(tmp_path: Path):
 
     restored = mgr.restore_text(p2)
     assert restored == "A=2\n"
+
+
+def test_backup_manager_uses_unique_path_when_timestamp_collides(tmp_path: Path, monkeypatch):
+    fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
+            return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
+
+    monkeypatch.setattr(storage_mod, "datetime", _FixedDateTime)
+
+    mgr = BackupManager(tmp_path, retention=5)
+    target = "dotenv:/workspace/.env"
+
+    p1 = mgr.backup_text(target, "A=1\n")
+    p2 = mgr.backup_text(target, "A=2\n")
+    p3 = mgr.backup_text(target, "A=3\n")
+
+    assert p1 != p2 != p3
+    assert p1.name.endswith("-0000.backup.json")
+    assert p2.name.endswith("-0001.backup.json")
+    assert p3.name.endswith("-0002.backup.json")
 
 
 def test_audit_logger_writes_masked_values(tmp_path: Path):

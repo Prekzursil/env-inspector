@@ -26,12 +26,22 @@ class BackupManager:
         return target_dir
 
     def backup_text(self, target: str, text: str) -> Path:
-        now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-        path = self._target_dir(target) / f"{now}.backup.json"
+        now, path = self._next_backup_path(target)
         payload = {"target": target, "created_at": now, "text": text}
         path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
         self._enforce_retention(target)
         return path
+
+    def _next_backup_path(self, target: str) -> tuple[str, Path]:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        target_dir = self._target_dir(target)
+
+        for sequence in range(10000):
+            candidate = target_dir / f"{timestamp}-{sequence:04d}.backup.json"
+            if not candidate.exists():
+                return timestamp, candidate
+
+        raise RuntimeError("Could not allocate unique backup file name")
 
     def _enforce_retention(self, target: str) -> None:
         files = self.list_backups(target)

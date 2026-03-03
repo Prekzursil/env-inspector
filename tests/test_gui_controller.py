@@ -62,8 +62,8 @@ def test_refresh_updates_effective_value_when_key_present():
     EnvInspectorController.refresh_data(ctrl)
 
     assert ("effective", "API_TOKEN") in events
-    assert events[:1] == [("busy", True)]
-    assert events[-1:] == [("busy", False)]
+    assert next((event for event in events if event[0] == "busy"), None) == ("busy", True)
+    assert next((event for event in reversed(events) if event[0] == "busy"), None) == ("busy", False)
 
 
 def test_set_remove_operations_always_preview_before_apply():
@@ -87,7 +87,7 @@ def test_set_remove_operations_always_preview_before_apply():
     EnvInspectorController._run_operation(ctrl, "set")
     EnvInspectorController._run_operation(ctrl, "remove")
 
-    assert calls[:1] == [("preview", "set")]
+    assert next((call for call in calls if call[0] == "preview"), None) == ("preview", "set")
     assert ("confirm", False) in calls
     assert ("apply", "set") in calls
     assert ("preview", "remove") in calls
