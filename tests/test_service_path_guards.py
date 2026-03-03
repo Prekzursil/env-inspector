@@ -53,12 +53,17 @@ def test_validated_powershell_restore_path_all_users_rejects_outside_root(tmp_pa
         svc._validated_powershell_restore_path("powershell:all_users")
 
 
-def test_linux_etc_environment_path_guard_raises_on_unexpected_mapping(tmp_path: Path, monkeypatch):
+def test_linux_etc_environment_path_guard_handles_platform_semantics(tmp_path: Path, monkeypatch):
     _ = EnvInspectorService(state_dir=tmp_path / "state")
-    monkeypatch.setattr(EnvInspectorService, "_LINUX_ETC_ENV_PATH", "\\\\etc\\environment")
+    monkeypatch.setattr(EnvInspectorService, "_LINUX_ETC_ENV_PATH", r"\etc\environment")
 
+    monkeypatch.setattr(service_module.os, "name", "nt", raising=False)
     with pytest.raises(RuntimeError, match="Unexpected /etc/environment resolution"):
         EnvInspectorService._linux_etc_environment_path()
+
+    monkeypatch.setattr(service_module.os, "name", "posix", raising=False)
+    resolved = EnvInspectorService._linux_etc_environment_path()
+    assert resolved.as_posix() == r"\etc\environment"
 
 
 def test_restore_dotenv_path_checks_continue_until_matching_root(tmp_path: Path, monkeypatch):
@@ -107,3 +112,13 @@ def test_restore_wsl_bashrc_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     assert result["success"] is True
     assert calls == [("Ubuntu", "~/.bashrc", "export A='1'\n")]
 
+
+
+def test_linux_etc_environment_path_guard_non_windows_branch(tmp_path: Path, monkeypatch):
+    _ = EnvInspectorService(state_dir=tmp_path / "state")
+    monkeypatch.setattr(service_module.os, "name", "posix", raising=False)
+    monkeypatch.setattr(EnvInspectorService, "_LINUX_ETC_ENV_PATH", r"\etc\environment")
+
+    resolved = EnvInspectorService._linux_etc_environment_path()
+
+    assert resolved.as_posix() == r"\etc\environment"
