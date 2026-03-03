@@ -116,8 +116,17 @@ dist/env-inspector.exe
 ### Verify from source
 
 ```bash
-python3 -m py_compile env_inspector.py env_inspector_core/*.py env_inspector_gui/*.py tests/*.py
+python3 -m py_compile env_inspector.py env_inspector_core/*.py env_inspector_gui/*.py tests/*.py scripts/quality/*.py
 pytest -q -s
+```
+
+### Enforce coverage gate locally
+
+```bash
+python3 -m pytest -q -s --cov=tests --cov-report=xml:coverage/python-coverage.xml
+python3 scripts/quality/assert_coverage_100.py \
+  --xml "python=coverage/python-coverage.xml" \
+  --min-percent 100
 ```
 
 ### Verify EXE
@@ -126,9 +135,16 @@ pytest -q -s
 .\dist\env-inspector.exe list --output json --root .
 ```
 
+### Get test EXE from GitHub Actions
+
+1. Open Actions and run `.github/workflows/env-inspector-exe-release.yml` on your branch.
+2. Download the `env-inspector-exe` artifact from the run summary.
+3. Verify checksum with `env-inspector.exe.sha256` before testing.
+
 ## CI, reviews, and merges
 
 - Pull requests are expected to pass all required repository checks before merge.
+- Branch policy includes strict quality gates, including zero-open issue contexts and 100% coverage gate enforcement.
 - Keep changes scoped and include evidence from deterministic local verification commands.
 - Update docs (`README.md`, `CHANGELOG.md`) when behavior changes.
 
