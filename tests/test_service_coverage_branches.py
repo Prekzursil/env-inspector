@@ -192,7 +192,10 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     with pytest.raises(RuntimeError, match="Unsupported WSL restore target"):
         svc._restore_wsl_target(target="wsl:Ubuntu:unknown", text="x")
 
-    profile = tmp_path / "ps-profile.ps1"
+    fake_home = tmp_path / "home"
+    fake_home.mkdir(parents=True, exist_ok=True)
+    profile = fake_home / "Documents" / "PowerShell" / "ps-profile.ps1"
+    monkeypatch.setattr(service_module.Path, "home", lambda: fake_home)
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     svc._restore_powershell_target(target="powershell:current_user", text="$env:A=\"1\"\n")
     assert profile.read_text(encoding="utf-8") == "$env:A=\"1\"\n"

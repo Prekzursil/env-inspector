@@ -107,6 +107,25 @@ class EnvInspectorService:
                 return resolved_path
         raise RuntimeError(f"{label} is outside approved roots: {resolved_path}")
 
+    @staticmethod
+    def _write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
+        if ensure_parent:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+
+    def _write_scoped_text_file(
+        self,
+        *,
+        candidate_path: Path,
+        allowed_roots: list[Path] | tuple[Path, ...],
+        text: str,
+        label: str,
+    ) -> Path:
+        safe_path = self._validate_path_in_roots(candidate_path, list(allowed_roots), label=label)
+        self._write_text_file(safe_path, text, ensure_parent=True)
+        return safe_path
+
     def _validated_powershell_restore_path(self, target: str) -> Path:
         if target not in {"powershell:current_user", "powershell:all_users"}:
             raise RuntimeError(f"Unsupported PowerShell target: {target}")
@@ -248,11 +267,16 @@ class EnvInspectorService:
         return "\n".join(diff)
 
     def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
-        path = self._linux_etc_environment_path()
+        if self._LINUX_ETC_ENV_PATH != "/etc/environment":
+            raise RuntimeError(f"Unexpected /etc/environment resolution: {self._LINUX_ETC_ENV_PATH}")
+        path = Path("/etc/environment")
         try:
-            path.write_text(text, encoding="utf-8")
+            self._write_text_file(path, text, ensure_parent=False)
             return
         except PermissionError:
+            pass
+        except OSError:
+            # Non-POSIX hosts can raise FileNotFoundError for this fixed path; still attempt sudo fallback.
             pass
 
         proc = subprocess.run(
@@ -361,8 +385,12 @@ class EnvInspectorService:
         before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
         after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
         if apply_changes:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(after, encoding="utf-8")
+            self._write_scoped_text_file(
+                candidate_path=scoped.path,
+                allowed_roots=scoped.roots,
+                text=after,
+                label="dotenv target path",
+            )
         return before, after, str(path), False, None
 
     @staticmethod
@@ -544,6 +572,27 @@ class EnvInspectorService:
             return self._registry_write(target, key, value, action, apply_changes=apply_changes)
         return self._file_update(target, key, value, action, apply_changes=apply_changes, scope_roots=scope_roots)
 
+    def _validate_target_for_operation(self, target: str, *, scope_roots: list[Path]) -> None:
+        if target in {
+            "windows:user",
+            "windows:machine",
+            "linux:bashrc",
+            "linux:etc_environment",
+            "powershell:current_user",
+            "powershell:all_users",
+        }:
+            return
+        if target.startswith("dotenv:"):
+            parse_scoped_dotenv_target(target, roots=scope_roots)
+            return
+        if target.startswith("wsl_dotenv:"):
+            self._parse_wsl_dotenv_target(target)
+            return
+        if target.startswith("wsl:"):
+            self._resolve_wsl_target(target)
+            return
+        raise RuntimeError(f"Unsupported target: {target}")
+
     def _apply(
         self,
         action: str,
@@ -566,6 +615,7 @@ class EnvInspectorService:
             backup_path: str | None = None
             diff_preview = ""
             try:
+                self._validate_target_for_operation(target, scope_roots=resolved_scope_roots)
                 before, after, _, _, _ = self._plan_target_operation(
                     target=target,
                     key=key,
@@ -725,23 +775,12 @@ class EnvInspectorService:
 
     def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: list[Path]) -> None:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
-        candidate_abs = os.path.realpath(os.path.normpath(str(scoped.path)))
-        allowed_roots_abs = [os.path.realpath(os.path.normpath(str(root))) for root in scope_roots]
-
-        allowed = False
-        for root_abs in allowed_roots_abs:
-            root_prefix = root_abs if root_abs.endswith(os.sep) else root_abs + os.sep
-            if candidate_abs == root_abs or candidate_abs.startswith(root_prefix):
-                allowed = True
-                break
-
-        if not allowed:
-            raise RuntimeError(f"restore dotenv path is outside approved roots: {candidate_abs}")
-
-        safe_path = Path(candidate_abs)
-        safe_path.parent.mkdir(parents=True, exist_ok=True)
-        with safe_path.open("w", encoding="utf-8", newline="") as handle:
-            handle.write(text)
+        self._write_scoped_text_file(
+            candidate_path=scoped.path,
+            allowed_roots=scoped.roots,
+            text=text,
+            label="restore dotenv path",
+        )
 
     def _restore_linux_target(self, *, target: str, text: str) -> None:
         if target == "linux:bashrc":
@@ -771,8 +810,12 @@ class EnvInspectorService:
 
     def _restore_powershell_target(self, *, target: str, text: str) -> None:
         profile = self._validated_powershell_restore_path(target)
-        profile.parent.mkdir(parents=True, exist_ok=True)
-        profile.write_text(text, encoding="utf-8")
+        if target == "powershell:current_user":
+            allowed_roots = [Path.home().resolve(strict=False)]
+        else:
+            allowed_roots = [Path(r"C:\Program Files").resolve(strict=False)]
+        safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell restore target")
+        self._write_text_file(safe_profile, text, ensure_parent=True)
 
     def _restore_windows_registry_target(self, *, target: str, text: str) -> None:
         if self.win_provider is None:
