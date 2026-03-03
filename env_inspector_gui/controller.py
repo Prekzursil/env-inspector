@@ -205,19 +205,19 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return
 
         rec = row.record
-        self._set_detail_values(
-            {
-                "name": rec.name,
-                "context": rec.context,
-                "source": rec.source_type,
-                "source_path": rec.source_path,
-                "secret": "yes" if rec.is_secret else "no",
-                "persistent": "yes" if rec.is_persistent else "no",
-                "mutable": "yes" if rec.is_mutable else "no",
-                "writable": "yes" if rec.writable else "no",
-                "requires_privilege": "yes" if rec.requires_privilege else "no",
-                "precedence_rank": str(rec.precedence_rank),
-            }
+        self._set_detail_pairs(
+            (
+                ("name", rec.name),
+                ("context", rec.context),
+                ("source", rec.source_type),
+                ("source_path", rec.source_path),
+                ("secret", "yes" if rec.is_secret else "no"),
+                ("persistent", "yes" if rec.is_persistent else "no"),
+                ("mutable", "yes" if rec.is_mutable else "no"),
+                ("writable", "yes" if rec.writable else "no"),
+                ("requires_privilege", "yes" if rec.requires_privilege else "no"),
+                ("precedence_rank", str(rec.precedence_rank)),
+            )
         )
         self.view.update_details_value(row.visible_value)
         self.view.set_details_enabled(True)
@@ -230,6 +230,11 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     def _set_detail_values(self, values: dict[str, str]) -> None:
         for key, value in values.items():
+            if key in self.view.details_vars:
+                self.view.details_vars[key].set(value)
+
+    def _set_detail_pairs(self, pairs: tuple[tuple[str, str], ...]) -> None:
+        for key, value in pairs:
             if key in self.view.details_vars:
                 self.view.details_vars[key].set(value)
 
