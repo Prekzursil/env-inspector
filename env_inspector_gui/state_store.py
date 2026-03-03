@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
+
 from .models import PersistedUiState
 
 CONFIG_FILENAME = "config.json"
@@ -68,11 +70,17 @@ def sanitize_loaded_state(
 
 
 def _sanitize_root(root_path: str, fallback_root: Path) -> Path:
-    candidate = Path(root_path).expanduser() if root_path else Path(fallback_root)
-    exists = candidate.exists()  # codeql[py/path-injection] user-approved local persisted path validation
-    is_dir = candidate.is_dir()  # codeql[py/path-injection] user-approved local persisted path validation
-    if exists and is_dir:
-        return candidate
+    candidate = root_path if root_path else str(fallback_root)
+    try:
+        return resolve_scan_root(candidate)
+    except PathPolicyError:
+        pass
+
+    try:
+        return resolve_scan_root(fallback_root)
+    except PathPolicyError:
+        pass
+
     return Path(fallback_root)
 
 
