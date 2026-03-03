@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from env_inspector_core.models import EnvRecord
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
 from env_inspector_core.service import EnvInspectorService
 
