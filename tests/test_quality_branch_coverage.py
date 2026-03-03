@@ -4,7 +4,6 @@ from pathlib import Path
 from types import SimpleNamespace
 import urllib.error
 
-import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_sentry_zero as sentry_mod

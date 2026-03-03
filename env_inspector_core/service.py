@@ -289,24 +289,28 @@ class EnvInspectorService:
         return sorted(targets)
 
     @staticmethod
-    def _record_target(record: EnvRecord) -> str | None:
-        if record.source_type == SOURCE_DOTENV:
-            return f"dotenv:{record.source_path}"
-        if record.source_type == SOURCE_LINUX_BASHRC:
-            return "linux:bashrc"
-        if record.source_type == SOURCE_LINUX_ETC_ENV:
-            return "linux:etc_environment"
-        if record.source_type == SOURCE_WSL_DOTENV:
-            return f"wsl_dotenv:{record.source_path}"
-        if record.source_type == SOURCE_WSL_BASHRC:
-            return f"wsl:{record.source_id}:bashrc"
-        if record.source_type == SOURCE_WSL_ETC_ENV:
-            return f"wsl:{record.source_id}:etc_environment"
-        if record.source_type == SOURCE_POWERSHELL_PROFILE:
-            if "Program Files" in record.source_path:
-                return "powershell:all_users"
-            return "powershell:current_user"
-        return None
+    def _powershell_target_for_path(source_path: str) -> str:
+        return "powershell:all_users" if "Program Files" in source_path else "powershell:current_user"
+
+    @classmethod
+    def _record_target(cls, record: EnvRecord) -> str | None:
+        static_targets = {
+            SOURCE_LINUX_BASHRC: "linux:bashrc",
+            SOURCE_LINUX_ETC_ENV: "linux:etc_environment",
+        }
+        dynamic_targets = {
+            SOURCE_DOTENV: lambda rec: f"dotenv:{rec.source_path}",
+            SOURCE_WSL_DOTENV: lambda rec: f"wsl_dotenv:{rec.source_path}",
+            SOURCE_WSL_BASHRC: lambda rec: f"wsl:{rec.source_id}:bashrc",
+            SOURCE_WSL_ETC_ENV: lambda rec: f"wsl:{rec.source_id}:etc_environment",
+            SOURCE_POWERSHELL_PROFILE: lambda rec: cls._powershell_target_for_path(rec.source_path),
+        }
+
+        static_target = static_targets.get(record.source_type)
+        if static_target is not None:
+            return static_target
+        builder = dynamic_targets.get(record.source_type)
+        return builder(record) if builder is not None else None
 
     def _registry_write(
         self,
@@ -361,6 +365,21 @@ class EnvInspectorService:
             path.write_text(after, encoding="utf-8")
         return before, after, str(path), False, None
 
+    @staticmethod
+    def _mutate_shell_content(before: str, *, key: str, value: str | None, action: str, style: str) -> str:
+        if action != "set":
+            return remove_export(before, key) if style == "export" else remove_key_value(before, key)
+        if style == "export":
+            return upsert_export(before, key, value or "")
+        return upsert_key_value(before, key, value or "", quote=False)
+
+    def _resolve_linux_target(self, target: str) -> tuple[Path, str, bool]:
+        if target == "linux:bashrc":
+            return Path.home() / ".bashrc", "export", False
+        if target == "linux:etc_environment":
+            return self._linux_etc_environment_path(), "key_value", True
+        raise RuntimeError(f"Unsupported Linux target: {target}")
+
     def _update_linux_file(
         self,
         *,
@@ -370,22 +389,39 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        if target == "linux:bashrc":
-            path = Path.home() / ".bashrc"
-            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
-            after = upsert_export(before, key, value or "") if action == "set" else remove_export(before, key)
-            if apply_changes:
+        path, style, requires_priv = self._resolve_linux_target(target)
+        before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+        after = self._mutate_shell_content(before, key=key, value=value, action=action, style=style)
+
+        if apply_changes:
+            if requires_priv:
+                self._write_linux_etc_environment_with_privilege(after)
+            else:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(after, encoding="utf-8")
-            return before, after, str(path), False, None
-        if target == "linux:etc_environment":
-            path = self._linux_etc_environment_path()
-            before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
-            after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
-            if apply_changes:
-                self._write_linux_etc_environment_with_privilege(after)
-            return before, after, self._LINUX_ETC_ENV_PATH, True, None
-        raise RuntimeError(f"Unsupported Linux target: {target}")
+
+        out_path = self._LINUX_ETC_ENV_PATH if requires_priv else str(path)
+        return before, after, out_path, requires_priv, None
+
+    def _resolve_wsl_target(self, target: str) -> tuple[str, str, str, bool]:
+        if target.startswith("wsl_dotenv:"):
+            raw = target[len("wsl_dotenv:") :]
+            distro, path = raw.split(":", 1)
+            return distro, path, "key_value", False
+
+        if not target.startswith("wsl:"):
+            raise RuntimeError(f"Unsupported WSL target: {target}")
+
+        parts = target.split(":", 2)
+        if len(parts) != 3:
+            raise RuntimeError(f"Unsupported WSL target: {target}")
+
+        _prefix, distro, suffix = parts
+        if suffix == "bashrc":
+            return distro, "~/.bashrc", "export", False
+        if suffix == "etc_environment":
+            return distro, self._LINUX_ETC_ENV_PATH, "key_value", True
+        raise RuntimeError(f"Unsupported WSL target: {target}")
 
     def _update_wsl_file(
         self,
@@ -396,31 +432,15 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        if target.startswith("wsl_dotenv:"):
-            raw = target[len("wsl_dotenv:") :]
-            distro, path = raw.split(":", 1)
-            before = self.wsl.read_file(distro, path)
-            after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
-            if apply_changes:
-                self.wsl.write_file(distro, path, after)
-            return before, after, f"{distro}:{path}", False, None
-        if target.startswith("wsl:") and target.endswith(":bashrc"):
-            distro = target.split(":", 2)[1]
-            path = "~/.bashrc"
-            before = self.wsl.read_file(distro, path)
-            after = upsert_export(before, key, value or "") if action == "set" else remove_export(before, key)
-            if apply_changes:
-                self.wsl.write_file(distro, path, after)
-            return before, after, f"{distro}:{path}", False, None
-        if target.startswith("wsl:") and target.endswith(":etc_environment"):
-            distro = target.split(":", 2)[1]
-            path = self._LINUX_ETC_ENV_PATH
-            before = self.wsl.read_file(distro, path)
-            after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
-            if apply_changes:
-                self.wsl.write_file_with_privilege(distro, path, after)
-            return before, after, f"{distro}:{path}", True, None
-        raise RuntimeError(f"Unsupported WSL target: {target}")
+        distro, path, style, requires_priv = self._resolve_wsl_target(target)
+        before = self.wsl.read_file(distro, path)
+        after = self._mutate_shell_content(before, key=key, value=value, action=action, style=style)
+
+        if apply_changes:
+            writer = self.wsl.write_file_with_privilege if requires_priv else self.wsl.write_file
+            writer(distro, path, after)
+
+        return before, after, f"{distro}:{path}", requires_priv, None
 
     def _update_powershell_file(
         self,
