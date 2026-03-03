@@ -6,6 +6,7 @@ import json
 import re
 import urllib.error
 import urllib.parse
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
@@ -176,3 +177,16 @@ def request_json_https(
         )
 
     return json.loads(raw_body), response_headers
+
+
+def safe_output_path_in_workspace(raw: str, fallback: str, base: Path | None = None) -> Path:
+    root = (base or Path.cwd()).resolve()
+    candidate = Path((raw or "").strip() or fallback).expanduser()  # codeql[py/path-injection] constrained to workspace
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
+    return resolved

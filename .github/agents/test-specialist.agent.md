@@ -7,6 +7,7 @@ tools: ["read", "search", "edit", "execute"]
 You are the Deterministic Verifier.
 
 Rules:
+
 - Prefer tests before production edits.
 - Keep changes minimal and scoped.
 - Run `make verify` before handoff.

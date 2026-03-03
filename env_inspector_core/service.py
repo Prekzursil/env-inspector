@@ -88,6 +88,35 @@ class EnvInspectorService:
         all_users = Path(r"C:\\Program Files\\PowerShell\\7\\profile.ps1")
         return [current, all_users]
 
+    @staticmethod
+    def _is_path_within(path: Path, root: Path) -> bool:
+        try:
+            path.relative_to(root)
+            return True
+        except ValueError:
+            return False
+
+    @classmethod
+    def _validate_path_in_roots(cls, path: Path, roots: list[Path] | tuple[Path, ...], *, label: str) -> Path:
+        resolved_path = path.resolve(strict=False)
+        resolved_roots = [root.resolve(strict=False) for root in roots]
+        for root in resolved_roots:
+            if cls._is_path_within(resolved_path, root):
+                return resolved_path
+        raise RuntimeError(f"{label} is outside approved roots: {resolved_path}")
+
+    def _validated_powershell_restore_path(self, target: str) -> Path:
+        if target not in {"powershell:current_user", "powershell:all_users"}:
+            raise RuntimeError(f"Unsupported PowerShell target: {target}")
+        profile = self._powershell_profile_path(target).resolve(strict=False)
+        if target == "powershell:current_user":
+            allowed_root = Path.home().resolve(strict=False)
+        else:
+            allowed_root = Path(os.environ.get("ProgramFiles", r"C:\\Program Files")).resolve(strict=False)
+        if not self._is_path_within(profile, allowed_root):
+            raise RuntimeError(f"PowerShell profile path is outside expected root: {profile}")
+        return profile
+
     def list_contexts(self) -> list[str]:
         contexts = [self.runtime_context]
         if self.wsl.available():
@@ -186,7 +215,9 @@ class EnvInspectorService:
         return "\n".join(diff)
 
     def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
-        path = Path("/etc/environment")
+        path = Path("/etc/environment").resolve(strict=False)
+        if str(path) != "/etc/environment":
+            raise RuntimeError(f"Unexpected /etc/environment resolution: {path}")
         try:
             path.write_text(text, encoding="utf-8")
             return
@@ -286,7 +317,7 @@ class EnvInspectorService:
     ) -> tuple[str, str, str | None, bool, str | None]:
         if target.startswith("dotenv:"):
             scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
-            path = scoped.path
+            path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="dotenv target path")
             before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
             after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
             if apply_changes:
@@ -564,8 +595,9 @@ class EnvInspectorService:
 
             if target.startswith("dotenv:"):
                 scoped = parse_scoped_dotenv_target(target, roots=resolved_scope_roots)
-                scoped.path.parent.mkdir(parents=True, exist_ok=True)
-                scoped.path.write_text(text, encoding="utf-8")
+                safe_path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="restore dotenv path")
+                safe_path.parent.mkdir(parents=True, exist_ok=True)
+                safe_path.write_text(text, encoding="utf-8")
             elif target == "linux:bashrc":
                 path_out = Path.home() / ".bashrc"
                 path_out.parent.mkdir(parents=True, exist_ok=True)
@@ -582,8 +614,8 @@ class EnvInspectorService:
             elif target.startswith("wsl:") and target.endswith(":etc_environment"):
                 distro = target.split(":", 2)[1]
                 self.wsl.write_file_with_privilege(distro, "/etc/environment", text)
-            elif target.startswith("powershell:"):
-                profile = self._powershell_profile_path(target)
+            elif target in {"powershell:current_user", "powershell:all_users"}:
+                profile = self._validated_powershell_restore_path(target)
                 profile.parent.mkdir(parents=True, exist_ok=True)
                 profile.write_text(text, encoding="utf-8")
             elif target in {"windows:user", "windows:machine"}:

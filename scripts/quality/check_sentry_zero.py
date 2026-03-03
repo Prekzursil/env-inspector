@@ -14,7 +14,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import encode_identifier, request_json_https
+from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
 
 SENTRY_API_HOST = "sentry.io"
 
@@ -91,19 +91,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
-
-
 def main() -> int:
     import os
 
@@ -173,8 +160,8 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "sentry-zero/sentry.json")
-        out_md = _safe_output_path(args.out_md, "sentry-zero/sentry.md")
+        out_json = safe_output_path_in_workspace(args.out_json, "sentry-zero/sentry.json")
+        out_md = safe_output_path_in_workspace(args.out_md, "sentry-zero/sentry.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

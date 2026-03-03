@@ -59,12 +59,20 @@ jobs:
       - name: Resolve release tag
         id: release_tag
         shell: pwsh
+        env:
+          GH_REF_TYPE: ${{ github.ref_type }}
+          GH_REF_NAME: ${{ github.ref_name }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           $tag = ""
-          if ("${{ github.ref_type }}" -eq "tag") {
-            $tag = "${{ github.ref_name }}"
-          } elseif ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.tag }}" -ne "") {
-            $tag = "${{ inputs.tag }}"
+          if ($env:GH_REF_TYPE -eq "tag") {
+            $tag = $env:GH_REF_NAME
+          } elseif ($env:GH_EVENT_NAME -eq "workflow_dispatch" -and $env:INPUT_TAG -ne "") {
+            if ($env:INPUT_TAG -notmatch '^v[0-9]+(\.[0-9]+)*([-.][0-9A-Za-z]+)*$') {
+              throw "Invalid tag format. Expected semantic-style tag such as v1.0.0."
+            }
+            $tag = $env:INPUT_TAG
           }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 

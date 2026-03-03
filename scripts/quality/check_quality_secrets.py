@@ -8,6 +8,13 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
+if str(_HELPER_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HELPER_ROOT))
+
+from security_helpers import safe_output_path_in_workspace
+
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
     "CODACY_API_TOKEN",
@@ -86,19 +93,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
-
-
 def main() -> int:
     args = _parse_args()
     required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
@@ -117,8 +111,8 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "quality-secrets/secrets.json")
-        out_md = _safe_output_path(args.out_md, "quality-secrets/secrets.md")
+        out_json = safe_output_path_in_workspace(args.out_json, "quality-secrets/secrets.json")
+        out_md = safe_output_path_in_workspace(args.out_md, "quality-secrets/secrets.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
