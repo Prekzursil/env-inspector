@@ -14,7 +14,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import encode_identifier, request_json_https
+from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
 
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
@@ -65,30 +65,26 @@ def _request_json(
     return payload
 
 
+def _walk_nodes(payload: Any) -> list[Any]:
+    stack: list[Any] = [payload]
+    nodes: list[Any] = []
+    while stack:
+        node = stack.pop()
+        nodes.append(node)
+        if isinstance(node, dict):
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return nodes
+
+
 def extract_total_open(payload: Any) -> int | None:
-    if isinstance(payload, dict):
-        for key, value in payload.items():
+    for node in _walk_nodes(payload):
+        if not isinstance(node, dict):
+            continue
+        for key, value in node.items():
             if key in TOTAL_KEYS and isinstance(value, (int, float)):
                 return int(value)
-
-        # common pagination structures
-        for key in ("pagination", "page", "meta"):
-            nested = payload.get(key)
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
-
-        for value in payload.values():
-            total = extract_total_open(value)
-            if total is not None:
-                return total
-
-    if isinstance(payload, list):
-        for item in payload:
-            total = extract_total_open(item)
-            if total is not None:
-                return total
-
     return None
 
 
@@ -109,19 +105,6 @@ def _render_md(payload: dict) -> str:
     else:
         lines.append("- None")
     return "\n".join(lines) + "\n"
-
-
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
 
 
 def main() -> int:
@@ -191,8 +174,8 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "codacy-zero/codacy.json")
-        out_md = _safe_output_path(args.out_md, "codacy-zero/codacy.md")
+        out_json = safe_output_path_in_workspace(args.out_json, "codacy-zero/codacy.json")
+        out_md = safe_output_path_in_workspace(args.out_md, "codacy-zero/codacy.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -207,3 +190,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

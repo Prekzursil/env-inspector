@@ -36,7 +36,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [1.0.0] - 2026-02-18
 
-### Added
+### Added (1.0.0)
 
 - Stable CLI surface for `list`, `set`, `remove`, `export`, `backup`, and `restore`.
 - Cross-context record inspection across Windows, WSL, and Linux runtime modes.
@@ -46,7 +46,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Export flows for JSON/CSV/table with masked-by-default secret behavior.
 - CI release workflow to build `env-inspector.exe` and attach checksumed release assets.
 
-### Changed
+### Changed (1.0.0)
 
 - Platform context handling now uses runtime-aware defaults instead of Windows-only assumptions.
 - Effective value resolver now applies strict context isolation and Linux precedence rules.

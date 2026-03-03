@@ -16,7 +16,7 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import normalize_https_url, safe_output_path_in_workspace
 
 SONAR_API_BASE = "https://sonarcloud.io"
 
@@ -70,19 +70,6 @@ def _render_md(payload: dict) -> str:
     else:
         lines.append("- None")
     return "\n".join(lines) + "\n"
-
-
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
 
 
 def main() -> int:
@@ -147,8 +134,8 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "sonar-zero/sonar.json")
-        out_md = _safe_output_path(args.out_md, "sonar-zero/sonar.md")
+        out_json = safe_output_path_in_workspace(args.out_json, "sonar-zero/sonar.json")
+        out_md = safe_output_path_in_workspace(args.out_md, "sonar-zero/sonar.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

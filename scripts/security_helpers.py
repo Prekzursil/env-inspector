@@ -6,11 +6,72 @@ import json
 import re
 import urllib.error
 import urllib.parse
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _parse_https_url(raw_url: str):
+    parsed = urlparse((raw_url or "").strip())
+    if parsed.scheme != "https":
+        raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
+    if not parsed.hostname:
+        raise ValueError(f"URL is missing a hostname: {raw_url!r}")
+    if parsed.username or parsed.password:
+        raise ValueError(f"URL credentials are not allowed: {raw_url!r}")
+    return parsed
+
+
+def _normalized_hosts(values: set[str] | None) -> set[str]:
+    if not values:
+        return set()
+    return {value.lower().strip(".") for value in values if value.strip(".")}
+
+
+def _hostname_matches_suffix(hostname: str, suffixes: set[str]) -> bool:
+    return any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes)
+
+
+def _validate_hostname_allowlists(
+    hostname: str,
+    *,
+    allowed_hosts: set[str] | None = None,
+    allowed_host_suffixes: set[str] | None = None,
+) -> None:
+    exact_hosts = _normalized_hosts(allowed_hosts)
+    if exact_hosts and hostname not in exact_hosts:
+        raise ValueError(f"URL host is not in allowlist: {hostname}")
+
+    suffixes = _normalized_hosts(allowed_host_suffixes)
+    if suffixes and not _hostname_matches_suffix(hostname, suffixes):
+        raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
+
+
+def _is_local_or_private_ip(hostname: str) -> bool:
+    try:
+        ip_value = ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+
+    checks = (
+        ip_value.is_private,
+        ip_value.is_loopback,
+        ip_value.is_link_local,
+        ip_value.is_reserved,
+        ip_value.is_multicast,
+    )
+    return any(checks)
+
+
+def _reject_local_targets(hostname: str) -> None:
+    if _is_local_or_private_ip(hostname):
+        raise ValueError(f"Private or local addresses are not allowed: {hostname}")
+
+    if hostname in {"localhost", "localhost.localdomain"}:
+        raise ValueError("Localhost URLs are not allowed.")
 
 
 def normalize_https_url(
@@ -30,38 +91,14 @@ def normalize_https_url(
     - optional hostname suffix allowlist.
     """
 
-    parsed = urlparse((raw_url or "").strip())
-    if parsed.scheme != "https":
-        raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
-    if not parsed.hostname:
-        raise ValueError(f"URL is missing a hostname: {raw_url!r}")
-    if parsed.username or parsed.password:
-        raise ValueError(f"URL credentials are not allowed: {raw_url!r}")
-
+    parsed = _parse_https_url(raw_url)
     hostname = parsed.hostname.lower().strip(".")
-    if allowed_hosts is not None and hostname not in {host.lower().strip(".") for host in allowed_hosts}:
-        raise ValueError(f"URL host is not in allowlist: {hostname}")
-    if allowed_host_suffixes is not None:
-        suffixes = {suffix.lower().strip(".") for suffix in allowed_host_suffixes if suffix.strip(".")}
-        if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
-            raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
-
-    try:
-        ip_value = ipaddress.ip_address(hostname)
-    except ValueError:
-        ip_value = None
-
-    if ip_value is not None and (
-        ip_value.is_private
-        or ip_value.is_loopback
-        or ip_value.is_link_local
-        or ip_value.is_reserved
-        or ip_value.is_multicast
-    ):
-        raise ValueError(f"Private or local addresses are not allowed: {hostname}")
-
-    if hostname in {"localhost", "localhost.localdomain"}:
-        raise ValueError("Localhost URLs are not allowed.")
+    _validate_hostname_allowlists(
+        hostname,
+        allowed_hosts=allowed_hosts,
+        allowed_host_suffixes=allowed_host_suffixes,
+    )
+    _reject_local_targets(hostname)
 
     sanitized = parsed._replace(fragment="", params="")
     if strip_query:
@@ -176,3 +213,33 @@ def request_json_https(
         )
 
     return json.loads(raw_body), response_headers
+
+
+def safe_output_path_in_workspace(raw: str, fallback: str, base: Path | None = None) -> Path:
+    root = (base or Path.cwd()).resolve()
+    candidate = Path((raw or "").strip() or fallback).expanduser()  # codeql[py/path-injection] constrained to workspace
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
+    return resolved
+
+
+def safe_input_file_path_in_workspace(raw: str, *, base: Path | None = None) -> Path:
+    root = (base or Path.cwd()).resolve()
+    candidate = Path((raw or "").strip()).expanduser()  # codeql[py/path-injection] constrained to workspace
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Input file path escapes workspace root: {candidate}") from exc
+    if not resolved.exists() or not resolved.is_file():
+        raise ValueError(f"Input file does not exist: {resolved}")
+    return resolved
+
+

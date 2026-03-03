@@ -121,3 +121,36 @@ def test_restore_rejects_backup_file_outside_state_directory(tmp_path: Path, mon
 
     assert result["success"] is False
     assert "outside managed backup directory" in (result["error_message"] or "")
+
+def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+    env_file = allowed / ".env"
+
+    backup_path = svc.backup_mgr.backup_text(f"dotenv:{env_file}", "A=1\n")
+    result = svc.restore_backup(backup=str(backup_path), scope_roots=[allowed])
+
+    assert result["success"] is True
+    assert env_file.read_text(encoding="utf-8") == "A=1\n"
+
+
+def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    allowed = tmp_path / "allowed"
+    outside = tmp_path.parent / (tmp_path.name + "-outside")
+    allowed.mkdir()
+    outside.mkdir()
+    env_file = outside / ".env"
+
+    backup_path = svc.backup_mgr.backup_text(f"dotenv:{env_file}", "A=1\n")
+    result = svc.restore_backup(backup=str(backup_path), scope_roots=[allowed])
+
+    assert result["success"] is False
+    assert "outside approved roots" in (result["error_message"] or "")
+
+

@@ -5,7 +5,7 @@
 Security fixes are applied to the latest release series.
 
 | Version | Supported |
-|---|---|
+| --- | --- |
 | Latest | Yes |
 | Older releases | No |
 

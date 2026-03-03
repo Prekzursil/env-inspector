@@ -4,13 +4,22 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
+if str(_HELPER_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HELPER_ROOT))
+
+from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
+
+GITHUB_API_HOST = "api.github.com"
+_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -25,20 +34,60 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _api_get(repo: str, path: str, token: str) -> dict[str, Any]:
-    url = f"https://api.github.com/repos/{repo}/{path.lstrip('/')}"
-    req = urllib.request.Request(
-        url,
+def _parse_repo(raw: str) -> tuple[str, str]:
+    text = (raw or "").strip()
+    if "/" not in text:
+        raise ValueError("Repo must be in owner/repo format.")
+    owner, repo = text.split("/", 1)
+    return (
+        encode_identifier(owner, field_name="GitHub owner"),
+        encode_identifier(repo, field_name="GitHub repo"),
+    )
+
+
+def _parse_sha(raw: str) -> str:
+    sha = (raw or "").strip()
+    if not _SHA_RE.fullmatch(sha):
+        raise ValueError("Commit SHA must be a 7-64 char hex string.")
+    return sha.lower()
+
+
+def _github_headers(token: str) -> dict[str, str]:
+    return {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "reframe-quality-zero-gate",
+    }
+
+
+def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> dict[str, Any]:
+    payload, _headers = request_json_https(
+        host=GITHUB_API_HOST,
+        path=f"/repos/{owner}/{repo}/commits/{sha}/check-runs",
         headers={
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "reframe-quality-zero-gate",
+            **_github_headers(token),
+        },
+        query={"per_page": "100"},
+        method="GET",
+    )
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GitHub check-runs response payload.")
+    return payload
+
+
+def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> dict[str, Any]:
+    payload, _headers = request_json_https(
+        host=GITHUB_API_HOST,
+        path=f"/repos/{owner}/{repo}/commits/{sha}/status",
+        headers={
+            **_github_headers(token),
         },
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GitHub status response payload.")
+    return payload
 
 
 def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -121,19 +170,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
-
-
 def main() -> int:
     args = _parse_args()
     token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
@@ -143,20 +179,25 @@ def main() -> int:
         raise SystemExit("At least one --required-context is required")
     if not token:
         raise SystemExit("GITHUB_TOKEN or GH_TOKEN is required")
+    try:
+        owner_slug, repo_slug = _parse_repo(args.repo)
+        sha = _parse_sha(args.sha)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
 
     deadline = time.time() + max(args.timeout_seconds, 1)
 
     final_payload: dict[str, Any] | None = None
     while time.time() <= deadline:
-        check_runs = _api_get(args.repo, f"commits/{args.sha}/check-runs?per_page=100", token)
-        statuses = _api_get(args.repo, f"commits/{args.sha}/status", token)
+        check_runs = _api_get_check_runs(owner=owner_slug, repo=repo_slug, sha=sha, token=token)
+        statuses = _api_get_status(owner=owner_slug, repo=repo_slug, sha=sha, token=token)
         contexts = _collect_contexts(check_runs, statuses)
         status, missing, failed = _evaluate(required, contexts)
 
         final_payload = {
             "status": status,
             "repo": args.repo,
-            "sha": args.sha,
+            "sha": sha,
             "required": required,
             "missing": missing,
             "failed": failed,
@@ -177,8 +218,8 @@ def main() -> int:
         raise SystemExit("No payload collected")
 
     try:
-        out_json = _safe_output_path(args.out_json, "quality-zero-gate/required-checks.json")
-        out_md = _safe_output_path(args.out_md, "quality-zero-gate/required-checks.md")
+        out_json = safe_output_path_in_workspace(args.out_json, "quality-zero-gate/required-checks.json")
+        out_md = safe_output_path_in_workspace(args.out_md, "quality-zero-gate/required-checks.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

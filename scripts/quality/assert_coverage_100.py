@@ -9,6 +9,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
+if str(_HELPER_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HELPER_ROOT))
+
+from security_helpers import safe_input_file_path_in_workspace, safe_output_path_in_workspace
+
 
 @dataclass
 class CoverageStats:
@@ -49,11 +56,14 @@ def parse_named_path(value: str) -> tuple[str, Path]:
     match = _PAIR_RE.match(value.strip())
     if not match:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
-    return match.group("name").strip(), Path(match.group("path").strip())
+    name = match.group("name").strip()
+    raw_path = match.group("path").strip()
+    candidate = safe_input_file_path_in_workspace(raw_path)
+    return name, candidate
 
 
 def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8")  # lgtm [py/path-injection]
     lines_valid_match = _XML_LINES_VALID_RE.search(text)
     lines_covered_match = _XML_LINES_COVERED_RE.search(text)
 
@@ -79,7 +89,7 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     total = 0
     covered = 0
 
-    for raw in path.read_text(encoding="utf-8").splitlines():
+    for raw in path.read_text(encoding="utf-8").splitlines():  # lgtm [py/path-injection]
         line = raw.strip()
         if line.startswith("LF:"):
             total += int(line.split(":", 1)[1])
@@ -139,19 +149,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
-
-
 def main() -> int:
     args = _parse_args()
 
@@ -186,8 +183,8 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "coverage-100/coverage.json")
-        out_md = _safe_output_path(args.out_md, "coverage-100/coverage.md")
+        out_json = safe_output_path_in_workspace(args.out_json, "coverage-100/coverage.json")
+        out_md = safe_output_path_in_workspace(args.out_md, "coverage-100/coverage.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -203,3 +200,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
