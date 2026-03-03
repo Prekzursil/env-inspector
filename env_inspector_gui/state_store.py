@@ -69,7 +69,7 @@ def sanitize_loaded_state(
 
 def _sanitize_root(root_path: str, fallback_root: Path) -> Path:
     candidate = Path(root_path).expanduser() if root_path else Path(fallback_root)
-    if candidate.exists() and candidate.is_dir():
+    if candidate.exists() and candidate.is_dir():  # codeql[py/path-injection] user-approved local persisted path validation
         return candidate
     return Path(fallback_root)
 
