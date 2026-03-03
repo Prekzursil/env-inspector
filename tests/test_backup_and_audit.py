@@ -1,6 +1,10 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
+import env_inspector_core.storage as storage_mod
 from env_inspector_core.storage import BackupManager, AuditLogger
 from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
@@ -22,6 +26,70 @@ def test_backup_manager_retention_and_restore(tmp_path: Path):
 
     restored = mgr.restore_text(p2)
     assert restored == "A=2\n"
+
+
+def test_backup_manager_uses_unique_path_when_timestamp_collides(tmp_path: Path, monkeypatch):
+    fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
+            return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
+
+    monkeypatch.setattr(storage_mod, "datetime", _FixedDateTime)
+
+    mgr = BackupManager(tmp_path, retention=5)
+    target = "dotenv:/workspace/.env"
+
+    p1 = mgr.backup_text(target, "A=1\n")
+    p2 = mgr.backup_text(target, "A=2\n")
+    p3 = mgr.backup_text(target, "A=3\n")
+
+    assert p1 != p2 != p3
+    assert p1.name.endswith("-0000.backup.json")
+    assert p2.name.endswith("-0001.backup.json")
+    assert p3.name.endswith("-0002.backup.json")
+
+
+def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Path, monkeypatch):
+    fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
+            return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
+
+    monkeypatch.setattr(storage_mod, "datetime", _FixedDateTime)
+
+    mgr = BackupManager(tmp_path, retention=5)
+    original_exists = Path.exists
+
+    def _always_exists(path: Path) -> bool:
+        if str(path).endswith(".backup.json"):
+            return True
+        return original_exists(path)
+
+    monkeypatch.setattr(Path, "exists", _always_exists)
+    assert Path.exists(tmp_path)
+
+    with pytest.raises(RuntimeError, match="Could not allocate unique backup file name"):
+        mgr._next_backup_path()
+
+
+def test_normalize_backup_path_rejects_escape(tmp_path: Path):
+    mgr = BackupManager(tmp_path / "backups", retention=5)
+    outside = tmp_path.parent / "outside.backup.json"
+
+    with pytest.raises(ValueError, match="escapes backup root"):
+        mgr._normalize_backup_path(outside)
+
+
+def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
+    mgr = BackupManager(tmp_path, retention=5)
+    bad = tmp_path / "bad.backup.json"
+    bad.write_text("{not valid json", encoding="utf-8")
+
+    assert mgr._load_backup_payload(bad) is None
 
 
 def test_audit_logger_writes_masked_values(tmp_path: Path):

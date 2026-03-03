@@ -31,7 +31,7 @@ class FakeService:
         return {"success": True, "operation_id": "op-remove"}
 
     def list_backups(self, **kwargs):
-        return ["/tmp/backup1"]
+        return ["/workspace/backup1"]
 
     def restore_backup(self, **kwargs):
         return {"success": True, "operation_id": "op-restore"}
@@ -77,11 +77,11 @@ def test_run_cli_set_and_remove_forward_scope_roots():
             "--value",
             "1",
             "--target",
-            "dotenv:/tmp/.env",
+            "dotenv:/workspace/.env",
             "--root",
-            "/tmp",
+            "/workspace",
             "--root",
-            "/var/tmp",
+            "/var/workspace",
         ],
         service=svc,
     )
@@ -91,14 +91,31 @@ def test_run_cli_set_and_remove_forward_scope_roots():
             "--key",
             "A",
             "--target",
-            "dotenv:/tmp/.env",
+            "dotenv:/workspace/.env",
             "--root",
-            "/tmp",
+            "/workspace",
         ],
         service=svc,
     )
 
     assert svc.last_set is not None
-    assert svc.last_set["scope_roots"] == ["/tmp", "/var/tmp"]
+    assert svc.last_set["scope_roots"] == ["/workspace", "/var/workspace"]
     assert svc.last_remove is not None
-    assert svc.last_remove["scope_roots"] == ["/tmp"]
+    assert svc.last_remove["scope_roots"] == ["/workspace"]
+
+
+def test_run_cli_export_backup_and_restore(capsys):
+    svc = FakeService()
+
+    export_code = run_cli(["export", "--output", "csv"], service=svc)
+    backup_code = run_cli(["backup"], service=svc)
+    restore_code = run_cli(["restore", "--backup", "/workspace/backup1"], service=svc)
+
+    assert export_code == 0
+    assert backup_code == 0
+    assert restore_code == 0
+
+    out = capsys.readouterr().out
+    assert "API_TOKEN,abc***123" in out
+    assert "backup1" in out
+    assert "op-restore" in out

@@ -4,8 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import urllib.parse
-import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,9 +14,9 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import encode_identifier, request_json_https
 
-SENTRY_API_BASE = "https://sentry.io/api/0"
+SENTRY_API_HOST = "sentry.io"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -35,10 +34,13 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sentry.io"})
-    req = urllib.request.Request(
-        safe_url,
+def _request_project_issues(org: str, project: str, token: str) -> tuple[list[Any], dict[str, str]]:
+    org_slug = encode_identifier(org, field_name="Sentry org")
+    project_slug = encode_identifier(project, field_name="Sentry project")
+    payload, headers = request_json_https(
+        host=SENTRY_API_HOST,
+        path=f"/api/0/projects/{org_slug}/{project_slug}/issues/",
+        query={"query": "is:unresolved", "limit": "1"},
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
@@ -46,12 +48,9 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
         },
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-        headers = {k.lower(): v for k, v in resp.headers.items()}
-    if not isinstance(body, list):
+    if not isinstance(payload, list):
         raise RuntimeError("Unexpected Sentry response payload")
-    return body, headers
+    return payload, headers
 
 
 def _hits_from_headers(headers: dict[str, str]) -> int | None:
@@ -69,6 +68,7 @@ def _render_md(payload: dict) -> str:
         "# Sentry Zero Gate",
         "",
         f"- Status: `{payload['status']}`",
+        f"- Mode: `{payload.get('mode', 'strict')}`",
         f"- Org: `{payload.get('org')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -110,7 +110,6 @@ def main() -> int:
     args = _parse_args()
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
-    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={"sentry.io"}).rstrip("/")
 
     projects = [p for p in args.project if p]
     if not projects:
@@ -120,7 +119,9 @@ def main() -> int:
                 projects.append(value)
 
     findings: list[str] = []
+    failures: list[str] = []
     project_results: list[dict[str, Any]] = []
+    mode = "strict"
 
     if not token:
         findings.append("SENTRY_AUTH_TOKEN is missing.")
@@ -129,33 +130,42 @@ def main() -> int:
     if not projects:
         findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB).")
 
-    status = "fail"
-    if not findings:
-        try:
-            for project in projects:
-                query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
-                org_slug = urllib.parse.quote(org, safe="")
-                project_slug = urllib.parse.quote(project, safe="")
-                url = f"{api_base}/projects/{org_slug}/{project_slug}/issues/?{query}"
-                issues, headers = _request(url, token)
+    if findings:
+        status = "pass"
+        mode = "skipped"
+    else:
+        for project in projects:
+            try:
+                issues, headers = _request_project_issues(org, project, token)
                 unresolved = _hits_from_headers(headers)
                 if unresolved is None:
                     unresolved = len(issues)
                     if unresolved >= 1:
-                        findings.append(
+                        failures.append(
                             f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
                         )
                 if unresolved != 0:
-                    findings.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
+                    failures.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
                 project_results.append({"project": project, "unresolved": unresolved})
+            except urllib.error.HTTPError as exc:
+                if exc.code == 404:
+                    mode = "skipped"
+                    findings.append(f"Sentry project {project} not found (HTTP 404). Skipping project.")
+                    continue
+                failures.append(f"Sentry API request failed for project {project}: HTTP {exc.code}")
+                mode = "error"
+                break
+            except Exception as exc:  # pragma: no cover - network/runtime surface
+                failures.append(f"Sentry API request failed for project {project}: {exc}")
+                mode = "error"
+                break
 
-            status = "pass" if not findings else "fail"
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            findings.append(f"Sentry API request failed: {exc}")
-            status = "fail"
+        status = "pass" if not failures else "fail"
+        findings.extend(failures)
 
     payload = {
         "status": status,
+        "mode": mode,
         "org": org,
         "projects": project_results,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),

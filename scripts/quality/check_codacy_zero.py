@@ -5,8 +5,6 @@ import argparse
 import json
 import sys
 import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,11 +14,11 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url
+from security_helpers import encode_identifier, request_json_https
 
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
-CODACY_API_BASE = "https://api.codacy.com"
+CODACY_API_HOST = "api.codacy.com"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -34,25 +32,37 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _request_json(url: str, token: str, *, method: str = "GET", data: dict[str, Any] | None = None) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"codacy.com"}).rstrip("/")
-    body = None
+def _request_json(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    method: str = "GET",
+    data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     headers = {
         "Accept": "application/json",
         "api-token": token,
         "User-Agent": "reframe-codacy-zero-gate",
     }
     if data is not None:
-        body = json.dumps(data).encode("utf-8")
         headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(
-        safe_url,
+
+    provider_slug = encode_identifier(provider, field_name="Codacy provider")
+    owner_slug = encode_identifier(owner, field_name="Codacy owner")
+    repo_slug = encode_identifier(repo, field_name="Codacy repository")
+    payload, _headers = request_json_https(
+        host=CODACY_API_HOST,
+        path=f"/api/v3/analysis/organizations/{provider_slug}/{owner_slug}/repositories/{repo_slug}/issues/search",
         headers=headers,
         method=method,
-        data=body,
+        query={"limit": "1"},
+        data=data,
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Codacy response payload.")
+    return payload
 
 
 def extract_total_open(payload: Any) -> int | None:
@@ -119,9 +129,8 @@ def main() -> int:
 
     args = _parse_args()
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    api_base = normalize_https_url(CODACY_API_BASE, allowed_hosts={"api.codacy.com"}).rstrip("/")
-    owner = urllib.parse.quote(args.owner.strip(), safe="")
-    repo = urllib.parse.quote(args.repo.strip(), safe="")
+    owner = args.owner.strip()
+    repo = args.repo.strip()
 
     findings: list[str] = []
     open_issues: int | None = None
@@ -130,18 +139,20 @@ def main() -> int:
         findings.append("CODACY_API_TOKEN is missing.")
         status = "fail"
     else:
-        query = urllib.parse.urlencode({"limit": "1"})
         provider_candidates = [args.provider, "gh", "github"]
         provider_candidates = list(dict.fromkeys(p for p in provider_candidates if p))
 
         last_exc: Exception | None = None
         for provider in provider_candidates:
-            url = (
-                f"{api_base}/api/v3/analysis/organizations/{provider}/"
-                f"{owner}/repositories/{repo}/issues/search?{query}"
-            )
             try:
-                payload = _request_json(url, token, method="POST", data={})
+                payload = _request_json(
+                    provider=provider,
+                    owner=owner,
+                    repo=repo,
+                    token=token,
+                    method="POST",
+                    data={},
+                )
                 open_issues = extract_total_open(payload)
                 if open_issues is None:
                     findings.append("Codacy response did not include a parseable total issue count.")

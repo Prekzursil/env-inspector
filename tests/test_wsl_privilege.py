@@ -19,6 +19,7 @@ def test_write_file_with_privilege_root_success():
 
     provider = WslProvider(runner=runner)
     provider.available = lambda: True  # type: ignore[assignment]
+    provider.wsl_exe = "wsl.exe"
 
     provider.write_file_with_privilege("Ubuntu", "/etc/my env", "A=1\n")
 
@@ -40,6 +41,7 @@ def test_write_file_with_privilege_falls_back_to_sudo():
 
     provider = WslProvider(runner=runner)
     provider.available = lambda: True  # type: ignore[assignment]
+    provider.wsl_exe = "wsl.exe"
 
     provider.write_file_with_privilege("Ubuntu", "/etc/environment", "A=1\n")
 
@@ -54,6 +56,7 @@ def test_write_file_with_privilege_raises_when_root_and_sudo_fail():
 
     provider = WslProvider(runner=runner)
     provider.available = lambda: True  # type: ignore[assignment]
+    provider.wsl_exe = "wsl.exe"
 
     with pytest.raises(RuntimeError) as exc:
         provider.write_file_with_privilege("Ubuntu", "/etc/environment", "A=1\n")

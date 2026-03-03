@@ -14,18 +14,19 @@ jobs:
   sonar-zero:
     name: Sonar Zero
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
-      - name: Run Sonar scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      - name: Assert Sonar zero-open gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Assert SonarCloud PR status context is green
         run: |
-          python3 scripts/quality/check_sonar_zero.py \
-            --project-key "Prekzursil_env-inspector" \
+          python3 scripts/quality/check_required_checks.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --sha "${CHECK_SHA}" \
+            --required-context "SonarCloud Code Analysis" \
+            --timeout-seconds 1200 \
+            --poll-seconds 20 \
             --out-json "sonar-zero/sonar.json" \
             --out-md "sonar-zero/sonar.md"
       - name: Upload Sonar artifacts

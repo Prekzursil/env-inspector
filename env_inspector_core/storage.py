@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -11,27 +10,35 @@ from .models import OperationResult
 
 class BackupManager:
     def __init__(self, base_dir: Path, retention: int = 20) -> None:
-        self.base_dir = Path(base_dir)
+        self.base_dir = Path(base_dir).resolve()
         self.retention = retention
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    @staticmethod
-    def _target_slug(target: str) -> str:
-        digest = hashlib.sha1(target.encode("utf-8")).hexdigest()[:12]
-        return f"{target.replace(':', '_').replace('/', '_').replace('\\\\', '_')}__{digest}"
-
-    def _target_dir(self, target: str) -> Path:
-        target_dir = self.base_dir / self._target_slug(target)
-        target_dir.mkdir(parents=True, exist_ok=True)
-        return target_dir
-
     def backup_text(self, target: str, text: str) -> Path:
-        now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-        path = self._target_dir(target) / f"{now}.backup.json"
+        now, path = self._next_backup_path()
+        path = self._normalize_backup_path(path)
         payload = {"target": target, "created_at": now, "text": text}
-        path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
+        path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")  # NOSONAR
         self._enforce_retention(target)
         return path
+
+    def _next_backup_path(self) -> tuple[str, Path]:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+
+        for sequence in range(10000):
+            candidate = self.base_dir / f"{timestamp}-{sequence:04d}.backup.json"
+            if not candidate.exists():
+                return timestamp, candidate
+
+        raise RuntimeError("Could not allocate unique backup file name")
+
+    def _normalize_backup_path(self, candidate: Path) -> Path:
+        resolved = candidate.resolve(strict=False)
+        try:
+            resolved.relative_to(self.base_dir)
+        except ValueError as exc:
+            raise ValueError(f"Backup path escapes backup root: {candidate}") from exc
+        return resolved
 
     def _enforce_retention(self, target: str) -> None:
         files = self.list_backups(target)
@@ -41,12 +48,22 @@ class BackupManager:
             old.unlink(missing_ok=True)
 
     def list_backups(self, target: str) -> list[Path]:
-        target_dir = self._target_dir(target)
-        files = sorted(target_dir.glob("*.backup.json"), reverse=True)
-        return files
+        backups: list[Path] = []
+        for backup in self.list_all_backups():
+            payload = self._load_backup_payload(backup)
+            if payload is not None and str(payload.get("target", "")) == target:
+                backups.append(backup)
+        return sorted(backups, reverse=True)
 
     def list_all_backups(self) -> list[Path]:
         return sorted(self.base_dir.glob("**/*.backup.json"), reverse=True)
+
+    def _load_backup_payload(self, backup_path: Path) -> dict | None:
+        try:
+            payload = json.loads(backup_path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+        return payload if isinstance(payload, dict) else None
 
     def restore_text(self, backup_path: Path) -> str:
         payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))

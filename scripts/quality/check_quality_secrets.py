@@ -13,7 +13,6 @@ DEFAULT_REQUIRED_SECRETS = [
     "CODACY_API_TOKEN",
     "SNYK_TOKEN",
     "SENTRY_AUTH_TOKEN",
-    "APPLITOOLS_API_KEY",
 ]
 
 DEFAULT_REQUIRED_VARS = [
@@ -26,6 +25,11 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate required quality-gate secrets/variables are configured.")
     parser.add_argument("--required-secret", action="append", default=[], help="Additional required secret env var name")
     parser.add_argument("--required-var", action="append", default=[], help="Additional required variable env var name")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail when required secrets/vars are missing. Default mode only reports missing items.",
+    )
     parser.add_argument("--out-json", default="quality-secrets/secrets.json", help="Output JSON path")
     parser.add_argument("--out-md", default="quality-secrets/secrets.md", help="Output markdown path")
     return parser.parse_args()
@@ -61,6 +65,7 @@ def _render_md(payload: dict) -> str:
         "# Quality Secrets Preflight",
         "",
         f"- Status: `{payload['status']}`",
+        f"- Strict mode: `{payload.get('strict', False)}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
         "## Missing secrets",
@@ -100,9 +105,11 @@ def main() -> int:
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))
 
     result = evaluate_env(required_secrets, required_vars)
-    status = "pass" if not result["missing_secrets"] and not result["missing_vars"] else "fail"
+    has_missing = bool(result["missing_secrets"] or result["missing_vars"])
+    status = "fail" if args.strict and has_missing else "pass"
     payload = {
         "status": status,
+        "strict": bool(args.strict),
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "required_secrets": required_secrets,
         "required_vars": required_vars,

@@ -47,6 +47,7 @@ jobs:
       - secrets-preflight
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
       - name: Assert secrets preflight succeeded
@@ -59,7 +60,7 @@ jobs:
         run: |
           python3 scripts/quality/check_required_checks.py \
             --repo "${GITHUB_REPOSITORY}" \
-            --sha "${GITHUB_SHA}" \
+            --sha "${CHECK_SHA}" \
             --required-context "Coverage 100 Gate" \
             --required-context "Codecov Analytics" \
             --required-context "Sonar Zero" \
