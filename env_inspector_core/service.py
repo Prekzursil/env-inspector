@@ -393,14 +393,16 @@ class EnvInspectorService:
         before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
         after = self._mutate_shell_content(before, key=key, value=value, action=action, style=style)
 
+        is_etc_environment = target == "linux:etc_environment"
         if apply_changes:
-            if requires_priv:
+            if is_etc_environment:
                 self._write_linux_etc_environment_with_privilege(after)
             else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(after, encoding="utf-8")
+                bashrc_path = Path.home() / ".bashrc"
+                bashrc_path.parent.mkdir(parents=True, exist_ok=True)
+                bashrc_path.write_text(after, encoding="utf-8")
 
-        out_path = self._LINUX_ETC_ENV_PATH if requires_priv else str(path)
+        out_path = self._LINUX_ETC_ENV_PATH if is_etc_environment else str(path)
         return before, after, out_path, requires_priv, None
 
     @staticmethod

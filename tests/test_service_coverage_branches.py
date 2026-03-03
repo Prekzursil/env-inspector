@@ -173,7 +173,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     assert (fake_home / ".bashrc").read_text(encoding="utf-8") == "export A=1\n"
 
     etc_calls: list[str] = []
-    monkeypatch.setattr(svc, "_write_linux_etc_environment_with_privilege", lambda text: etc_calls.append(text))
+    monkeypatch.setattr(svc, "_write_linux_etc_environment_with_privilege", etc_calls.append)
     svc._restore_linux_target(target="linux:etc_environment", text="A=1\n")
     assert etc_calls == ["A=1\n"]
 
