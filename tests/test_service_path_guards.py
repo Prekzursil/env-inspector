@@ -172,10 +172,15 @@ def test_validate_target_for_operation_accepts_wsl_variants(tmp_path: Path):
 
 def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
-    profile = Path(r"C:\Program Files\PowerShell\7\profile.ps1")
+    profile = tmp_path / "program_files" / "PowerShell" / "7" / "profile.ps1"
 
     writes: dict[str, object] = {}
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
+    monkeypatch.setattr(
+        svc,
+        "_validate_path_in_roots",
+        lambda candidate, roots, label: writes.update({"validated": candidate, "roots": roots, "label": label}) or candidate,
+    )
     monkeypatch.setattr(
         svc,
         "_write_text_file",
@@ -184,7 +189,10 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
 
     svc._restore_powershell_target(target="powershell:all_users", text="$env:A='1'\n")
 
-    assert writes["path"] == profile.resolve(strict=False)
+    assert writes["validated"] == profile
+    assert "Program Files" in str(writes["roots"][0])
+    assert writes["label"] == "PowerShell restore target"
+    assert writes["path"] == profile
     assert writes["text"] == "$env:A='1'\n"
     assert writes["ensure_parent"] is True
 
