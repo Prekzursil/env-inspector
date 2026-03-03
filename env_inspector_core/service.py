@@ -680,7 +680,13 @@ class EnvInspectorService:
 
     def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: list[Path]) -> None:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
-        safe_path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="restore dotenv path")
+
+        candidate_abs = os.path.abspath(os.path.normpath(str(scoped.path)))
+        allowed_roots_abs = [os.path.abspath(os.path.normpath(str(root))) for root in scope_roots]
+        if not any(os.path.commonpath([candidate_abs, root_abs]) == root_abs for root_abs in allowed_roots_abs):
+            raise RuntimeError(f"restore dotenv path is outside approved roots: {candidate_abs}")
+
+        safe_path = Path(candidate_abs).resolve(strict=False)
         safe_path.parent.mkdir(parents=True, exist_ok=True)
         safe_path.write_text(text, encoding="utf-8")
 

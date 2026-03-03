@@ -223,3 +223,26 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
 
     with pytest.raises(RuntimeError, match="Unsupported restore target"):
         svc._restore_target(target="custom:target", text="x", scope_roots=[])
+
+
+def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    allowed = tmp_path / "allowed"
+    outside = tmp_path.parent / (tmp_path.name + "-outside")
+    env_path = outside / ".env"
+    allowed.mkdir(parents=True, exist_ok=True)
+    outside.mkdir(parents=True, exist_ok=True)
+
+    class _Scoped:
+        def __init__(self, path: Path):
+            self.path = path
+            self.roots = [allowed]
+
+    monkeypatch.setattr(service_module, "parse_scoped_dotenv_target", lambda target, roots: _Scoped(env_path))
+
+    with pytest.raises(RuntimeError, match="outside approved roots"):
+        svc._restore_dotenv_target(
+            target=f"dotenv:{env_path}",
+            text="A=1\n",
+            scope_roots=[allowed],
+        )
