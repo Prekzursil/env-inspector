@@ -373,13 +373,6 @@ class EnvInspectorService:
             return upsert_export(before, key, value or "")
         return upsert_key_value(before, key, value or "", quote=False)
 
-    def _resolve_linux_target(self, target: str) -> tuple[Path, str, bool]:
-        if target == "linux:bashrc":
-            return Path.home() / ".bashrc", "export", False
-        if target == "linux:etc_environment":
-            return self._linux_etc_environment_path(), "key_value", True
-        raise RuntimeError(f"Unsupported Linux target: {target}")
-
     def _update_linux_file(
         self,
         *,
@@ -389,21 +382,24 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        path, style, requires_priv = self._resolve_linux_target(target)
-        before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
-        after = self._mutate_shell_content(before, key=key, value=value, action=action, style=style)
-
-        is_etc_environment = target == "linux:etc_environment"
-        if apply_changes:
-            if is_etc_environment:
-                self._write_linux_etc_environment_with_privilege(after)
-            else:
-                bashrc_path = Path.home() / ".bashrc"
+        if target == "linux:bashrc":
+            bashrc_path = Path.home() / ".bashrc"
+            before = bashrc_path.read_text(encoding="utf-8", errors="ignore") if bashrc_path.exists() else ""
+            after = self._mutate_shell_content(before, key=key, value=value, action=action, style="export")
+            if apply_changes:
                 bashrc_path.parent.mkdir(parents=True, exist_ok=True)
                 bashrc_path.write_text(after, encoding="utf-8")
+            return before, after, str(bashrc_path), False, None
 
-        out_path = self._LINUX_ETC_ENV_PATH if is_etc_environment else str(path)
-        return before, after, out_path, requires_priv, None
+        if target == "linux:etc_environment":
+            etc_path = self._linux_etc_environment_path()
+            before = etc_path.read_text(encoding="utf-8", errors="ignore") if etc_path.exists() else ""
+            after = self._mutate_shell_content(before, key=key, value=value, action=action, style="key_value")
+            if apply_changes:
+                self._write_linux_etc_environment_with_privilege(after)
+            return before, after, self._LINUX_ETC_ENV_PATH, True, None
+
+        raise RuntimeError(f"Unsupported Linux target: {target}")
 
     @staticmethod
     def _validate_wsl_distro_name(raw: str) -> str:
