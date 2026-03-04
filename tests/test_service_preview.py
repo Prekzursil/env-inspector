@@ -5,8 +5,7 @@ from pathlib import Path
 from env_inspector_core.service import EnvInspectorService
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

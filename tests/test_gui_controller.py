@@ -3,8 +3,7 @@ from __future__ import absolute_import, division
 from env_inspector_gui.controller import EnvInspectorController
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

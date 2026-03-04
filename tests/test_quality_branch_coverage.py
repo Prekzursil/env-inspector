@@ -10,8 +10,7 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 
@@ -50,11 +49,14 @@ def test_sentry_collect_projects_prefers_args_and_env_fallback():
 
     _expect(sentry_mod._collect_projects(args_with_projects, {}) == ["backend", "web"])
 
-    if not (sentry_mod._collect_projects(
-        args_without_projects,
-        {"SENTRY_PROJECT_BACKEND": "backend", "SENTRY_PROJECT_WEB": "web"},
-    ) == ["backend", "web"]):
-        raise AssertionError()
+    case = TestCase()
+    case.assertEqual(
+        sentry_mod._collect_projects(
+            args_without_projects,
+            {"SENTRY_PROJECT_BACKEND": "backend", "SENTRY_PROJECT_WEB": "web"},
+        ),
+        ["backend", "web"],
+    )
 
 
 
@@ -138,3 +140,4 @@ def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
         lambda org, projects, token: ("error", [{"project": "proj", "unresolved": 1}], [], ["failure"]),
     )
     _expect(sentry_mod.main() == 1)
+

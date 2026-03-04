@@ -5,8 +5,7 @@ from env_inspector_gui.models import SortState
 from env_inspector_gui.table_logic import build_display_rows, sort_display_rows, toggle_sort
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

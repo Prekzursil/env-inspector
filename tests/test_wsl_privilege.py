@@ -7,8 +7,7 @@ import pytest
 from env_inspector_core.providers import WslProvider
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

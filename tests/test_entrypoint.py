@@ -5,8 +5,7 @@ from pathlib import Path
 import env_inspector
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

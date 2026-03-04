@@ -7,8 +7,7 @@ import pytest
 from scripts import security_helpers as sec
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

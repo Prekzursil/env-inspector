@@ -15,8 +15,7 @@ from env_inspector_core.constants import (
 )
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.service import EnvInspectorService

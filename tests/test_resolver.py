@@ -4,8 +4,7 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

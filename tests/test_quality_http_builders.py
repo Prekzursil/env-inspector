@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division
 
+import os
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
@@ -7,13 +8,13 @@ from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
     captured: dict[str, object] = {}
+    auth_value = os.environ.get("QUALITY_GATE_TEST_AUTH", "placeholder-value")
 
     def _fake_request_json_https(**kwargs):
         captured.update(kwargs)
@@ -24,7 +25,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="sample_credential",
+        token=auth_value,
         method="POST",
         data={},
     )
@@ -40,12 +41,13 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
 
 
 def test_codacy_request_json_rejects_unsafe_identifier():
+    auth_value = os.environ.get("QUALITY_GATE_TEST_AUTH", "placeholder-value")
     with pytest.raises(ValueError, match="unsupported characters"):
         codacy_mod._request_json(
             provider="gh",
             owner="Prekzursil",
             repo="env/inspector",
-            token="sample_credential",
+            token=auth_value,
             method="POST",
             data={},
         )
@@ -53,6 +55,7 @@ def test_codacy_request_json_rejects_unsafe_identifier():
 
 def test_deepscan_request_json_uses_fixed_host(monkeypatch):
     captured: dict[str, object] = {}
+    auth_value = os.environ.get("QUALITY_GATE_TEST_AUTH", "placeholder-value")
 
     def _fake_request_json_https(**kwargs):
         captured.update(kwargs)
@@ -63,7 +66,7 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
         host="deepscan.io",
         path="/api/projects/123/issues/open",
         query={"limit": "1"},
-        token="sample_credential",
+        token=auth_value,
     )
 
     _expect(payload == {"open_issues": 0})
@@ -78,13 +81,14 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
 
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     captured: dict[str, object] = {}
+    auth_value = os.environ.get("QUALITY_GATE_TEST_AUTH", "placeholder-value")
 
     def _fake_request_json_https(**kwargs):
         captured.update(kwargs)
         return [], {"x-hits": "0"}
 
     monkeypatch.setattr(sentry_mod, "request_json_https", _fake_request_json_https)
-    issues, headers = sentry_mod._request_project_issues("my-org", "my-project", "token")
+    issues, headers = sentry_mod._request_project_issues("my-org", "my-project", auth_value)
 
     _expect(issues == [])
 

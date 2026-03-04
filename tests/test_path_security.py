@@ -12,8 +12,7 @@ from env_inspector_core.path_policy import (
 )
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 def test_resolve_scan_root_rejects_null_byte(tmp_path: Path):
     bad = str(tmp_path) + "\x00suffix"

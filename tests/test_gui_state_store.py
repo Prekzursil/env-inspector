@@ -6,8 +6,7 @@ from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import load_ui_state, save_ui_state, sanitize_loaded_state
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

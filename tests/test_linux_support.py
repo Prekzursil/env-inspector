@@ -10,8 +10,7 @@ from env_inspector_core.providers import collect_dotenv_records, collect_linux_r
 from env_inspector_core.service import EnvInspectorService
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 

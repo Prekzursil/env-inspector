@@ -8,8 +8,7 @@ from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
 
 def _expect(condition, message: str = "") -> None:
-    if not condition:
-        raise AssertionError(message)
+    if not condition: raise AssertionError(message)
 
 
 
