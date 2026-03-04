@@ -2,8 +2,9 @@
 
 ## Operating Model
 
-This repository follows an evidence-first, zero-external-API-cost workflow.
-Use GitHub Copilot coding agent and Codex app/IDE/CLI for implementation and review, then verify with deterministic commands before merge.
+This repository follows an evidence-first, zero-external-API-cost workflow. Use
+GitHub Copilot coding agent and Codex app/IDE/CLI for implementation and review,
+then verify with deterministic commands before merge.
 
 ## Risk Policy
 

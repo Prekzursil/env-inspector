@@ -1,6 +1,8 @@
 ---
 name: security-sheriff
-description: Perform security-focused hardening, dependency hygiene, and secret-safety checks.
+description:
+  Perform security-focused hardening, dependency hygiene, and secret-safety
+  checks.
 tools: ["read", "search", "edit", "execute"]
 ---
 

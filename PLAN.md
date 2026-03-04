@@ -2,7 +2,9 @@
 
 ## Summary
 
-Build a robust `CLI core` and keep `Tkinter` as the GUI wrapper so the app can reliably inspect and edit environment variables/tokens across Windows and WSL, including:
+Build a robust `CLI core` and keep `Tkinter` as the GUI wrapper so the app can
+reliably inspect and edit environment variables/tokens across Windows and WSL,
+including:
 
 - Windows process vars, User/Machine registry vars, and PowerShell profile vars
 - WSL `~/.bashrc` and `/etc/environment`
@@ -10,13 +12,15 @@ Build a robust `CLI core` and keep `Tkinter` as the GUI wrapper so the app can r
 - Safe write flows: diff preview, auto backup, rollback, audit log
 - Verified delivery in both source mode and packaged `dist/env-inspector.exe`
 
-This plan also fixes existing path breakages in docs/build/spec (`tools/env-inspector/...` references).
+This plan also fixes existing path breakages in docs/build/spec
+(`tools/env-inspector/...` references).
 
 ## Public Interfaces and Type Changes
 
 ### CLI surface (new stable interface)
 
-Add subcommands in `env_inspector.py` (or a new package entrypoint) with machine-readable JSON output:
+Add subcommands in `env_inspector.py` (or a new package entrypoint) with
+machine-readable JSON output:
 
 1. `list`
 2. `set`
@@ -68,10 +72,13 @@ Add operation result schema:
 
 ### Phase 1: Stabilize current project entry/build paths
 
-1. Update `README.md` paths from `tools/env-inspector/...` to local repo-root paths.
-2. Update `build-windows-exe.ps1` to install/run local files (`requirements-build.txt`, `env_inspector.py`).
+1. Update `README.md` paths from `tools/env-inspector/...` to local repo-root
+   paths.
+2. Update `build-windows-exe.ps1` to install/run local files
+   (`requirements-build.txt`, `env_inspector.py`).
 3. Update `env-inspector.spec` script path to local `env_inspector.py`.
-4. Add a quick validation section in `README.md` with exact commands for source run and build run.
+4. Add a quick validation section in `README.md` with exact commands for source
+   run and build run.
 
 ### Phase 2: Create CLI core architecture
 
@@ -79,7 +86,8 @@ Add operation result schema:
 2. Create provider modules for each source type.
 3. Create writer modules for each writable target.
 4. Add unified command dispatcher for `list/set/remove/export/backup/restore`.
-5. Ensure GUI calls CLI-core functions (direct import or subprocess contract), not ad-hoc inline logic.
+5. Ensure GUI calls CLI-core functions (direct import or subprocess contract),
+   not ad-hoc inline logic.
 
 ### Phase 3: Source providers (read flows)
 
@@ -103,7 +111,8 @@ Add operation result schema:
 3. Store backups in project folder under `./.env-inspector-state/backups`.
 4. Enforce retention: keep last 20 backups per target.
 5. Implement restore command from backup id/path.
-6. Implement audit log in project folder under `./.env-inspector-state/audit.log`.
+6. Implement audit log in project folder under
+   `./.env-inspector-state/audit.log`.
 7. Write masking rules in logs (no raw secret values).
 8. Implement WSL privileged write strategy for `/etc/environment`:
 
@@ -231,10 +240,16 @@ Add operation result schema:
 ## Assumptions and Defaults
 
 - Full functionality target is Windows host with WSL integration.
-- Linux native mode remains secondary and can stay read-only/minimal where Windows APIs are required.
+- Linux native mode remains secondary and can stay read-only/minimal where
+  Windows APIs are required.
 - Secrets are masked by default in UI, logs, and exports.
-- Backups and audit logs are stored in project folder: `./.env-inspector-state/`.
-- `/etc/environment` writes use `wsl -u root` first, then sudo fallback automatically.
-- `.env` files are editable and target file selection is always explicit when ambiguous.
-- Multi-target writes are supported via target picker, with diff preview required before apply.
-- Delivery is complete only after both source mode and EXE mode pass the verification checklist.
+- Backups and audit logs are stored in project folder:
+  `./.env-inspector-state/`.
+- `/etc/environment` writes use `wsl -u root` first, then sudo fallback
+  automatically.
+- `.env` files are editable and target file selection is always explicit when
+  ambiguous.
+- Multi-target writes are supported via target picker, with diff preview
+  required before apply.
+- Delivery is complete only after both source mode and EXE mode pass the
+  verification checklist.

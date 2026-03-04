@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from tests.conftest import ensure
 from typing import Literal
 
 import pytest
+
+from tests.conftest import ensure
 
 import env_inspector_core.providers as providers
 
@@ -35,22 +36,28 @@ class _FakeWinreg:
         self.enum_rows = [("A", "1", 1)]
         self.raise_delete_missing = False
 
-    def OpenKey(self, root, path: str, _zero: int, access: int):
+    def open_key(self, root, path: str, _zero: int, access: int):
         self.open_calls.append((root, path, 0, access))
         return _KeyContext(self)
 
-    def EnumValue(self, _regkey, index: int):
+    def enum_value(self, _regkey, index: int):
         if index >= len(self.enum_rows):
             raise OSError("done")
         return self.enum_rows[index]
 
-    def SetValueEx(self, _regkey, key: str, _zero: int, reg_type: int, value: str) -> None:
+    def set_value_ex(self, _regkey, key: str, _zero: int, reg_type: int, value: str) -> None:
         self.set_calls.append((key, reg_type, value))
 
-    def DeleteValue(self, _regkey, key: str) -> None:
+    def delete_value(self, _regkey, key: str) -> None:
         if self.raise_delete_missing:
             raise FileNotFoundError(key)
         self.delete_calls.append(key)
+
+
+_FakeWinreg.OpenKey = _FakeWinreg.open_key
+_FakeWinreg.EnumValue = _FakeWinreg.enum_value
+_FakeWinreg.SetValueEx = _FakeWinreg.set_value_ex
+_FakeWinreg.DeleteValue = _FakeWinreg.delete_value
 
 
 def test_windows_registry_provider_winreg_guard_raises_when_missing(monkeypatch):
@@ -72,7 +79,7 @@ def test_windows_registry_provider_machine_scope_paths(monkeypatch):
     provider.remove_scope_value(provider.MACHINE_SCOPE, "APP_HOME")
 
     ensure(rows == {"A": "1"})
-    ensure(any((call[3] & fake.KEY_WOW64_64KEY for call in fake.open_calls)))
+    ensure(any(call[3] & fake.KEY_WOW64_64KEY for call in fake.open_calls))
     ensure(fake.set_calls == [("APP_HOME", fake.REG_EXPAND_SZ, "%ProgramFiles%\\EnvInspector")])
     ensure(fake.delete_calls == ["APP_HOME"])
 

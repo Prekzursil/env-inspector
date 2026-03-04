@@ -1,6 +1,7 @@
 # KPI Baseline (Phase 3/4)
 
-This document defines the weekly KPI baseline for AI-assisted engineering operations.
+This document defines the weekly KPI baseline for AI-assisted engineering
+operations.
 
 ## Core metrics
 

@@ -1,6 +1,8 @@
 ---
 name: docs-gardener
-description: Keep docs and operational guides aligned with code behavior and release workflows.
+description:
+  Keep docs and operational guides aligned with code behavior and release
+  workflows.
 tools: ["read", "search", "edit"]
 ---
 

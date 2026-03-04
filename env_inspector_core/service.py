@@ -9,7 +9,7 @@ import subprocess
 import uuid
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Callable
 
 from .constants import (
     DEFAULT_BACKUP_RETENTION,
@@ -161,16 +161,20 @@ class EnvInspectorService:
             distros = [d for d in distros if d.lower() != current]
         return distros
 
+    @staticmethod
+    def _extend_rows_safely(rows: list[EnvRecord], producer: Callable[[], list[EnvRecord]]) -> None:
+        try:
+            rows.extend(producer())
+        except Exception:
+            return
+
     def _collect_host_rows(self, root_path: Path, scan_depth: int) -> list[EnvRecord]:
         rows: list[EnvRecord] = []
         rows.extend(collect_process_records(context=self.runtime_context))
         rows.extend(collect_dotenv_records(root_path, max_depth=scan_depth, context=self.runtime_context))
 
         if self.win_provider is not None:
-            try:
-                rows.extend(build_registry_records(self.win_provider))
-            except Exception:
-                pass
+            self._extend_rows_safely(rows, lambda: build_registry_records(self.win_provider))
 
         if self.runtime_context == "windows":
             rows.extend(collect_powershell_profile_records(self.get_powershell_profile_paths()))
@@ -190,19 +194,25 @@ class EnvInspectorService:
         if not self.wsl.available():
             return rows
 
-        try:
-            exclude_distros: set[str] | None = None
-            if self.runtime_context == "linux" and self.current_wsl_distro:
-                exclude_distros = {self.current_wsl_distro}
-            rows.extend(collect_wsl_records(self.wsl, include_etc=True, exclude_distros=exclude_distros))
-        except Exception:
-            pass
+        exclude_distros: set[str] | None = None
+        if self.runtime_context == "linux" and self.current_wsl_distro:
+            exclude_distros = {self.current_wsl_distro}
+
+        self._extend_rows_safely(
+            rows,
+            lambda: collect_wsl_records(self.wsl, include_etc=True, exclude_distros=exclude_distros),
+        )
 
         if distro and wsl_path:
-            try:
-                rows.extend(collect_wsl_dotenv_records(self.wsl, distro=distro, root_path=wsl_path, max_depth=scan_depth))
-            except Exception:
-                pass
+            self._extend_rows_safely(
+                rows,
+                lambda: collect_wsl_dotenv_records(
+                    self.wsl,
+                    distro=distro,
+                    root_path=wsl_path,
+                    max_depth=scan_depth,
+                ),
+            )
 
         return rows
 
@@ -918,4 +928,5 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
+
 

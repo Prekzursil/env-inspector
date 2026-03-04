@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from tests.conftest import ensure
 from pathlib import Path
+
+import pytest
+
+from tests.conftest import ensure
 
 from env_inspector_gui.controller import EnvInspectorController
 from env_inspector_gui.models import PersistedUiState, _coerce_number
@@ -19,16 +22,22 @@ class _Var:
     def set(self, value) -> None:
         self._value = value
 
-def test_var_get_set_roundtrip():
-    var = _Var("initial")
-    ensure(var.get() == "initial")
-    var.set("updated")
-    ensure(var.get() == "updated")
 
 class _TkVars:
-    StringVar = _Var
-    BooleanVar = _Var
-    IntVar = _Var
+    @staticmethod
+    def _resolve_var(name: str):
+        mapping = {
+            "StringVar": _Var,
+            "BooleanVar": _Var,
+            "IntVar": _Var,
+        }
+        return mapping.get(name)
+
+    def __getattr__(self, name: str):
+        var_type = self._resolve_var(name)
+        if var_type is None:
+            raise AttributeError(name)
+        return var_type
 
 
 class _MessageBox:
@@ -42,6 +51,18 @@ class _MessageBox:
 class _ControllerStub:
     def __init__(self) -> None:
         self.tk = object()
+
+
+def test_var_get_set_roundtrip():
+    var = _Var("initial")
+    ensure(var.get() == "initial")
+    var.set("updated")
+    ensure(var.get() == "updated")
+
+
+def test_tk_vars_unknown_name_raises_attribute_error():
+    with pytest.raises(AttributeError):
+        getattr(_TkVars(), "UnknownVar")
 
 
 def test_view_init_covers_placeholder_assignments(monkeypatch):
@@ -72,7 +93,7 @@ def test_initialize_runtime_state_sets_collections_and_timestamp(tmp_path: Path)
         scan_depth=6,
     )
 
-    EnvInspectorController._initialize_runtime_state(ctrl, _TkVars, boot, tmp_path)
+    EnvInspectorController._initialize_runtime_state(ctrl, _TkVars(), boot, tmp_path)
 
     ensure(ctrl.records_raw == [])
     ensure(ctrl.displayed_rows == [])
@@ -91,8 +112,8 @@ def test_safe_preview_and_apply_handle_expected_exceptions():
 
     ensure(preview is None)
     ensure(applied is None)
-    ensure(any(("preview boom" in msg for _title, msg in ctrl.messagebox.errors)))
-    ensure(any(("apply boom" in msg for _title, msg in ctrl.messagebox.errors)))
+    ensure(any("preview boom" in msg for _title, msg in ctrl.messagebox.errors))
+    ensure(any("apply boom" in msg for _title, msg in ctrl.messagebox.errors))
 
 
 def test_coerce_number_covers_bool_int_float_and_string_paths():
@@ -129,4 +150,3 @@ def test_load_ui_state_handles_from_dict_type_error(tmp_path: Path, monkeypatch)
 
     ensure(isinstance(loaded, PersistedUiState))
     ensure(loaded.sort_column == "name")
-

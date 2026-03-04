@@ -1,6 +1,7 @@
 # Fleet Baseline Lite
 
-This repository baseline package is intended for rollout to additional repos after Wave-1 validation.
+This repository baseline package is intended for rollout to additional repos
+after Wave-1 validation.
 
 ## Included components
 
@@ -15,4 +16,5 @@ This repository baseline package is intended for rollout to additional repos aft
 
 ## Rollout rule
 
-Only apply this package to non-Wave repositories after Wave-1 KPIs remain stable for at least two weekly cycles.
+Only apply this package to non-Wave repositories after Wave-1 KPIs remain stable
+for at least two weekly cycles.

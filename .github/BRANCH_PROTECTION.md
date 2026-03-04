@@ -2,7 +2,8 @@
 
 ## Overview
 
-This document defines the branch protection requirements for the `env-inspector` repository to ensure code quality, security, and proper review processes.
+This document defines the branch protection requirements for the `env-inspector`
+repository to ensure code quality, security, and proper review processes.
 
 ## Main Branch Protection
 
@@ -38,7 +39,8 @@ The following checks MUST pass before merge:
 
 Before requesting merge, ensure:
 
-1. ✅ PR description follows template (Summary, Risk, Evidence, Rollback, Scope Guard)
+1. ✅ PR description follows template (Summary, Risk, Evidence, Rollback, Scope
+   Guard)
 2. ✅ At least 1 human approval obtained
 3. ✅ All required status checks passing
 4. ✅ `make verify` executed and results documented in PR
@@ -74,7 +76,8 @@ For agent-driven work:
 
 ## Escaped Regression Tracking
 
-**Definition:** A regression is "escaped" if it reaches production/main and is discovered post-merge.
+**Definition:** A regression is "escaped" if it reaches production/main and is
+discovered post-merge.
 
 **Tracking Signal:**
 
@@ -86,8 +89,7 @@ For agent-driven work:
 - Weekly via KPI digest
 - Immediate notification for critical regressions
 
-**Root Cause Analysis:**
-When escaped regressions occur:
+**Root Cause Analysis:** When escaped regressions occur:
 
 1. Label the issue `bug` + `escaped-regression`
 2. Link to the causative PR
@@ -129,7 +131,8 @@ To verify branch protection is correctly configured:
 
 ```bash
 # Check current protection status
-gh api repos/:owner/:repo/branches/main/protection | jq '.required_pull_request_reviews, .required_status_checks'
+gh api repos/:owner/:repo/branches/main/protection \
+  | jq '.required_pull_request_reviews, .required_status_checks'
 ```
 
 Expected output should show:

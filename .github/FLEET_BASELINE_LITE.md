@@ -2,7 +2,9 @@
 
 ## Overview
 
-This checklist documents the reusable baseline components that can be exported and adapted for other repositories following the evidence-first, zero-external-API-cost workflow model.
+This checklist documents the reusable baseline components that can be exported
+and adapted for other repositories following the evidence-first,
+zero-external-API-cost workflow model.
 
 ## Core Components
 
@@ -281,9 +283,11 @@ After export and customization:
 ## Maintenance
 
 - **Review Frequency:** After each phase rollout or significant workflow change
-- **Version Control:** Tag baseline exports with semantic version (e.g., `baseline-lite-v1.0`)
+- **Version Control:** Tag baseline exports with semantic version (e.g.,
+  `baseline-lite-v1.0`)
 - **Updates:** Document changes in repository CHANGELOG.md
-- **Feedback Loop:** Collect improvement suggestions from new repo implementations
+- **Feedback Loop:** Collect improvement suggestions from new repo
+  implementations
 
 ---
 

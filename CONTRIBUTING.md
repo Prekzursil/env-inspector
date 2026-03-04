@@ -6,7 +6,8 @@ Thanks for contributing to Env Inspector.
 
 - Python 3.10+ (`python3` on Linux/macOS, `py -3` or `python` on Windows).
 - Git.
-- Optional: PyInstaller for local EXE builds (installed via `requirements-build.txt`).
+- Optional: PyInstaller for local EXE builds (installed via
+  `requirements-build.txt`).
 
 ## Local Development
 
@@ -57,7 +58,8 @@ dist/env-inspector.exe
 
 - Keep changes scoped and focused.
 - Include tests for behavioral changes.
-- Update docs (`README.md` and `CHANGELOG.md`) when behavior or interfaces change.
+- Update docs (`README.md` and `CHANGELOG.md`) when behavior or interfaces
+  change.
 - Avoid committing runtime state (`.env-inspector-state/`) or local caches.
 
 ## Versioning and Releases

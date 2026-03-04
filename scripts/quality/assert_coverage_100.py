@@ -9,12 +9,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
-
-from security_helpers import safe_input_file_path_in_workspace, safe_output_path_in_workspace
+try:
+    from ._security_imports import safe_input_file_path_in_workspace, safe_output_path_in_workspace
+except ImportError:  # pragma: no cover - direct script execution
+    from _security_imports import safe_input_file_path_in_workspace, safe_output_path_in_workspace
 
 
 @dataclass

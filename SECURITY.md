@@ -4,10 +4,10 @@
 
 Security fixes are applied to the latest release series.
 
-| Version | Supported |
-| --- | --- |
-| Latest | Yes |
-| Older releases | No |
+| Version        | Supported |
+| -------------- | --------- |
+| Latest         | Yes       |
+| Older releases | No        |
 
 ## Reporting a Vulnerability
 
@@ -24,4 +24,5 @@ Preferred reporting path:
 - Do not commit `.env-inspector-state/` data.
 - Do not commit `.env` files or credentials.
 - Keep token-like values masked in shared screenshots/logs.
-- If credentials are exposed, rotate them immediately and report exposure context.
+- If credentials are exposed, rotate them immediately and report exposure
+  context.

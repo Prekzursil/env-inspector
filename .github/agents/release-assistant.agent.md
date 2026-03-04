@@ -1,6 +1,7 @@
 ---
 name: release-assistant
-description: Prepare release notes, artifact checks, and rollback-ready release packets.
+description:
+  Prepare release notes, artifact checks, and rollback-ready release packets.
 tools: ["read", "search", "edit", "execute"]
 ---
 

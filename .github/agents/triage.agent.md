@@ -1,6 +1,8 @@
 ---
 name: triage
-description: Turn issues into decision-complete implementation packets with explicit risk and evidence requirements.
+description:
+  Turn issues into decision-complete implementation packets with explicit risk
+  and evidence requirements.
 tools: ["read", "search"]
 ---
 

@@ -22,7 +22,8 @@
 - Context: `codecov/patch`
 - State: `failure`
 - Description: `94.59% of diff hit (target 100.00%)`
-- Target URL: `https://app.codecov.io/gh/Prekzursil/env-inspector/commit/82e458440dc4e76a0dfdff40d6ee49fff94d156f`
+- Target URL:
+  `https://app.codecov.io/gh/Prekzursil/env-inspector/commit/82e458440dc4e76a0dfdff40d6ee49fff94d156f`
 
 ## Local Baseline Diff-Cover Evidence (Pre-fix)
 
@@ -37,5 +38,6 @@ Coverage: 94%
 
 ## Notes
 
-- Open code-scanning alerts on `refs/heads/main` were already `0` at baseline capture.
+- Open code-scanning alerts on `refs/heads/main` were already `0` at baseline
+  capture.
 - Required branch-protection checks on `main` were green at baseline capture.

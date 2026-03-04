@@ -7,15 +7,12 @@ import os
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
-
-from security_helpers import request_json_https, safe_output_path_in_workspace
+try:
+    from ._security_imports import request_json_https, safe_output_path_in_workspace
+except ImportError:  # pragma: no cover - direct script execution
+    from _security_imports import request_json_https, safe_output_path_in_workspace
 
 SONAR_HOST = "sonarcloud.io"
 
