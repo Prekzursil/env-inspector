@@ -27,8 +27,9 @@ def _legacy_print_secrets(root: str | Path) -> int:
         print(f"Invalid --root: {exc}", file=sys.stderr)
         return 2
 
+    rooted = resolve_scan_root(safe_root)
     svc = EnvInspectorService()
-    rows = svc.list_records(root=safe_root, include_raw_secrets=True)
+    rows = svc.list_records(root=rooted, include_raw_secrets=True)
     for row in rows:
         if row.get("is_secret"):
             print(f"{row.get('source_type')}:{row.get('source_id')}\t{row.get('name')}")

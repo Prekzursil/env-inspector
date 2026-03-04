@@ -34,19 +34,26 @@ def test_classify_scan_vulns_and_runtime_and_quota():
 
 
 def test_decide_policy_paths():
-    quota_override = decide_policy(oss_outcome="quota_exhausted", code_outcome="vulns_found")
-    assert quota_override["decision"] == "pass"
-    assert quota_override["decision_reason"] == "quota_exhausted_override"
-    assert quota_override["findings_detected"] is True
+    findings_and_quota = decide_policy(oss_outcome="quota_exhausted", code_outcome="vulns_found")
+    assert findings_and_quota["decision"] == "fail"
+    assert findings_and_quota["decision_reason"] == "vulnerabilities_detected"
+    assert findings_and_quota["findings_detected"] is True
+    assert findings_and_quota["manual_retest_required"] is True
 
-    vuln_fail = decide_policy(oss_outcome="vulns_found", code_outcome="clean")
-    assert vuln_fail["decision"] == "fail"
-    assert vuln_fail["decision_reason"] == "vulnerabilities_detected"
+    quota_fail = decide_policy(oss_outcome="quota_exhausted", code_outcome="clean")
+    assert quota_fail["decision"] == "fail"
+    assert quota_fail["decision_reason"] == "quota_or_inconclusive_requires_manual_retest"
+    assert quota_fail["manual_retest_required"] is True
 
     runtime_fail = decide_policy(oss_outcome="runtime_error", code_outcome="clean")
     assert runtime_fail["decision"] == "fail"
-    assert runtime_fail["decision_reason"] == "runtime_error_without_quota"
+    assert runtime_fail["decision_reason"] == "runtime_error"
 
-    clean_pass = decide_policy(oss_outcome="clean", code_outcome="skipped")
+    clean_pass = decide_policy(oss_outcome="clean", code_outcome="clean")
     assert clean_pass["decision"] == "pass"
-    assert clean_pass["decision_reason"] == "clean_or_skipped"
+    assert clean_pass["decision_reason"] == "clean"
+
+    skipped_fail = decide_policy(oss_outcome="skipped", code_outcome="clean")
+    assert skipped_fail["decision"] == "fail"
+    assert skipped_fail["decision_reason"] == "inconclusive_non_clean_outcome"
+    assert skipped_fail["manual_retest_required"] is True

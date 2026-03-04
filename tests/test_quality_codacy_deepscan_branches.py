@@ -12,6 +12,10 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 
 
+def _raise(exc: Exception):
+    raise exc
+
+
 def _case() -> unittest.TestCase:
     return unittest.TestCase()
 
@@ -149,7 +153,7 @@ def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
 
 
 def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
-    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(_http_error(404)))
+    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: _raise(_http_error(404)))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
@@ -163,7 +167,7 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
     case.assertEqual(findings, [])
     case.assertIsInstance(error, urllib.error.HTTPError)
 
-    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(_http_error(500)))
+    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: _raise(_http_error(500)))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
@@ -177,7 +181,7 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
     case.assertIn("HTTP 500", findings[0])
     case.assertIsInstance(error, urllib.error.HTTPError)
 
-    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(ValueError("bad")))
+    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: _raise(ValueError("bad")))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
@@ -250,7 +254,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
-        lambda **_kwargs: (_ for _ in ()).throw(urllib.error.URLError("network")),
+        lambda **_kwargs: _raise(urllib.error.URLError("network")),
     )
     open_issues = deepscan_mod._fetch_open_issues(
         host="deepscan.io",

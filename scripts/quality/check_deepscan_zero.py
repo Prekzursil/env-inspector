@@ -74,7 +74,7 @@ def _fetch_open_issues(
 ) -> int | None:
     try:
         payload = _request_json(host=host, path=path, query=query, token=token)
-    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError, TypeError) as exc:  # pragma: no cover - network/runtime surface
+    except (urllib.error.URLError, RuntimeError, ValueError, TypeError) as exc:  # pragma: no cover - network/runtime surface
         findings.append(f"DeepScan API request failed: {exc}")
         return None
 

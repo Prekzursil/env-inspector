@@ -86,16 +86,16 @@ def test_request_json_https_http_error(monkeypatch):
 
     class _Connection:
         def __init__(self, host: str, timeout: int):
-            pass
+            return None
 
         def request(self, method, path, body=None, headers=None):
-            pass
+            return None
 
         def getresponse(self):
             return _Response()
 
         def close(self):
-            pass
+            return None
 
     monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
 

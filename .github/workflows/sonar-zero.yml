@@ -15,20 +15,20 @@ jobs:
     name: Sonar Zero
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: Prekzursil_env-inspector
+      CHECK_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
-      - name: Assert SonarCloud PR status context is green
+      - name: Assert Sonar provider open issue count is zero
+        shell: bash
         run: |
-          python3 scripts/quality/check_required_checks.py \
-            --repo "${GITHUB_REPOSITORY}" \
-            --sha "${CHECK_SHA}" \
-            --required-context "SonarCloud Code Analysis" \
-            --timeout-seconds 1200 \
-            --poll-seconds 20 \
-            --out-json "sonar-zero/sonar.json" \
-            --out-md "sonar-zero/sonar.md"
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 scripts/quality/check_sonar_zero.py                   --project-key "${SONAR_PROJECT_KEY}"                   --pull-request "${{ github.event.pull_request.number }}"                   --out-json "sonar-zero/sonar.json"                   --out-md "sonar-zero/sonar.md"
+          else
+            python3 scripts/quality/check_sonar_zero.py                   --project-key "${SONAR_PROJECT_KEY}"                   --branch "${CHECK_BRANCH}"                   --out-json "sonar-zero/sonar.json"                   --out-md "sonar-zero/sonar.md"
+          fi
       - name: Upload Sonar artifacts
         if: always()
         uses: actions/upload-artifact@v4

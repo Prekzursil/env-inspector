@@ -29,6 +29,7 @@ jobs:
       - name: Run quality secrets preflight
         run: |
           python3 scripts/quality/check_quality_secrets.py \
+            --strict \
             --out-json quality-secrets/secrets.json \
             --out-md quality-secrets/secrets.md
       - name: Upload secrets preflight artifact

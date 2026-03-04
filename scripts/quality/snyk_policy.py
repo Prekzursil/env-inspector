@@ -12,8 +12,8 @@ _QUOTA_PATTERNS = (
 
 _FINDING_PATTERNS = (
     re.compile(r"^\s*✗\s+\[", re.MULTILINE),
-    re.compile(r"open issues:\s*([0-9]+)", re.IGNORECASE),
-    re.compile(r"total issues:\s*([0-9]+)", re.IGNORECASE),
+    re.compile(r"open issues:\s*(\d+)", re.IGNORECASE),
+    re.compile(r"total issues:\s*(\d+)", re.IGNORECASE),
 )
 
 
@@ -54,19 +54,25 @@ def decide_policy(*, oss_outcome: SnykOutcome, code_outcome: SnykOutcome) -> dic
     quota_detected = "quota_exhausted" in outcomes
     findings_detected = "vulns_found" in outcomes
     runtime_error_detected = "runtime_error" in outcomes
+    clean_only = outcomes.issubset({"clean"})
 
-    if quota_detected:
-        decision = "pass"
-        decision_reason = "quota_exhausted_override"
-    elif findings_detected:
+    if findings_detected:
         decision = "fail"
         decision_reason = "vulnerabilities_detected"
+    elif quota_detected:
+        decision = "fail"
+        decision_reason = "quota_or_inconclusive_requires_manual_retest"
     elif runtime_error_detected:
         decision = "fail"
-        decision_reason = "runtime_error_without_quota"
-    else:
+        decision_reason = "runtime_error"
+    elif clean_only:
         decision = "pass"
-        decision_reason = "clean_or_skipped"
+        decision_reason = "clean"
+    else:
+        decision = "fail"
+        decision_reason = "inconclusive_non_clean_outcome"
+
+    manual_retest_required = quota_detected or decision_reason.startswith("inconclusive")
 
     return {
         "quota_detected": quota_detected,
@@ -74,4 +80,5 @@ def decide_policy(*, oss_outcome: SnykOutcome, code_outcome: SnykOutcome) -> dic
         "runtime_error_detected": runtime_error_detected,
         "decision": decision,
         "decision_reason": decision_reason,
+        "manual_retest_required": manual_retest_required,
     }

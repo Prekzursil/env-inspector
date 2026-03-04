@@ -17,6 +17,7 @@ jobs:
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       REPO_NAME: ${{ github.event.repository.name }}
+      SNYK_PROJECT_URL: ${{ vars.SNYK_PROJECT_URL }}
     steps:
       - uses: actions/checkout@v6
 
@@ -214,6 +215,14 @@ jobs:
           )
           decision = decide_policy(oss_outcome=oss_outcome, code_outcome=code_outcome)
 
+          project_url = os.getenv('SNYK_PROJECT_URL', '').strip() or 'https://app.snyk.io/org/prekzursil1993/projects'
+          manual_retest_required = bool(decision.get('manual_retest_required'))
+          manual_retest_instruction = (
+              'Open the Snyk project URL, click Retest now, and rerun the Snyk Zero workflow.'
+              if manual_retest_required
+              else ''
+          )
+
           payload = {
               'has_token': has_token,
               'oss_mode': oss_mode,
@@ -228,12 +237,20 @@ jobs:
               'runtime_error_detected': decision['runtime_error_detected'],
               'decision': decision['decision'],
               'decision_reason': decision['decision_reason'],
+              'manual_retest_required': manual_retest_required,
+              'manual_retest_instruction': manual_retest_instruction,
+              'project_url': project_url,
           }
 
           out = Path('artifacts/snyk-oss-mode.json')
           out.parent.mkdir(parents=True, exist_ok=True)
           out.write_text(json.dumps(payload, indent=2) + '\n')
           print(json.dumps(payload, indent=2))
+
+          if payload['manual_retest_required']:
+              print('Manual action required for Snyk Zero gate:')
+              print(f"- Project URL: {payload['project_url']}")
+              print('- Action: click Retest now in Snyk, then rerun this workflow.')
 
           if payload['decision'] != 'pass':
               raise SystemExit(1)
