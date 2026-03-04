@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import absolute_import, division, annotations
 
 from pathlib import Path
 
@@ -274,10 +274,12 @@ def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path
         def list_scope(self, scope: str):
             return {"A": "1"}
 
-        def set_scope_value(self, scope: str, key: str, value: str):
+        @staticmethod
+        def set_scope_value(scope: str, key: str, value: str):
             return None
 
-        def remove_scope_value(self, scope: str, key: str):
+        @staticmethod
+        def remove_scope_value(scope: str, key: str):
             return None
 
     svc.win_provider = _FakeProvider()  # type: ignore[assignment]

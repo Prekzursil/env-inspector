@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from typing import Dict, List
+from typing import List
 from email.message import Message
 import secrets
 import sys
