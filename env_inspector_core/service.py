@@ -7,7 +7,7 @@ import json
 import importlib
 import os
 import uuid
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple, Type
 
 from .constants import (
@@ -55,6 +55,12 @@ from .providers import (
 from .resolver import resolve_effective_value
 from .secrets import looks_secret, mask_value
 from .storage import AuditLogger, BackupManager
+from .wsl_targets import (
+    parse_wsl_dotenv_target,
+    resolve_wsl_target,
+    validate_wsl_distro_name,
+    validate_wsl_dotenv_path,
+)
 
 subprocess = importlib.import_module("sub" + "process")
 
@@ -446,50 +452,27 @@ class EnvInspectorService:
 
     @staticmethod
     def _validate_wsl_distro_name(raw: str) -> str:
-        distro = (raw or "").strip()
-        if not distro or ":" in distro or "\x00" in distro:
-            raise RuntimeError(f"Unsupported WSL distro name: {raw!r}")
-        return distro
+        return validate_wsl_distro_name(raw)
 
     @staticmethod
     def _validate_wsl_dotenv_path(raw: str) -> str:
-        candidate = (raw or "").strip()
-        if not candidate or "\x00" in candidate:
-            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
-        path = PurePosixPath(candidate)
-        if ".." in path.parts or not str(path).startswith("/"):
-            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
-        if path.name != ".env" and not path.name.startswith(".env."):
-            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
-        return str(path)
+        return validate_wsl_dotenv_path(raw, path_error=WSL_DOTENV_PATH_ERROR)
 
     def _parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
-        raw = target[len(WSL_DOTENV_TARGET_PREFIX) :]
-        try:
-            distro, path = raw.split(":", 1)
-        except ValueError as exc:
-            raise RuntimeError(f"Unsupported WSL target: {target}") from exc
-        return self._validate_wsl_distro_name(distro), self._validate_wsl_dotenv_path(path)
+        return parse_wsl_dotenv_target(
+            target,
+            prefix=WSL_DOTENV_TARGET_PREFIX,
+            path_error=WSL_DOTENV_PATH_ERROR,
+        )
 
     def _resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
-        if target.startswith(WSL_DOTENV_TARGET_PREFIX):
-            distro, path = self._parse_wsl_dotenv_target(target)
-            return distro, path, "key_value", False
+        return resolve_wsl_target(
+            target,
+            prefix=WSL_DOTENV_TARGET_PREFIX,
+            etc_environment_path=self._LINUX_ETC_ENV_PATH,
+            path_error=WSL_DOTENV_PATH_ERROR,
+        )
 
-        if not target.startswith("wsl:"):
-            raise RuntimeError(f"Unsupported WSL target: {target}")
-
-        parts = target.split(":", 2)
-        if len(parts) != 3:
-            raise RuntimeError(f"Unsupported WSL target: {target}")
-
-        _prefix, distro, suffix = parts
-        distro_name = self._validate_wsl_distro_name(distro)
-        if suffix == "bashrc":
-            return distro_name, "~/.bashrc", "export", False
-        if suffix == "etc_environment":
-            return distro_name, self._LINUX_ETC_ENV_PATH, "key_value", True
-        raise RuntimeError(f"Unsupported WSL target: {target}")
 
     def _update_wsl_file(
         self,
