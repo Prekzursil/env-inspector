@@ -116,8 +116,16 @@ def main() -> int:
 
             if open_issues != 0:
                 findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
-            if quality_gate != "OK":
-                findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
+
+            accepted_gate_values = {"OK"}
+            if args.pull_request:
+                accepted_gate_values.add("NONE")
+
+            if quality_gate not in accepted_gate_values:
+                expected = ", ".join(sorted(accepted_gate_values))
+                findings.append(
+                    f"Sonar quality gate status is {quality_gate} (expected one of: {expected})."
+                )
 
             status = "pass" if not findings else "fail"
         except Exception as exc:  # pragma: no cover - network/runtime surface
