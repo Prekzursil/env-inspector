@@ -1,4 +1,4 @@
-from __future__ import annotations, absolute_import, division
+from __future__ import annotations
 
 import re
 
@@ -13,7 +13,8 @@ _SECRET_MARKERS = (
     "pat",
     "auth",
 )
-GITHUB_TOKEN_RE = re.compile(r"^(gh[pousr]_\w{20,}|github_pat_\w{20,})$")
+GITHUB_SHORT_TOKEN_RE = re.compile(r"^gh[pousr]_\w{20,}$")
+GITHUB_PAT_TOKEN_RE = re.compile(r"^github_pat_\w{20,}$")
 BASE64ISH_RE = re.compile(r"^[\w+/=.-]{32,}$")
 
 
@@ -40,7 +41,7 @@ def looks_secret(name: str, value: str) -> bool:
         return True
 
     candidate = value.strip()
-    if GITHUB_TOKEN_RE.match(candidate):
+    if GITHUB_SHORT_TOKEN_RE.match(candidate) or GITHUB_PAT_TOKEN_RE.match(candidate):
         return True
 
     return _is_base64_secret(candidate)

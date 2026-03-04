@@ -3,17 +3,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
-
-from security_helpers import request_json_https, safe_output_path_in_workspace, split_validated_https_url
+try:
+    from ._security_imports import request_json_https, safe_output_path_in_workspace, split_validated_https_url
+except ImportError:  # pragma: no cover - direct script execution
+    from _security_imports import request_json_https, safe_output_path_in_workspace, split_validated_https_url
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
@@ -27,19 +25,18 @@ def _parse_args() -> argparse.Namespace:
 
 
 def extract_total_open(payload: Any) -> int | None:
-    if isinstance(payload, dict):
-        for key, value in payload.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
-                return int(value)
-        for nested in payload.values():
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
-    elif isinstance(payload, list):
-        for nested in payload:
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
+    stack: list[Any] = [payload]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            for key in TOTAL_KEYS:
+                value = node.get(key)
+                if isinstance(value, (int, float)):
+                    return int(value)
+            stack.extend(node.values())
+            continue
+        if isinstance(node, list):
+            stack.extend(node)
     return None
 
 
@@ -51,13 +48,58 @@ def _request_json(*, host: str, path: str, query: dict[str, str], token: str) ->
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
-            "User-Agent": "reframe-deepscan-zero-gate",
+            "User-Agent": "env-inspector-deepscan-zero-gate",
         },
         method="GET",
     )
     if not isinstance(payload, dict):
         raise RuntimeError("Unexpected DeepScan response payload.")
     return payload
+
+
+def _read_runtime_inputs(args: argparse.Namespace) -> tuple[str, str, list[str]]:
+    token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
+    open_issues_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
+    findings: list[str] = []
+    if not token:
+        findings.append("DEEPSCAN_API_TOKEN is missing.")
+    if not open_issues_url:
+        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
+    return token, open_issues_url, findings
+
+
+def _parse_open_issues_url(open_issues_url: str, findings: list[str]) -> tuple[str, str, dict[str, str]] | None:
+    try:
+        return split_validated_https_url(
+            open_issues_url,
+            allowed_host_suffixes={"deepscan.io"},
+        )
+    except ValueError as exc:
+        findings.append(str(exc))
+        return None
+
+
+def _resolve_open_issue_count(
+    *,
+    host: str,
+    path: str,
+    query: dict[str, str],
+    token: str,
+    findings: list[str],
+) -> int | None:
+    try:
+        payload = _request_json(host=host, path=path, query=query, token=token)
+    except Exception as exc:  # pragma: no cover - network/runtime surface
+        findings.append(f"DeepScan API request failed: {exc}")
+        return None
+
+    open_issues = extract_total_open(payload)
+    if open_issues is None:
+        findings.append("DeepScan response did not include a parseable total issue count.")
+        return None
+    if open_issues != 0:
+        findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
+    return open_issues
 
 
 def _render_md(payload: dict) -> str:
@@ -80,42 +122,18 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
-    token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
-    open_issues_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
+    token, open_issues_url, findings = _read_runtime_inputs(args)
 
-    findings: list[str] = []
     open_issues: int | None = None
-
-    if not token:
-        findings.append("DEEPSCAN_API_TOKEN is missing.")
-    if not open_issues_url:
-        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
-    else:
-        try:
-            host, path, query = split_validated_https_url(
-                open_issues_url,
-                allowed_host_suffixes={"deepscan.io"},
-            )
-        except ValueError as exc:
-            findings.append(str(exc))
-
-    status = "fail"
+    parsed_url: tuple[str, str, dict[str, str]] | None = None
     if not findings:
-        try:
-            payload = _request_json(host=host, path=path, query=query, token=token)
-            open_issues = extract_total_open(payload)
-            if open_issues is None:
-                findings.append("DeepScan response did not include a parseable total issue count.")
-            elif open_issues != 0:
-                findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
-            status = "pass" if not findings else "fail"
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            findings.append(f"DeepScan API request failed: {exc}")
-            status = "fail"
+        parsed_url = _parse_open_issues_url(open_issues_url, findings)
+    if parsed_url is not None and not findings:
+        host, path, query = parsed_url
+        open_issues = _resolve_open_issue_count(host=host, path=path, query=query, token=token, findings=findings)
 
+    status = "pass" if not findings else "fail"
     payload = {
         "status": status,
         "open_issues": open_issues,

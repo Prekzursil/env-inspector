@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
-ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
-ASSIGN_LINE_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
-POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE)
+ENV_KEY_RE = re.compile(r"^[A-Za-z_]\w*$")
+EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_]\w*)=(.*)$")
+ASSIGN_LINE_RE = re.compile(r"^\s*([A-Za-z_]\w*)=(.*)$")
+POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:([A-Za-z_]\w*)\s*=", re.IGNORECASE)
 
 
 def validate_env_key(key: str) -> None:
     if not key:
         raise ValueError("Environment key cannot be empty.")
     if not ENV_KEY_RE.match(key):
-        raise ValueError("Invalid key format. Use [A-Za-z_][A-Za-z0-9_]*.")
+        raise ValueError("Invalid key format. Use [A-Za-z_]\\w*.")
 
 
 def validate_env_value(value: str) -> None:
@@ -29,6 +30,71 @@ def strip_outer_quotes(value: str) -> str:
 
 def shell_single_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+def _render_upsert(lines: list[str], had_trailing_newline: bool) -> str:
+    text = "\n".join(lines)
+    if had_trailing_newline or lines:
+        text += "\n"
+    return text
+
+
+def _render_remove(lines: list[str], had_trailing_newline: bool) -> str:
+    text = "\n".join(lines)
+    if had_trailing_newline and lines:
+        text += "\n"
+    return text
+
+
+def _append_with_optional_blank(lines: list[str], new_line: str) -> None:
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.append(new_line)
+
+
+def _replace_first_match(
+    lines: list[str],
+    *,
+    replacement: str,
+    matcher: Callable[[str], bool],
+) -> tuple[list[str], bool]:
+    out: list[str] = []
+    replaced = False
+    for line in lines:
+        if matcher(line):
+            if not replaced:
+                out.append(replacement)
+                replaced = True
+            continue
+        out.append(line)
+    return out, replaced
+
+
+def _matches_export_key(line: str, key: str) -> bool:
+    match = EXPORT_LINE_RE.match(line)
+    return bool(match and match.group(1) == key)
+
+
+def _matches_assign_key(line: str, key: str) -> bool:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return False
+    match = ASSIGN_LINE_RE.match(stripped)
+    return bool(match and match.group(1) == key)
+
+
+def _line_assigns_key(line: str, key: str) -> bool:
+    stripped = line.strip()
+    assign_match = ASSIGN_LINE_RE.match(stripped)
+    if assign_match and assign_match.group(1) == key:
+        return True
+    export_match = EXPORT_LINE_RE.match(stripped)
+    return bool(export_match and export_match.group(1) == key)
+
+
+def _matches_powershell_key(line: str, key: str) -> bool:
+    match = POWERSHELL_ENV_RE.match(line)
+    return bool(match and match.group(1).lower() == key.lower())
 
 
 def parse_dotenv_text(text: str) -> list[tuple[str, str]]:
@@ -80,148 +146,50 @@ def upsert_export(content: str, key: str, value: str) -> str:
     validate_env_value(value)
     export_line = f"export {key}={shell_single_quote(value)}"
     lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    replaced = False
-    for line in lines:
-        match = EXPORT_LINE_RE.match(line)
-        if match and match.group(1) == key:
-            if not replaced:
-                out.append(export_line)
-                replaced = True
-            continue
-        out.append(line)
-
+    out, replaced = _replace_first_match(lines, replacement=export_line, matcher=lambda line: _matches_export_key(line, key))
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(export_line)
-
-    text = "\n".join(out)
-    if had_trailing_newline or out:
-        text += "\n"
-    return text
+        _append_with_optional_blank(out, export_line)
+    return _render_upsert(out, content.endswith("\n"))
 
 
 def remove_export(content: str, key: str) -> str:
     validate_env_key(key)
     lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    for line in lines:
-        match = EXPORT_LINE_RE.match(line)
-        if match and match.group(1) == key:
-            continue
-        out.append(line)
-
-    text = "\n".join(out)
-    if had_trailing_newline and out:
-        text += "\n"
-    return text
+    out = [line for line in lines if not _matches_export_key(line, key)]
+    return _render_remove(out, content.endswith("\n"))
 
 
 def upsert_key_value(content: str, key: str, value: str, *, quote: bool = False) -> str:
     validate_env_key(key)
     validate_env_value(value)
-    new_value = shell_single_quote(value) if quote else value
-    line_out = f"{key}={new_value}"
+    line_out = f"{key}={shell_single_quote(value) if quote else value}"
     lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    replaced = False
-    for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            out.append(line)
-            continue
-        match = ASSIGN_LINE_RE.match(stripped)
-        if match and match.group(1) == key:
-            if not replaced:
-                out.append(line_out)
-                replaced = True
-            continue
-        out.append(line)
-
+    out, replaced = _replace_first_match(lines, replacement=line_out, matcher=lambda line: _matches_assign_key(line, key))
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line_out)
-
-    text = "\n".join(out)
-    if had_trailing_newline or out:
-        text += "\n"
-    return text
+        _append_with_optional_blank(out, line_out)
+    return _render_upsert(out, content.endswith("\n"))
 
 
 def remove_key_value(content: str, key: str) -> str:
     validate_env_key(key)
     lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-    out: list[str] = []
-    for line in lines:
-        stripped = line.strip()
-        match = ASSIGN_LINE_RE.match(stripped)
-        if match and match.group(1) == key:
-            continue
-        if EXPORT_LINE_RE.match(stripped):
-            m2 = EXPORT_LINE_RE.match(stripped)
-            if m2 and m2.group(1) == key:
-                continue
-        out.append(line)
-
-    text = "\n".join(out)
-    if had_trailing_newline and out:
-        text += "\n"
-    return text
+    out = [line for line in lines if not _line_assigns_key(line, key)]
+    return _render_remove(out, content.endswith("\n"))
 
 
 def upsert_powershell_env(content: str, key: str, value: str) -> str:
     validate_env_key(key)
     validate_env_value(value)
-    escaped = value.replace("'", "''")
-    line_out = f"$env:{key} = '{escaped}'"
-
+    line_out = f"$env:{key} = '{value.replace("'", "''")}'"
     lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    replaced = False
-    for line in lines:
-        match = POWERSHELL_ENV_RE.match(line)
-        if match and match.group(1).lower() == key.lower():
-            if not replaced:
-                out.append(line_out)
-                replaced = True
-            continue
-        out.append(line)
-
+    out, replaced = _replace_first_match(lines, replacement=line_out, matcher=lambda line: _matches_powershell_key(line, key))
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line_out)
-
-    text = "\n".join(out)
-    if had_trailing_newline or out:
-        text += "\n"
-    return text
+        _append_with_optional_blank(out, line_out)
+    return _render_upsert(out, content.endswith("\n"))
 
 
 def remove_powershell_env(content: str, key: str) -> str:
     validate_env_key(key)
     lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    for line in lines:
-        match = POWERSHELL_ENV_RE.match(line)
-        if match and match.group(1).lower() == key.lower():
-            continue
-        out.append(line)
-
-    text = "\n".join(out)
-    if had_trailing_newline and out:
-        text += "\n"
-    return text
+    out = [line for line in lines if not _matches_powershell_key(line, key)]
+    return _render_remove(out, content.endswith("\n"))

@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
+from __future__ import annotations
 
 import argparse
 import base64
 import json
+import os
 import sys
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
+try:
+    from ._security_imports import normalize_https_url, request_json_https, safe_output_path_in_workspace
+except ImportError:  # pragma: no cover - direct script execution
+    from _security_imports import normalize_https_url, request_json_https, safe_output_path_in_workspace
 
-from security_helpers import normalize_https_url, safe_output_path_in_workspace
-
-SONAR_API_BASE = "https://sonarcloud.io"
+SONAR_API_HOST = "sonarcloud.io"
+SONAR_API_BASE = f"https://{SONAR_API_HOST}"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -39,19 +36,21 @@ def _auth_header(token: str) -> str:
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
-def _request_json(url: str, auth_header: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sonarcloud.io"}).rstrip("/")
-    request = urllib.request.Request(
-        safe_url,
+def _request_json(*, path: str, query: dict[str, str], auth_header: str) -> dict[str, Any]:
+    payload, _headers = request_json_https(
+        host=SONAR_API_HOST,
+        path=path,
+        query=query,
         headers={
             "Accept": "application/json",
             "Authorization": auth_header,
-            "User-Agent": "reframe-sonar-zero-gate",
+            "User-Agent": "env-inspector-sonar-zero-gate",
         },
         method="GET",
     )
-    with urllib.request.urlopen(request, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Sonar response payload.")
+    return payload
 
 
 def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
@@ -91,31 +90,30 @@ def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) ->
 
 def _fetch_sonar_status(
     *,
-    api_base: str,
     auth_header: str,
     project_key: str,
     branch: str,
     pull_request: str,
 ) -> tuple[int, str, int]:
-    issues_url = (
-        f"{api_base}/api/issues/search?"
-        f"{urllib.parse.urlencode(_build_issue_query(project_key, branch=branch, pull_request=pull_request))}"
+    issues_payload = _request_json(
+        path="/api/issues/search",
+        query=_build_issue_query(project_key, branch=branch, pull_request=pull_request),
+        auth_header=auth_header,
     )
-    issues_payload = _request_json(issues_url, auth_header)
     open_issues = int((issues_payload.get("paging") or {}).get("total") or 0)
 
-    gate_url = (
-        f"{api_base}/api/qualitygates/project_status?"
-        f"{urllib.parse.urlencode(_build_quality_gate_query(project_key, branch=branch, pull_request=pull_request))}"
+    gate_payload = _request_json(
+        path="/api/qualitygates/project_status",
+        query=_build_quality_gate_query(project_key, branch=branch, pull_request=pull_request),
+        auth_header=auth_header,
     )
-    gate_payload = _request_json(gate_url, auth_header)
     quality_gate = str((gate_payload.get("projectStatus") or {}).get("status") or "UNKNOWN")
 
-    hotspots_url = (
-        f"{api_base}/api/hotspots/search?"
-        f"{urllib.parse.urlencode(_build_hotspot_query(project_key, branch=branch, pull_request=pull_request))}"
+    hotspots_payload = _request_json(
+        path="/api/hotspots/search",
+        query=_build_hotspot_query(project_key, branch=branch, pull_request=pull_request),
+        auth_header=auth_header,
     )
-    hotspots_payload = _request_json(hotspots_url, auth_header)
     open_hotspots = int((hotspots_payload.get("paging") or {}).get("total") or 0)
 
     return open_issues, quality_gate, open_hotspots
@@ -124,7 +122,6 @@ def _fetch_sonar_status(
 def _evaluate_sonar(
     *,
     token: str,
-    api_base: str,
     project_key: str,
     branch: str,
     pull_request: str,
@@ -140,7 +137,6 @@ def _evaluate_sonar(
 
     try:
         open_issues, quality_gate, open_hotspots = _fetch_sonar_status(
-            api_base=api_base,
             auth_header=_auth_header(token),
             project_key=project_key,
             branch=branch,
@@ -154,7 +150,10 @@ def _evaluate_sonar(
     if open_hotspots != 0:
         findings.append(f"Sonar reports {open_hotspots} open security hotspots pending review (expected 0).")
     if quality_gate != "OK":
-        quality_gate_warning = f"Sonar quality gate status is {quality_gate}; SonarCloud Code Analysis remains the authoritative quality gate check."
+        quality_gate_warning = (
+            f"Sonar quality gate status is {quality_gate}; "
+            "SonarCloud Code Analysis remains the authoritative quality gate check."
+        )
 
     return open_issues, quality_gate, open_hotspots, quality_gate_warning, findings
 
@@ -186,15 +185,11 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
-    api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={"sonarcloud.io"}).rstrip("/")
 
     open_issues, quality_gate, open_hotspots, quality_gate_warning, findings = _evaluate_sonar(
         token=token,
-        api_base=api_base,
         project_key=args.project_key,
         branch=args.branch,
         pull_request=args.pull_request,
@@ -210,6 +205,7 @@ def main() -> int:
         "quality_gate_warning": quality_gate_warning,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
+        "api_base": normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_API_HOST}).rstrip("/"),
     }
 
     try:
@@ -224,7 +220,6 @@ def main() -> int:
     out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
-
     return 0 if status == "pass" else 1
 
 

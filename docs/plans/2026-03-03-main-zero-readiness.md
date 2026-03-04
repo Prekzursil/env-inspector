@@ -12,6 +12,6 @@
 
 ## Control Plane Decision
 
-- `gh` is available in this VM via installed binary path even though it is not globally on PATH.
+- `gh` is available in this VM via installed binary path even though it is not
+  globally on PATH.
 - Execution proceeds with explicit binary paths for deterministic commands.
-
