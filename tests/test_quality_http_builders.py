@@ -8,7 +8,8 @@ from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -99,3 +100,13 @@ def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     _expect(captured["path"] == "/api/0/projects/my-org/my-project/issues/")
 
     _expect(captured["query"] == {"query": "is:unresolved", "limit": "1"})
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

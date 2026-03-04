@@ -4,7 +4,8 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_gui.secret_policy import build_search_value, resolve_copy_payload, resolve_load_value
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -65,3 +66,13 @@ def test_load_value_blocks_hidden_secret_without_confirmation():
     _expect(allowed == "supersecretvalue")
 
     _expect(allowed_raw is True)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

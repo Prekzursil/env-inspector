@@ -3,7 +3,8 @@ from __future__ import absolute_import, division
 from env_inspector_core.providers import parse_powershell_profile_text
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -22,3 +23,13 @@ Write-Host "ignore"
     _expect(parsed["PATH"] == "/usr/bin")
 
     _expect(parsed["EMPTY"] == "")
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

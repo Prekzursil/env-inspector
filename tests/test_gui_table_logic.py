@@ -5,7 +5,8 @@ from env_inspector_gui.models import SortState
 from env_inspector_gui.table_logic import build_display_rows, sort_display_rows, toggle_sort
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -119,3 +120,13 @@ def test_bool_sort_columns_use_yes_no_semantics():
 
     ordered = sort_display_rows(rows, SortState(column="secret", descending=False))
     _expect([row.record.name for row in ordered] == ["B", "A"])
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

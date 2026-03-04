@@ -3,7 +3,8 @@ from __future__ import absolute_import, division
 from env_inspector_gui.controller import EnvInspectorController
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -113,3 +114,13 @@ def test_set_remove_operations_always_preview_before_apply():
     _expect(("preview", "remove") in calls)
 
     _expect(("apply", "remove") in calls)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

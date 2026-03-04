@@ -5,7 +5,8 @@ from pathlib import Path
 import env_inspector
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -33,3 +34,13 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
 
     err = capsys.readouterr().err
     _expect("Invalid --root" in err)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

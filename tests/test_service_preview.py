@@ -5,7 +5,8 @@ from pathlib import Path
 from env_inspector_core.service import EnvInspectorService
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -88,3 +89,13 @@ def test_set_rejects_dotenv_target_outside_approved_roots(tmp_path: Path, monkey
     _expect("outside approved roots" in (result["error_message"] or ""))
 
     _expect(env_file.read_text(encoding="utf-8") == "A=1\n")
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

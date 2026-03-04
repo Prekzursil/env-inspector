@@ -5,7 +5,8 @@ from pathlib import Path
 from env_inspector_gui.path_actions import is_openable_local_path, open_source_path
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -45,3 +46,13 @@ def test_open_source_path_rejects_non_local_path():
     _expect(ok is False)
 
     _expect("Cannot open" in (err or ""))
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

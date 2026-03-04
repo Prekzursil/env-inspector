@@ -8,7 +8,8 @@ from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -206,3 +207,13 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
     _expect(writes["text"] == "$env:A='1'\n")
 
     _expect(writes["ensure_parent"] is True)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

@@ -5,7 +5,8 @@ from pathlib import Path
 from env_inspector_core.service import EnvInspectorService
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -39,3 +40,13 @@ def test_export_can_include_raw_secrets_when_opted_in(tmp_path: Path, monkeypatc
         context=svc.runtime_context,
     )
     _expect("supersecretvalue" in csv_text)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

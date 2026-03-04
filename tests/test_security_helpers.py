@@ -7,7 +7,8 @@ import pytest
 from scripts import security_helpers as sec
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -148,3 +149,13 @@ def test_validate_hostname_allowlists_accepts_none_suffixes():
 def test_validate_hostname_allowlists_rejects_mismatched_suffix():
     with pytest.raises(ValueError, match="suffix allowlist"):
         sec._validate_hostname_allowlists("api.codacy.com", allowed_host_suffixes={"example.com"})
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

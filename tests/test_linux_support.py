@@ -10,7 +10,8 @@ from env_inspector_core.providers import collect_dotenv_records, collect_linux_r
 from env_inspector_core.service import EnvInspectorService
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -311,3 +312,13 @@ def test_linux_etc_environment_write_reports_permission_failure(tmp_path: Path, 
     _expect("sudo" in (result["error_message"] or "").lower())
 
     _expect(etc_env.read_text(encoding="utf-8") == "A=1\n")
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

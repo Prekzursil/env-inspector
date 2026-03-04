@@ -15,7 +15,8 @@ from env_inspector_core.constants import (
 )
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.service import EnvInspectorService
@@ -416,3 +417,13 @@ def test_list_records_raw_builds_env_records_from_payload(tmp_path: Path, monkey
     case.assertEqual(len(rows), 1)
     case.assertEqual(rows[0].name, "A")
     case.assertEqual(rows[0].value, "1")
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

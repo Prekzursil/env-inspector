@@ -4,7 +4,8 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -75,3 +76,13 @@ def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
     _expect(chosen is not None)
 
     _expect(chosen.value == "process")
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

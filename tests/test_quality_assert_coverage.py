@@ -8,7 +8,8 @@ from scripts.quality import assert_coverage_100 as coverage_mod
 from scripts import security_helpers as sec
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -73,3 +74,13 @@ def test_safe_input_file_path_in_workspace_rejects_escape(tmp_path: Path, monkey
 
     with pytest.raises(ValueError, match="escapes workspace root"):
         sec.safe_input_file_path_in_workspace(str(outside))
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

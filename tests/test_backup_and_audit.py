@@ -12,7 +12,8 @@ from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -176,3 +177,13 @@ def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch
     _expect(result["success"] is False)
 
     _expect("outside approved roots" in (result["error_message"] or ""))
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

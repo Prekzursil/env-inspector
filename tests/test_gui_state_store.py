@@ -6,7 +6,8 @@ from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import load_ui_state, save_ui_state, sanitize_loaded_state
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -72,3 +73,13 @@ def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):
     _expect(sanitized.context == "windows")
 
     _expect(sanitized.selected_targets == ["windows:user"])
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

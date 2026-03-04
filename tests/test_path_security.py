@@ -12,7 +12,8 @@ from env_inspector_core.path_policy import (
 )
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 def test_resolve_scan_root_rejects_null_byte(tmp_path: Path):
     bad = str(tmp_path) + "\x00suffix"
@@ -58,3 +59,13 @@ def test_parse_scoped_dotenv_target_rejects_non_dotenv_filename(tmp_path: Path, 
     roots = normalize_scope_roots([tmp_path])
     with pytest.raises(PathPolicyError):
         parse_scoped_dotenv_target(f"dotenv:{bad_file}", roots=roots)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

@@ -7,7 +7,8 @@ import pytest
 from env_inspector_core.providers import WslProvider
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -101,3 +102,13 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     _expect(calls)
 
     _expect(calls[0][-2:] == ["-l", "-q"])
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
+

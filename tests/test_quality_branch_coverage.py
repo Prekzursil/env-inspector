@@ -10,7 +10,8 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
 def _expect(condition, message: str = "") -> None:
-    if not condition: raise AssertionError(message)
+    if not condition:
+        raise AssertionError(message)
 
 
 
@@ -140,4 +141,13 @@ def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
         lambda org, projects, token: ("error", [{"project": "proj", "unresolved": 1}], [], ["failure"]),
     )
     _expect(sentry_mod.main() == 1)
+
+
+def test_expect_helper_raises_on_false():
+    raised = False
+    try:
+        _expect(False, "expected")
+    except AssertionError:
+        raised = True
+    _expect(raised is True)
 
