@@ -184,12 +184,15 @@ def test_run_cli_export_backup_and_restore(capsys):
 
 
 def test_run_cli_returns_error_for_unknown_command(monkeypatch, capsys):
-    class _DummyParser:
-        def parse_args(self, _argv):
-            return argparse.Namespace(command="unknown")
+    dummy_parser = type("DummyParser", (), {})()
+
+    def _parse_unknown(_argv):
+        return argparse.Namespace(command="unknown")
+
+    setattr(dummy_parser, "parse_args", _parse_unknown)
 
     def _build_dummy_parser():
-        return _DummyParser()
+        return dummy_parser
 
     monkeypatch.setattr(cli_mod, "build_parser", _build_dummy_parser)
 

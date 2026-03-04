@@ -297,8 +297,11 @@ def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path
         apply_changes=False,
     )
 
-    assert user_requires_priv is False
-    assert machine_requires_priv is True
+    import unittest
+
+    case = unittest.TestCase()
+    case.assertFalse(user_requires_priv)
+    case.assertTrue(machine_requires_priv)
 
     svc._registry_write(
         "windows:user",
@@ -322,8 +325,11 @@ def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, m
     all_users = tmp_path / "all.ps1"
     monkeypatch.setattr(EnvInspectorService, "get_powershell_profile_paths", staticmethod(lambda: [current, all_users]))
 
-    assert svc._powershell_profile_path("powershell:current_user") == current
-    assert svc._powershell_profile_path("powershell:all_users") == all_users
+    import unittest
+
+    case = unittest.TestCase()
+    case.assertEqual(svc._powershell_profile_path("powershell:current_user"), current)
+    case.assertEqual(svc._powershell_profile_path("powershell:all_users"), all_users)
 
 
 def test_validate_wsl_dotenv_path_rejects_empty_and_wrong_filename(tmp_path: Path):

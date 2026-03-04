@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from typing import Dict, List
+from email.message import Message
 import secrets
 import sys
 import unittest
@@ -21,7 +22,7 @@ def _token() -> str:
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:
-    return urllib.error.HTTPError(url="https://api.example", code=code, msg="err", hdrs=None, fp=None)
+    return urllib.error.HTTPError(url="https://api.example", code=code, msg="err", hdrs=Message(), fp=None)
 
 
 def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
@@ -35,7 +36,7 @@ def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
 
 
 def test_codacy_request_json_applies_branch_name(monkeypatch):
-    captured: Dict = {}
+    captured = {}
 
     def _fake_request_json_https(**kwargs):
         captured.update(kwargs)
@@ -246,7 +247,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     case.assertEqual(path, "/api/projects/1/issues/open")
     case.assertEqual(query, {"scope": "pull-request"})
 
-    findings: List = []
+    findings = []
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
@@ -278,7 +279,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
 
 
 def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
-    findings: List = []
+    findings = []
     monkeypatch.setattr(deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}})
 
     open_issues = deepscan_mod._fetch_open_issues(
@@ -299,11 +300,10 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEEPSCAN_API_TOKEN", _token())
     monkeypatch.setenv("DEEPSCAN_OPEN_ISSUES_URL", "https://deepscan.io/api/projects/1/issues/open")
-    monkeypatch.setattr(
-        deepscan_mod,
-        "_parse_args",
-        lambda: type("Args", (), {"token": "", "out_json": "o/deep.json", "out_md": "o/deep.md"})(),
-    )
+    def _deepscan_args():
+        return type("Args", (), {"token": "", "out_json": "o/deep.json", "out_md": "o/deep.md"})()
+
+    monkeypatch.setattr(deepscan_mod, "_parse_args", _deepscan_args)
     monkeypatch.setattr(deepscan_mod, "_resolve_deepscan_endpoint", lambda _url: ("deepscan.io", "/api", {}))
     monkeypatch.setattr(deepscan_mod, "_fetch_open_issues", lambda **_kwargs: 0)
 
@@ -315,10 +315,8 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
 def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CODACY_API_TOKEN", _token())
-    monkeypatch.setattr(
-        codacy_mod,
-        "_parse_args",
-        lambda: type(
+    def _codacy_args():
+        return type(
             "Args",
             (),
             {
@@ -330,8 +328,9 @@ def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
                 "out_json": "o/codacy.json",
                 "out_md": "o/codacy.md",
             },
-        )(),
-    )
+        )()
+
+    monkeypatch.setattr(codacy_mod, "_parse_args", _codacy_args)
     monkeypatch.setattr(codacy_mod, "_query_open_issues", lambda **_kwargs: (0, []))
 
     rc = codacy_mod.main()
