@@ -22,13 +22,15 @@ from .targets import (
 
 class ServiceRestoreMixin:
     def list_backups(self, *, target: str | None = None) -> List[str]:
+        svc: Any = self
         if target:
-            return [str(p) for p in self.backup_mgr.list_backups(target)]
-        return [str(p) for p in self.backup_mgr.list_all_backups()]
+            return [str(p) for p in svc.backup_mgr.list_backups(target)]
+        return [str(p) for p in svc.backup_mgr.list_all_backups()]
 
     def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
+        svc: Any = self
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
-        self._write_scoped_text_file(
+        svc._write_scoped_text_file(
             candidate_path=scoped.path,
             allowed_roots=scoped.roots,
             text=text,
@@ -36,62 +38,67 @@ class ServiceRestoreMixin:
         )
 
     def _restore_linux_target(self, *, target: str, text: str) -> None:
+        svc: Any = self
         if target == TARGET_LINUX_BASHRC:
             path_out = Path.home() / ".bashrc"
             path_out.parent.mkdir(parents=True, exist_ok=True)
             path_out.write_text(text, encoding="utf-8")
             return
         if target == TARGET_LINUX_ETC_ENV:
-            self._write_linux_etc_environment_with_privilege(text)
+            svc._write_linux_etc_environment_with_privilege(text)
             return
         raise RuntimeError(f"Unsupported Linux restore target: {target}")
 
     def _restore_wsl_target(self, *, target: str, text: str) -> None:
+        svc: Any = self
         if target.startswith(WSL_DOTENV_TARGET_PREFIX):
-            distro, pth = self._parse_wsl_dotenv_target(target)
-            self.wsl.write_file(distro, pth, text)
+            distro, pth = svc._parse_wsl_dotenv_target(target)
+            svc.wsl.write_file(distro, pth, text)
             return
         if target.startswith("wsl:") and target.endswith(":bashrc"):
-            distro = self._validate_wsl_distro_name(target.split(":", 2)[1])
-            self.wsl.write_file(distro, "~/.bashrc", text)
+            distro = svc._validate_wsl_distro_name(target.split(":", 2)[1])
+            svc.wsl.write_file(distro, "~/.bashrc", text)
             return
         if target.startswith("wsl:") and target.endswith(":etc_environment"):
-            distro = self._validate_wsl_distro_name(target.split(":", 2)[1])
-            self.wsl.write_file_with_privilege(distro, self._LINUX_ETC_ENV_PATH, text)
+            distro = svc._validate_wsl_distro_name(target.split(":", 2)[1])
+            svc.wsl.write_file_with_privilege(distro, svc._LINUX_ETC_ENV_PATH, text)
             return
         raise RuntimeError(f"Unsupported WSL restore target: {target}")
 
     def _restore_powershell_target(self, *, target: str, text: str) -> None:
-        safe_profile = self._validated_powershell_restore_path(target)
-        self._write_text_file(safe_profile, text, ensure_parent=True)
+        svc: Any = self
+        safe_profile = svc._validated_powershell_restore_path(target)
+        svc._write_text_file(safe_profile, text, ensure_parent=True)
 
     def _restore_windows_registry_target(self, *, target: str, text: str) -> None:
-        if self.win_provider is None:
+        svc: Any = self
+        if svc.win_provider is None:
             raise RuntimeError("Windows provider unavailable for registry restore")
         data = json.loads(text)
         scope = WindowsRegistryProvider.USER_SCOPE if target == TARGET_WINDOWS_USER else WindowsRegistryProvider.MACHINE_SCOPE
-        current = self.win_provider.list_scope(scope)
+        current = svc.win_provider.list_scope(scope)
         for key in tuple(current):
             if key not in data:
-                self.win_provider.remove_scope_value(scope, key)
+                svc.win_provider.remove_scope_value(scope, key)
         for key, value in data.items():
-            self.win_provider.set_scope_value(scope, key, str(value))
+            svc.win_provider.set_scope_value(scope, key, str(value))
 
     def _restore_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
+        svc: Any = self
         if target.startswith(DOTENV_TARGET_PREFIX):
-            self._restore_dotenv_target(target=target, text=text, scope_roots=scope_roots)
+            svc._restore_dotenv_target(target=target, text=text, scope_roots=scope_roots)
             return
         if target in {TARGET_LINUX_BASHRC, TARGET_LINUX_ETC_ENV}:
-            self._restore_linux_target(target=target, text=text)
+            svc._restore_linux_target(target=target, text=text)
             return
         if target.startswith("wsl"):
-            self._restore_wsl_target(target=target, text=text)
+            svc._restore_wsl_target(target=target, text=text)
             return
         if target in {TARGET_POWERSHELL_CURRENT_USER, TARGET_POWERSHELL_ALL_USERS}:
-            self._restore_powershell_target(target=target, text=text)
+            svc._restore_powershell_target(target=target, text=text)
             return
         if target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
-            self._restore_windows_registry_target(target=target, text=text)
+            svc._restore_windows_registry_target(target=target, text=text)
             return
         raise RuntimeError(f"Unsupported restore target: {target}")
 
@@ -101,16 +108,17 @@ class ServiceRestoreMixin:
         backup: str,
         scope_roots: List[str | Path] | None = None,
     ) -> Dict[str, Any]:
+        svc: Any = self
         operation_id = f"restore-{uuid.uuid4().hex[:10]}"
         path = Path(backup)
         try:
-            resolved_scope_roots = self._effective_scope_roots(scope_roots)
-            path = validate_backup_path(backup, backups_dir=self.backup_mgr.base_dir)
-            payload = self.backup_mgr.read_backup_payload(path)
+            resolved_scope_roots = svc._effective_scope_roots(scope_roots)
+            path = validate_backup_path(backup, backups_dir=svc.backup_mgr.base_dir)
+            payload = svc.backup_mgr.read_backup_payload(path)
             target = payload["target"]
             text = payload["text"]
 
-            self._restore_target(target=target, text=text, scope_roots=resolved_scope_roots)
+            svc._restore_target(target=target, text=text, scope_roots=resolved_scope_roots)
 
             result = OperationResult(
                 operation_id=operation_id,
@@ -134,5 +142,5 @@ class ServiceRestoreMixin:
                 value_masked=None,
             )
 
-        self.audit.log(result)
+        svc.audit.log(result)
         return result.to_dict()

@@ -93,7 +93,7 @@ class EnvInspectorService(ServiceRestoreMixin):
         if is_windows():
             try:
                 self.win_provider = WindowsRegistryProvider()
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 self.win_provider = None
                 self.last_provider_error = str(exc)
 
@@ -190,7 +190,7 @@ class EnvInspectorService(ServiceRestoreMixin):
         if self.win_provider is not None:
             try:
                 rows.extend(build_registry_records(self.win_provider))
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 self.last_provider_error = str(exc)
 
         if self.runtime_context == "windows":
@@ -222,7 +222,7 @@ class EnvInspectorService(ServiceRestoreMixin):
         if distro and wsl_path:
             try:
                 rows.extend(collect_wsl_dotenv_records(self.wsl, distro=distro, root_path=wsl_path, max_depth=scan_depth))
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError) as exc:
                 self.last_provider_error = str(exc)
 
         return rows
@@ -870,6 +870,7 @@ class EnvInspectorService(ServiceRestoreMixin):
         for row in rows:
             lines.append(f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}")
         return "\n".join(lines) + ("\n" if lines else "")
+
 
 
 
