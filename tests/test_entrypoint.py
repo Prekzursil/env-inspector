@@ -1,8 +1,13 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
 import env_inspector
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, capsys):
@@ -25,10 +30,7 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
 
     code = env_inspector.main()
 
-    if not (code == 2):
-        raise AssertionError()
+    _expect(code == 2)
 
     err = capsys.readouterr().err
-    if not ("Invalid --root" in err):
-        raise AssertionError()
-
+    _expect("Invalid --root" in err)

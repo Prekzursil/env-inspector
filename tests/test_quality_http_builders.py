@@ -1,10 +1,15 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
@@ -24,17 +29,13 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
         data={},
     )
 
-    if not (payload == {"total": 0}):
-        raise AssertionError()
+    _expect(payload == {"total": 0})
 
-    if not (captured["host"] == "api.codacy.com"):
-        raise AssertionError()
+    _expect(captured["host"] == "api.codacy.com")
 
-    if not (captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search"):
-        raise AssertionError()
+    _expect(captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search")
 
-    if not (captured["query"] == {"limit": "1"}):
-        raise AssertionError()
+    _expect(captured["query"] == {"limit": "1"})
 
 
 
@@ -65,17 +66,13 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
         token="sample_credential",
     )
 
-    if not (payload == {"open_issues": 0}):
-        raise AssertionError()
+    _expect(payload == {"open_issues": 0})
 
-    if not (captured["host"] == "deepscan.io"):
-        raise AssertionError()
+    _expect(captured["host"] == "deepscan.io")
 
-    if not (captured["path"] == "/api/projects/123/issues/open"):
-        raise AssertionError()
+    _expect(captured["path"] == "/api/projects/123/issues/open")
 
-    if not (captured["query"] == {"limit": "1"}):
-        raise AssertionError()
+    _expect(captured["query"] == {"limit": "1"})
 
 
 
@@ -89,18 +86,12 @@ def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     monkeypatch.setattr(sentry_mod, "request_json_https", _fake_request_json_https)
     issues, headers = sentry_mod._request_project_issues("my-org", "my-project", "token")
 
-    if not (issues == []):
-        raise AssertionError()
+    _expect(issues == [])
 
-    if not (headers["x-hits"] == "0"):
-        raise AssertionError()
+    _expect(headers["x-hits"] == "0")
 
-    if not (captured["host"] == "sentry.io"):
-        raise AssertionError()
+    _expect(captured["host"] == "sentry.io")
 
-    if not (captured["path"] == "/api/0/projects/my-org/my-project/issues/"):
-        raise AssertionError()
+    _expect(captured["path"] == "/api/0/projects/my-org/my-project/issues/")
 
-    if not (captured["query"] == {"query": "is:unresolved", "limit": "1"}):
-        raise AssertionError()
-
+    _expect(captured["query"] == {"query": "is:unresolved", "limit": "1"})

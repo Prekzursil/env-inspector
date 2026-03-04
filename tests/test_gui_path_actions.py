@@ -1,22 +1,24 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
 from env_inspector_gui.path_actions import is_openable_local_path, open_source_path
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_is_openable_local_path_handles_real_and_pseudo_paths(tmp_path: Path):
     local_file = tmp_path / ".env"
     local_file.write_text("A=1\n", encoding="utf-8")
 
-    if not (is_openable_local_path(str(local_file)) is True):
-        raise AssertionError()
+    _expect(is_openable_local_path(str(local_file)) is True)
 
-    if not (is_openable_local_path("wsl:Ubuntu:/etc/environment") is False):
-        raise AssertionError()
+    _expect(is_openable_local_path("wsl:Ubuntu:/etc/environment") is False)
 
-    if not (is_openable_local_path("registry:HKCU\\Environment") is False):
-        raise AssertionError()
+    _expect(is_openable_local_path("registry:HKCU\\Environment") is False)
 
 
 
@@ -31,22 +33,16 @@ def test_open_source_path_uses_platform_command(tmp_path: Path):
 
     ok, err = open_source_path(str(local_file), platform="linux", run_command=fake_runner)
 
-    if not (ok is True):
-        raise AssertionError()
+    _expect(ok is True)
 
-    if not (err is None):
-        raise AssertionError()
+    _expect(err is None)
 
-    if not (calls == [["xdg-open", str(local_file)]]):
-        raise AssertionError()
+    _expect(calls == [["xdg-open", str(local_file)]])
 
 
 
 def test_open_source_path_rejects_non_local_path():
     ok, err = open_source_path("wsl:Ubuntu:/etc/environment", platform="linux", run_command=lambda _cmd: None)
-    if not (ok is False):
-        raise AssertionError()
+    _expect(ok is False)
 
-    if not ("Cannot open" in (err or "")):
-        raise AssertionError()
-
+    _expect("Cannot open" in (err or ""))

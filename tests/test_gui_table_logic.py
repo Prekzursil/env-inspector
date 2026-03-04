@@ -1,8 +1,13 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import SortState
 from env_inspector_gui.table_logic import build_display_rows, sort_display_rows, toggle_sort
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def _rec(
@@ -46,11 +51,9 @@ def test_build_display_rows_filters_context_and_only_secrets():
         show_secrets=False,
     )
 
-    if not ([row.record.name for row in rows] == ["TOKEN"]):
-        raise AssertionError()
+    _expect([row.record.name for row in rows] == ["TOKEN"])
 
-    if not (rows[0].visible_value != "supersecretvalue"):
-        raise AssertionError()
+    _expect(rows[0].visible_value != "supersecretvalue")
 
 
 
@@ -64,8 +67,7 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
         only_secrets=False,
         show_secrets=False,
     )
-    if not (hidden_rows == []):
-        raise AssertionError()
+    _expect(hidden_rows == [])
 
 
     shown_rows = build_display_rows(
@@ -75,8 +77,7 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
         only_secrets=False,
         show_secrets=True,
     )
-    if not (len(shown_rows) == 1):
-        raise AssertionError()
+    _expect(len(shown_rows) == 1)
 
 
 
@@ -95,16 +96,13 @@ def test_sort_toggle_and_stable_sort_behavior():
 
     state = SortState(column="name", descending=False)
     ordered = sort_display_rows(rows, state)
-    if not ([row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"]):
-        raise AssertionError()
+    _expect([row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"])
 
 
     toggled = toggle_sort(state, "name")
-    if not (toggled.column == "name"):
-        raise AssertionError()
+    _expect(toggled.column == "name")
 
-    if not (toggled.descending is True):
-        raise AssertionError()
+    _expect(toggled.descending is True)
 
 
 
@@ -121,6 +119,4 @@ def test_bool_sort_columns_use_yes_no_semantics():
     )
 
     ordered = sort_display_rows(rows, SortState(column="secret", descending=False))
-    if not ([row.record.name for row in ordered] == ["B", "A"]):
-        raise AssertionError()
-
+    _expect([row.record.name for row in ordered] == ["B", "A"])

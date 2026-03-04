@@ -13,6 +13,11 @@ from env_inspector_core.constants import (
     SOURCE_WSL_DOTENV,
     SOURCE_WSL_ETC_ENV,
 )
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
@@ -56,14 +61,11 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
 
     rows = svc._collect_wsl_rows(scan_depth=3, distro="Debian", wsl_path="/home/user")
 
-    if not (calls["exclude"] == {"Ubuntu"}):
-        raise AssertionError()
+    _expect(calls["exclude"] == {"Ubuntu"})
 
-    if not (calls["dotenv"] == ("Debian", "/home/user", 3)):
-        raise AssertionError()
+    _expect(calls["dotenv"] == ("Debian", "/home/user", 3))
 
-    if not (len(rows) == 2):
-        raise AssertionError()
+    _expect(len(rows) == 2)
 
 
 
@@ -79,8 +81,7 @@ def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path
 
     rows = svc._collect_wsl_rows(scan_depth=2, distro="Ubuntu", wsl_path="/home/user")
 
-    if not (rows == []):
-        raise AssertionError()
+    _expect(rows == [])
 
 
 
@@ -101,38 +102,27 @@ def test_available_targets_maps_all_known_sources_and_filters_context(tmp_path: 
 
     targets = svc.available_targets(records, context="linux")
 
-    if not ("dotenv:" + str(tmp_path / ".env") in targets):
-        raise AssertionError()
+    _expect("dotenv:" + str(tmp_path / ".env") in targets)
 
-    if not ("linux:bashrc" in targets):
-        raise AssertionError()
+    _expect("linux:bashrc" in targets)
 
-    if not ("linux:etc_environment" in targets):
-        raise AssertionError()
+    _expect("linux:etc_environment" in targets)
 
-    if not ("wsl_dotenv:Ubuntu:/home/u/.env" in targets):
-        raise AssertionError()
+    _expect("wsl_dotenv:Ubuntu:/home/u/.env" in targets)
 
-    if not ("wsl:Ubuntu:bashrc" in targets):
-        raise AssertionError()
+    _expect("wsl:Ubuntu:bashrc" in targets)
 
-    if not ("wsl:Ubuntu:etc_environment" in targets):
-        raise AssertionError()
+    _expect("wsl:Ubuntu:etc_environment" in targets)
 
-    if not ("powershell:all_users" in targets):
-        raise AssertionError()
+    _expect("powershell:all_users" in targets)
 
-    if not ("powershell:current_user" in targets):
-        raise AssertionError()
+    _expect("powershell:current_user" in targets)
 
-    if not ("windows:user" in targets and "windows:machine" in targets):
-        raise AssertionError()
+    _expect("windows:user" in targets and "windows:machine" in targets)
 
-    if not ("dotenv:ignored.env" not in targets):
-        raise AssertionError()
+    _expect("dotenv:ignored.env" not in targets)
 
-    if not (svc._record_target(_record("unknown_source", "x")) is None):
-        raise AssertionError()
+    _expect(svc._record_target(_record("unknown_source", "x")) is None)
 
 
 def test_registry_write_requires_provider(tmp_path: Path):
@@ -157,8 +147,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         lambda distro, path, text: wsl_writes.append((distro, path, text)),
     )
     svc._update_wsl_file(target="wsl:Ubuntu:etc_environment", key="A", value="1", action="set", apply_changes=True)
-    if not (wsl_writes and wsl_writes[0][0] == "Ubuntu"):
-        raise AssertionError()
+    _expect(wsl_writes and wsl_writes[0][0] == "Ubuntu")
 
 
     with pytest.raises(RuntimeError, match="Unsupported WSL target"):
@@ -182,11 +171,9 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         action="set",
         apply_changes=True,
     )
-    if not (out_path == str(profile)):
-        raise AssertionError()
+    _expect(out_path == str(profile))
 
-    if not ("$env:A" in profile.read_text(encoding="utf-8")):
-        raise AssertionError()
+    _expect("$env:A" in profile.read_text(encoding="utf-8"))
 
 
     monkeypatch.setattr(
@@ -199,11 +186,9 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         "_update_powershell_file",
         lambda **kwargs: ("before", "after", "ps", False, None),
     )
-    if not (svc._file_update("wsl:Ubuntu:bashrc", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "wsl"):
-        raise AssertionError()
+    _expect(svc._file_update("wsl:Ubuntu:bashrc", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "wsl")
 
-    if not (svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps"):
-        raise AssertionError()
+    _expect(svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps")
 
 
 
@@ -214,15 +199,13 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     monkeypatch.setattr(service_module.Path, "home", lambda: fake_home)
 
     svc._restore_linux_target(target="linux:bashrc", text="export A=1\n")
-    if not ((fake_home / ".bashrc").read_text(encoding="utf-8") == "export A=1\n"):
-        raise AssertionError()
+    _expect((fake_home / ".bashrc").read_text(encoding="utf-8") == "export A=1\n")
 
 
     etc_calls: list[str] = []
     monkeypatch.setattr(svc, "_write_linux_etc_environment_with_privilege", etc_calls.append)
     svc._restore_linux_target(target="linux:etc_environment", text="A=1\n")
-    if not (etc_calls == ["A=1\n"]):
-        raise AssertionError()
+    _expect(etc_calls == ["A=1\n"])
 
 
     with pytest.raises(RuntimeError, match="Unsupported Linux restore target"):
@@ -235,8 +218,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
         lambda distro, path, text: wsl_calls.append((distro, path, text)),
     )
     svc._restore_wsl_target(target="wsl:Ubuntu:etc_environment", text="A=1\n")
-    if not (wsl_calls == [("Ubuntu", "/etc/environment", "A=1\n")]):
-        raise AssertionError()
+    _expect(wsl_calls == [("Ubuntu", "/etc/environment", "A=1\n")])
 
 
     with pytest.raises(RuntimeError, match="Unsupported WSL restore target"):
@@ -248,8 +230,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     monkeypatch.setattr(service_module.Path, "home", lambda: fake_home)
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     svc._restore_powershell_target(target="powershell:current_user", text="$env:A=\"1\"\n")
-    if not (profile.read_text(encoding="utf-8") == "$env:A=\"1\"\n"):
-        raise AssertionError()
+    _expect(profile.read_text(encoding="utf-8") == "$env:A=\"1\"\n")
 
 
     svc.win_provider = None
@@ -273,11 +254,9 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     fake = _FakeWinProvider()
     svc.win_provider = fake
     svc._restore_windows_registry_target(target="windows:user", text="{\"KEEP\":\"1\",\"NEW\":\"3\"}")
-    if not (fake.removed and fake.removed[0][1] == "DROP"):
-        raise AssertionError()
+    _expect(fake.removed and fake.removed[0][1] == "DROP")
 
-    if not (any(key == "NEW" for _scope, key, _value in fake.sets)):
-        raise AssertionError()
+    _expect(any(key == "NEW" for _scope, key, _value in fake.sets))
 
 
     calls: list[str] = []
@@ -287,8 +266,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     svc._restore_target(target="linux:bashrc", text="x", scope_roots=[])
     svc._restore_target(target="powershell:current_user", text="x", scope_roots=[])
     svc._restore_target(target="windows:user", text="x", scope_roots=[])
-    if not (calls == ["linux", "powershell", "windows"]):
-        raise AssertionError()
+    _expect(calls == ["linux", "powershell", "windows"])
 
 
     with pytest.raises(RuntimeError, match="Unsupported restore target"):
@@ -439,5 +417,3 @@ def test_list_records_raw_builds_env_records_from_payload(tmp_path: Path, monkey
     case.assertEqual(len(rows), 1)
     case.assertEqual(rows[0].name, "A")
     case.assertEqual(rows[0].value, "1")
-
-

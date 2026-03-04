@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,9 @@ from env_inspector_core.path_policy import (
     resolve_scan_root,
 )
 
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
 
 def test_resolve_scan_root_rejects_null_byte(tmp_path: Path):
     bad = str(tmp_path) + "\x00suffix"
@@ -26,8 +31,7 @@ def test_parse_scoped_dotenv_target_allows_path_inside_scope(tmp_path: Path, mon
     roots = normalize_scope_roots([tmp_path])
     scoped = parse_scoped_dotenv_target(f"dotenv:{env_file}", roots=roots)
 
-    if not (scoped.path == env_file.resolve()):
-        raise AssertionError()
+    _expect(scoped.path == env_file.resolve())
 
 
 

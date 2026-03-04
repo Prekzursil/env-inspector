@@ -1,7 +1,12 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.secret_policy import build_search_value, resolve_copy_payload, resolve_load_value
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def _secret_record() -> EnvRecord:
@@ -26,11 +31,9 @@ def test_search_value_uses_masked_representation_when_hidden():
     hidden = build_search_value(rec, show_secrets=False)
     shown = build_search_value(rec, show_secrets=True)
 
-    if not ("supersecretvalue" not in hidden):
-        raise AssertionError()
+    _expect("supersecretvalue" not in hidden)
 
-    if not ("supersecretvalue" in shown):
-        raise AssertionError()
+    _expect("supersecretvalue" in shown)
 
 
 
@@ -40,17 +43,13 @@ def test_copy_payload_confirms_raw_secret_or_falls_back_to_masked():
     masked, masked_raw = resolve_copy_payload(rec, show_secrets=False, confirm_raw=lambda: False, as_pair=False)
     raw, raw_used = resolve_copy_payload(rec, show_secrets=False, confirm_raw=lambda: True, as_pair=False)
 
-    if not (masked_raw is False):
-        raise AssertionError()
+    _expect(masked_raw is False)
 
-    if not ("supersecretvalue" not in masked):
-        raise AssertionError()
+    _expect("supersecretvalue" not in masked)
 
-    if not (raw_used is True):
-        raise AssertionError()
+    _expect(raw_used is True)
 
-    if not (raw == "supersecretvalue"):
-        raise AssertionError()
+    _expect(raw == "supersecretvalue")
 
 
 
@@ -60,15 +59,10 @@ def test_load_value_blocks_hidden_secret_without_confirmation():
     blocked, blocked_raw = resolve_load_value(rec, show_secrets=False, confirm_raw=lambda: False)
     allowed, allowed_raw = resolve_load_value(rec, show_secrets=False, confirm_raw=lambda: True)
 
-    if not (blocked is None):
-        raise AssertionError()
+    _expect(blocked is None)
 
-    if not (blocked_raw is False):
-        raise AssertionError()
+    _expect(blocked_raw is False)
 
-    if not (allowed == "supersecretvalue"):
-        raise AssertionError()
+    _expect(allowed == "supersecretvalue")
 
-    if not (allowed_raw is True):
-        raise AssertionError()
-
+    _expect(allowed_raw is True)

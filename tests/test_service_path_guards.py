@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
@@ -7,11 +7,15 @@ import pytest
 from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
 
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
 
 def test_is_path_within_returns_false_for_unrelated_roots(tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
-    if not (svc._is_path_within(tmp_path / "outside" / ".env", tmp_path / "allowed") is False):
-        raise AssertionError()
+    _expect(svc._is_path_within(tmp_path / "outside" / ".env", tmp_path / "allowed") is False)
 
 
 
@@ -42,8 +46,7 @@ def test_validated_powershell_restore_path_current_user_success(tmp_path: Path, 
 
     resolved = svc._validated_powershell_restore_path("powershell:current_user")
 
-    if not (resolved == fake_profile.resolve(strict=False)):
-        raise AssertionError()
+    _expect(resolved == fake_profile.resolve(strict=False))
 
 
 
@@ -67,8 +70,7 @@ def test_linux_etc_environment_path_guard_handles_platform_semantics(tmp_path: P
 
     monkeypatch.setattr(service_module.os, "name", "posix", raising=False)
     resolved = EnvInspectorService._linux_etc_environment_path()
-    if not (resolved.as_posix() == r"\etc\environment"):
-        raise AssertionError()
+    _expect(resolved.as_posix() == r"\etc\environment")
 
 
 
@@ -95,11 +97,9 @@ def test_restore_dotenv_path_checks_continue_until_matching_root(tmp_path: Path,
     backup_path = svc.backup_mgr.backup_text(f"dotenv:{env_file}", "A=1\n")
     result = svc.restore_backup(backup=str(backup_path), scope_roots=[outside_root])
 
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
-    if not (env_file.read_text(encoding="utf-8") == "A=1\n"):
-        raise AssertionError()
+    _expect(env_file.read_text(encoding="utf-8") == "A=1\n")
 
 
 
@@ -113,11 +113,9 @@ def test_restore_wsl_dotenv_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     backup_path = svc.backup_mgr.backup_text("wsl_dotenv:Ubuntu:/home/user/.env", "A=1\n")
     result = svc.restore_backup(backup=str(backup_path))
 
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
-    if not (calls == [("Ubuntu", "/home/user/.env", "A=1\n")]):
-        raise AssertionError()
+    _expect(calls == [("Ubuntu", "/home/user/.env", "A=1\n")])
 
 
 
@@ -131,11 +129,9 @@ def test_restore_wsl_bashrc_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     backup_path = svc.backup_mgr.backup_text("wsl:Ubuntu:bashrc", "export A='1'\n")
     result = svc.restore_backup(backup=str(backup_path))
 
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
-    if not (calls == [("Ubuntu", "~/.bashrc", "export A='1'\n")]):
-        raise AssertionError()
+    _expect(calls == [("Ubuntu", "~/.bashrc", "export A='1'\n")])
 
 
 
@@ -147,8 +143,7 @@ def test_linux_etc_environment_path_guard_non_windows_branch(tmp_path: Path, mon
 
     resolved = EnvInspectorService._linux_etc_environment_path()
 
-    if not (resolved.as_posix() == r"\etc\environment"):
-        raise AssertionError()
+    _expect(resolved.as_posix() == r"\etc\environment")
 
 
 
@@ -162,14 +157,11 @@ def test_restore_wsl_dotenv_backup_rejects_path_traversal(tmp_path: Path, monkey
     backup_path = svc.backup_mgr.backup_text("wsl_dotenv:Ubuntu:/home/user/../outside.env", "A=1\n")
     result = svc.restore_backup(backup=str(backup_path))
 
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("Unsupported WSL dotenv target path" in (result["error_message"] or "")):
-        raise AssertionError()
+    _expect("Unsupported WSL dotenv target path" in (result["error_message"] or ""))
 
-    if not (calls == []):
-        raise AssertionError()
+    _expect(calls == [])
 
 
 def test_validate_target_for_operation_rejects_unknown_target(tmp_path: Path):
@@ -210,13 +202,8 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
 
     svc._restore_powershell_target(target="powershell:all_users", text="$env:A='1'\n")
 
-    if not (writes["path"] == profile):
-        raise AssertionError()
+    _expect(writes["path"] == profile)
 
-    if not (writes["text"] == "$env:A='1'\n"):
-        raise AssertionError()
+    _expect(writes["text"] == "$env:A='1'\n")
 
-    if not (writes["ensure_parent"] is True):
-        raise AssertionError()
-
-
+    _expect(writes["ensure_parent"] is True)

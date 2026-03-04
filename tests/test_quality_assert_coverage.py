@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
@@ -6,6 +6,11 @@ import pytest
 
 from scripts.quality import assert_coverage_100 as coverage_mod
 from scripts import security_helpers as sec
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_parse_named_path_accepts_workspace_file(tmp_path: Path, monkeypatch):
@@ -15,11 +20,9 @@ def test_parse_named_path_accepts_workspace_file(tmp_path: Path, monkeypatch):
 
     name, path = coverage_mod.parse_named_path("python=coverage.xml")
 
-    if not (name == "python"):
-        raise AssertionError()
+    _expect(name == "python")
 
-    if not (path == coverage_file.resolve(strict=False)):
-        raise AssertionError()
+    _expect(path == coverage_file.resolve(strict=False))
 
 
 
@@ -60,8 +63,7 @@ def test_safe_input_file_path_in_workspace_allows_relative_file(tmp_path: Path, 
 
     resolved = sec.safe_input_file_path_in_workspace("data.txt")
 
-    if not (resolved == data.resolve(strict=False)):
-        raise AssertionError()
+    _expect(resolved == data.resolve(strict=False))
 
 
 
@@ -72,5 +74,3 @@ def test_safe_input_file_path_in_workspace_rejects_escape(tmp_path: Path, monkey
 
     with pytest.raises(ValueError, match="escapes workspace root"):
         sec.safe_input_file_path_in_workspace(str(outside))
-
-

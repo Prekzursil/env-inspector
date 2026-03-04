@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
@@ -8,6 +8,11 @@ import env_inspector_core.service as service_module
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
 from env_inspector_core.service import EnvInspectorService
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def _record(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
@@ -72,20 +77,15 @@ def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
     rows = collect_linux_records(bashrc_path=bashrc, etc_environment_path=etc_env, context="linux")
 
     source_types = {r.source_type for r in rows}
-    if not ("linux_bashrc" in source_types):
-        raise AssertionError()
+    _expect("linux_bashrc" in source_types)
 
-    if not ("linux_etc_environment" in source_types):
-        raise AssertionError()
+    _expect("linux_etc_environment" in source_types)
 
-    if not (all(r.context == "linux" for r in rows)):
-        raise AssertionError()
+    _expect(all(r.context == "linux" for r in rows))
 
-    if not (any(r.name == "API_TOKEN" and r.value == "abc123" for r in rows)):
-        raise AssertionError()
+    _expect(any(r.name == "API_TOKEN" and r.value == "abc123" for r in rows))
 
-    if not (any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows)):
-        raise AssertionError()
+    _expect(any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows))
 
 
 
@@ -95,11 +95,9 @@ def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path, monkeyp
     env_file.write_text("API_TOKEN=abc123\n", encoding="utf-8")
 
     rows = collect_dotenv_records(tmp_path, max_depth=2, context="linux")
-    if not (rows):
-        raise AssertionError()
+    _expect(rows)
 
-    if not (all(r.context == "linux" for r in rows)):
-        raise AssertionError()
+    _expect(all(r.context == "linux" for r in rows))
 
 
 
@@ -108,11 +106,9 @@ def test_service_available_targets_always_include_linux_targets_for_linux_contex
 
     targets = svc.available_targets([], context="linux")
 
-    if not ("linux:bashrc" in targets):
-        raise AssertionError()
+    _expect("linux:bashrc" in targets)
 
-    if not ("linux:etc_environment" in targets):
-        raise AssertionError()
+    _expect("linux:etc_environment" in targets)
 
 
 
@@ -132,8 +128,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
 
     contexts = svc.list_contexts()
 
-    if not (contexts == ["linux", "wsl:Debian"]):
-        raise AssertionError()
+    _expect(contexts == ["linux", "wsl:Debian"])
 
 
 
@@ -154,11 +149,9 @@ def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch
 
     rows = svc.list_records(root=tmp_path, context="linux", include_raw_secrets=True)
 
-    if not (any(r["source_type"] == "linux_bashrc" for r in rows)):
-        raise AssertionError()
+    _expect(any(r["source_type"] == "linux_bashrc" for r in rows))
 
-    if not (any(r["source_type"] == "linux_etc_environment" for r in rows)):
-        raise AssertionError()
+    _expect(any(r["source_type"] == "linux_etc_environment" for r in rows))
 
 
 
@@ -177,11 +170,9 @@ def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypa
         stderr = b""
 
     def fake_run(cmd, **kwargs):
-        if not (cmd[:3] == ["sudo", "-n", "tee"]):
-            raise AssertionError()
+        _expect(cmd[:3] == ["sudo", "-n", "tee"])
 
-        if not (kwargs.get("input") == b"A=2\n"):
-            raise AssertionError()
+        _expect(kwargs.get("input") == b"A=2\n")
 
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
@@ -190,14 +181,11 @@ def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypa
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
-    if not (etc_env.read_text(encoding="utf-8") == "A=2\n"):
-        raise AssertionError()
+    _expect(etc_env.read_text(encoding="utf-8") == "A=2\n")
 
-    if not (str(Path("/etc/environment")) not in writes):
-        raise AssertionError()
+    _expect(str(Path("/etc/environment")) not in writes)
 
 
 
@@ -211,14 +199,11 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Pat
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
 
     def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool):
-        if not (path == target):
-            raise AssertionError()
+        _expect(path == target)
 
-        if not (text == "A=2\n"):
-            raise AssertionError()
+        _expect(text == "A=2\n")
 
-        if not (ensure_parent is False):
-            raise AssertionError()
+        _expect(ensure_parent is False)
 
         raise FileNotFoundError("no /etc/environment on host")
 
@@ -228,11 +213,9 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Pat
         stderr = b""
 
     def fake_run(cmd, **kwargs):
-        if not (cmd[:3] == ["sudo", "-n", "tee"]):
-            raise AssertionError()
+        _expect(cmd[:3] == ["sudo", "-n", "tee"])
 
-        if not (kwargs.get("input") == b"A=2\n"):
-            raise AssertionError()
+        _expect(kwargs.get("input") == b"A=2\n")
 
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
@@ -242,11 +225,9 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Pat
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
-    if not (etc_env.read_text(encoding="utf-8") == "A=2\n"):
-        raise AssertionError()
+    _expect(etc_env.read_text(encoding="utf-8") == "A=2\n")
 
 
 
@@ -260,11 +241,9 @@ def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(tmp_path:
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
 
     def fake_write_text_file(path: Path, _text: str, *, ensure_parent: bool):
-        if not (path == target):
-            raise AssertionError()
+        _expect(path == target)
 
-        if not (ensure_parent is False):
-            raise AssertionError()
+        _expect(ensure_parent is False)
 
         raise OSError("direct write unavailable")
 
@@ -278,14 +257,11 @@ def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(tmp_path:
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("sudo" in (result["error_message"] or "").lower()):
-        raise AssertionError()
+    _expect("sudo" in (result["error_message"] or "").lower())
 
-    if not (etc_env.read_text(encoding="utf-8") == "A=1\n"):
-        raise AssertionError()
+    _expect(etc_env.read_text(encoding="utf-8") == "A=1\n")
 
 
 
@@ -299,22 +275,17 @@ def test_linux_bashrc_set_and_remove_roundtrip(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(service_module.Path, "home", lambda: tmp_path)
 
     set_result = svc.set_key(key="MY_TEST_VAR", value="hello", targets=["linux:bashrc"])
-    if not (set_result["success"] is True):
-        raise AssertionError()
+    _expect(set_result["success"] is True)
 
-    if not ("MY_TEST_VAR" in bashrc.read_text(encoding="utf-8")):
-        raise AssertionError()
+    _expect("MY_TEST_VAR" in bashrc.read_text(encoding="utf-8"))
 
-    if not (set_result["backup_path"]):
-        raise AssertionError()
+    _expect(set_result["backup_path"])
 
 
     remove_result = svc.remove_key(key="MY_TEST_VAR", targets=["linux:bashrc"])
-    if not (remove_result["success"] is True):
-        raise AssertionError()
+    _expect(remove_result["success"] is True)
 
-    if not ("MY_TEST_VAR" not in bashrc.read_text(encoding="utf-8")):
-        raise AssertionError()
+    _expect("MY_TEST_VAR" not in bashrc.read_text(encoding="utf-8"))
 
 
 
@@ -336,12 +307,8 @@ def test_linux_etc_environment_write_reports_permission_failure(tmp_path: Path, 
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("sudo" in (result["error_message"] or "").lower()):
-        raise AssertionError()
+    _expect("sudo" in (result["error_message"] or "").lower())
 
-    if not (etc_env.read_text(encoding="utf-8") == "A=1\n"):
-        raise AssertionError()
-
+    _expect(etc_env.read_text(encoding="utf-8") == "A=1\n")

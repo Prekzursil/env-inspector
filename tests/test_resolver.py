@@ -1,5 +1,12 @@
+from __future__ import absolute_import, division
+
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def rec(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
@@ -27,11 +34,9 @@ def test_resolve_effective_windows_prefers_lower_precedence_rank():
         rec("powershell_profile", "windows", "API_TOKEN", "profile", 25),
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "windows")
-    if not (chosen is not None):
-        raise AssertionError()
+    _expect(chosen is not None)
 
-    if not (chosen.value == "user"):
-        raise AssertionError()
+    _expect(chosen.value == "user")
 
 
 
@@ -42,11 +47,9 @@ def test_resolve_effective_wsl_context_isolated_by_distro():
         rec("wsl_bashrc", "wsl:Ubuntu", "API_TOKEN", "ubuntu-bash", 20),
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "wsl:Ubuntu")
-    if not (chosen is not None):
-        raise AssertionError()
+    _expect(chosen is not None)
 
-    if not (chosen.value == "ubuntu-etc"):
-        raise AssertionError()
+    _expect(chosen.value == "ubuntu-etc")
 
 
 
@@ -56,11 +59,9 @@ def test_resolve_effective_windows_does_not_leak_linux_context():
         rec("windows_user", "windows", "API_TOKEN", "windows-value", 20),
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "windows")
-    if not (chosen is not None):
-        raise AssertionError()
+    _expect(chosen is not None)
 
-    if not (chosen.value == "windows-value"):
-        raise AssertionError()
+    _expect(chosen.value == "windows-value")
 
 
 
@@ -72,9 +73,6 @@ def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
         rec("dotenv", "linux", "PATH", "dotenv", 90),
     ]
     chosen = resolve_effective_value(rows, "PATH", "linux")
-    if not (chosen is not None):
-        raise AssertionError()
+    _expect(chosen is not None)
 
-    if not (chosen.value == "process"):
-        raise AssertionError()
-
+    _expect(chosen.value == "process")

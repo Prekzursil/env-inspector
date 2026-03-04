@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,6 +11,11 @@ from env_inspector_core.storage import BackupManager, AuditLogger
 from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
 
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
 
 def test_backup_manager_retention_and_restore(tmp_path: Path):
     mgr = BackupManager(tmp_path, retention=2)
@@ -19,22 +26,17 @@ def test_backup_manager_retention_and_restore(tmp_path: Path):
     p3 = mgr.backup_text(target, "A=3\n")
 
     backups = mgr.list_backups(target)
-    if not (len(backups) == 2):
-        raise AssertionError()
+    _expect(len(backups) == 2)
 
-    if not (p3 in backups):
-        raise AssertionError()
+    _expect(p3 in backups)
 
-    if not (p2 in backups):
-        raise AssertionError()
+    _expect(p2 in backups)
 
-    if not (p1 not in backups):
-        raise AssertionError()
+    _expect(p1 not in backups)
 
 
     restored = mgr.restore_text(p2)
-    if not (restored == "A=2\n"):
-        raise AssertionError()
+    _expect(restored == "A=2\n")
 
 
 
@@ -55,17 +57,13 @@ def test_backup_manager_uses_unique_path_when_timestamp_collides(tmp_path: Path,
     p2 = mgr.backup_text(target, "A=2\n")
     p3 = mgr.backup_text(target, "A=3\n")
 
-    if not (p1 != p2 != p3):
-        raise AssertionError()
+    _expect(p1 != p2 != p3)
 
-    if not (p1.name.endswith("-0000.backup.json")):
-        raise AssertionError()
+    _expect(p1.name.endswith("-0000.backup.json"))
 
-    if not (p2.name.endswith("-0001.backup.json")):
-        raise AssertionError()
+    _expect(p2.name.endswith("-0001.backup.json"))
 
-    if not (p3.name.endswith("-0002.backup.json")):
-        raise AssertionError()
+    _expect(p3.name.endswith("-0002.backup.json"))
 
 
 
@@ -88,8 +86,7 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Pat
         return original_exists(path)
 
     monkeypatch.setattr(Path, "exists", _always_exists)
-    if not (Path.exists(tmp_path)):
-        raise AssertionError()
+    _expect(Path.exists(tmp_path))
 
 
     with pytest.raises(RuntimeError, match="Could not allocate unique backup file name"):
@@ -109,8 +106,7 @@ def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
     bad = tmp_path / "bad.backup.json"
     bad.write_text("{not valid json", encoding="utf-8")
 
-    if not (mgr._load_backup_payload(bad) is None):
-        raise AssertionError()
+    _expect(mgr._load_backup_payload(bad) is None)
 
 
 
@@ -129,11 +125,9 @@ def test_audit_logger_writes_masked_values(tmp_path: Path):
     logger.log(result)
 
     text = (tmp_path / "audit.log").read_text(encoding="utf-8")
-    if not ("op-1" in text):
-        raise AssertionError()
+    _expect("op-1" in text)
 
-    if not ("abc********xyz" in text):
-        raise AssertionError()
+    _expect("abc********xyz" in text)
 
 
 
@@ -145,11 +139,9 @@ def test_restore_rejects_backup_file_outside_state_directory(tmp_path: Path, mon
 
     result = svc.restore_backup(backup=str(external_backup))
 
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("outside managed backup directory" in (result["error_message"] or "")):
-        raise AssertionError()
+    _expect("outside managed backup directory" in (result["error_message"] or ""))
 
 
 def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch):
@@ -163,11 +155,9 @@ def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch)
     backup_path = svc.backup_mgr.backup_text(f"dotenv:{env_file}", "A=1\n")
     result = svc.restore_backup(backup=str(backup_path), scope_roots=[allowed])
 
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
-    if not (env_file.read_text(encoding="utf-8") == "A=1\n"):
-        raise AssertionError()
+    _expect(env_file.read_text(encoding="utf-8") == "A=1\n")
 
 
 
@@ -184,11 +174,6 @@ def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch
     backup_path = svc.backup_mgr.backup_text(f"dotenv:{env_file}", "A=1\n")
     result = svc.restore_backup(backup=str(backup_path), scope_roots=[allowed])
 
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("outside approved roots" in (result["error_message"] or "")):
-        raise AssertionError()
-
-
-
+    _expect("outside approved roots" in (result["error_message"] or ""))

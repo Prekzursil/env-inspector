@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import urllib.error
 
@@ -6,13 +6,16 @@ import pytest
 
 from scripts import security_helpers as sec
 
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
 
 def test_identifier_and_url_helpers():
-    if not (sec.require_identifier("owner.repo-1", field_name="owner") == "owner.repo-1"):
-        raise AssertionError()
+    _expect(sec.require_identifier("owner.repo-1", field_name="owner") == "owner.repo-1")
 
-    if not (sec.encode_identifier("owner.repo-1", field_name="owner") == "owner.repo-1"):
-        raise AssertionError()
+    _expect(sec.encode_identifier("owner.repo-1", field_name="owner") == "owner.repo-1")
 
 
     with pytest.raises(ValueError, match="unsupported characters"):
@@ -22,14 +25,11 @@ def test_identifier_and_url_helpers():
         "https://api.codacy.com/api/v3/resource?limit=1&query=x",
         allowed_host_suffixes={"codacy.com"},
     )
-    if not (host == "api.codacy.com"):
-        raise AssertionError()
+    _expect(host == "api.codacy.com")
 
-    if not (path == "/api/v3/resource"):
-        raise AssertionError()
+    _expect(path == "/api/v3/resource")
 
-    if not (query == {"limit": "1", "query": "x"}):
-        raise AssertionError()
+    _expect(query == {"limit": "1", "query": "x"})
 
 
 
@@ -74,26 +74,19 @@ def test_request_json_https_success(monkeypatch):
         data={"x": 1},
     )
 
-    if not (payload == {"ok": True}):
-        raise AssertionError()
+    _expect(payload == {"ok": True})
 
-    if not (headers["x-hits"] == "1"):
-        raise AssertionError()
+    _expect(headers["x-hits"] == "1")
 
-    if not (recorded["host"] == "api.codacy.com"):
-        raise AssertionError()
+    _expect(recorded["host"] == "api.codacy.com")
 
-    if not (recorded["method"] == "POST"):
-        raise AssertionError()
+    _expect(recorded["method"] == "POST")
 
-    if not (recorded["path"] == "/api/v3/issues/search?limit=1"):
-        raise AssertionError()
+    _expect(recorded["path"] == "/api/v3/issues/search?limit=1")
 
-    if not (recorded["body"] == '{"x": 1}'):
-        raise AssertionError()
+    _expect(recorded["body"] == '{"x": 1}')
 
-    if not (recorded["closed"] is True):
-        raise AssertionError()
+    _expect(recorded["closed"] is True)
 
 
 
@@ -129,8 +122,7 @@ def test_request_json_https_http_error(monkeypatch):
             path="/api/0/projects/org/proj/issues/",
             headers={"Accept": "application/json"},
         )
-    if not (exc_info.value.code == 403):
-        raise AssertionError()
+    _expect(exc_info.value.code == 403)
 
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
@@ -138,8 +130,7 @@ def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatc
 
     resolved = sec.safe_output_path_in_workspace("reports/out.json", "fallback.json")
 
-    if not (resolved == (tmp_path / "reports" / "out.json").resolve(strict=False)):
-        raise AssertionError()
+    _expect(resolved == (tmp_path / "reports" / "out.json").resolve(strict=False))
 
 
 

@@ -1,6 +1,13 @@
+from __future__ import absolute_import, division
+
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_export_masks_secrets_by_default(tmp_path: Path, monkeypatch):
@@ -15,8 +22,7 @@ def test_export_masks_secrets_by_default(tmp_path: Path, monkeypatch):
         root=tmp_path,
         context=svc.runtime_context,
     )
-    if not ("supersecretvalue" not in csv_text):
-        raise AssertionError()
+    _expect("supersecretvalue" not in csv_text)
 
 
 
@@ -33,6 +39,4 @@ def test_export_can_include_raw_secrets_when_opted_in(tmp_path: Path, monkeypatc
         root=tmp_path,
         context=svc.runtime_context,
     )
-    if not ("supersecretvalue" in csv_text):
-        raise AssertionError()
-
+    _expect("supersecretvalue" in csv_text)

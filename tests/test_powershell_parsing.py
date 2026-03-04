@@ -1,4 +1,11 @@
+from __future__ import absolute_import, division
+
 from env_inspector_core.providers import parse_powershell_profile_text
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_parse_powershell_profile_env_assignments():
@@ -11,12 +18,8 @@ Write-Host "ignore"
 """
     rows = parse_powershell_profile_text(text)
     parsed = dict(rows)
-    if not (parsed["API_TOKEN"] == "abc123"):
-        raise AssertionError()
+    _expect(parsed["API_TOKEN"] == "abc123")
 
-    if not (parsed["PATH"] == "/usr/bin"):
-        raise AssertionError()
+    _expect(parsed["PATH"] == "/usr/bin")
 
-    if not (parsed["EMPTY"] == ""):
-        raise AssertionError()
-
+    _expect(parsed["EMPTY"] == "")

@@ -1,9 +1,14 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
 from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import load_ui_state, save_ui_state, sanitize_loaded_state
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_state_store_roundtrip(tmp_path: Path):
@@ -26,14 +31,11 @@ def test_state_store_roundtrip(tmp_path: Path):
     save_ui_state(state_dir, state)
     loaded = load_ui_state(state_dir)
 
-    if not (loaded.window_geometry == "1300x900"):
-        raise AssertionError()
+    _expect(loaded.window_geometry == "1300x900")
 
-    if not (loaded.selected_targets == ["windows:user", "dotenv:/tmp/.env"]):
-        raise AssertionError()
+    _expect(loaded.selected_targets == ["windows:user", "dotenv:/tmp/.env"])
 
-    if not (loaded.sort_descending is True):
-        raise AssertionError()
+    _expect(loaded.sort_descending is True)
 
 
 
@@ -44,14 +46,11 @@ def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
 
     loaded = load_ui_state(state_dir)
 
-    if not (isinstance(loaded, PersistedUiState)):
-        raise AssertionError()
+    _expect(isinstance(loaded, PersistedUiState))
 
-    if not (loaded.filter_text == ""):
-        raise AssertionError()
+    _expect(loaded.filter_text == "")
 
-    if not (loaded.selected_targets == []):
-        raise AssertionError()
+    _expect(loaded.selected_targets == [])
 
 
 
@@ -69,12 +68,8 @@ def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):
         fallback_root=tmp_path,
     )
 
-    if not (sanitized.root_path == str(tmp_path)):
-        raise AssertionError()
+    _expect(sanitized.root_path == str(tmp_path))
 
-    if not (sanitized.context == "windows"):
-        raise AssertionError()
+    _expect(sanitized.context == "windows")
 
-    if not (sanitized.selected_targets == ["windows:user"]):
-        raise AssertionError()
-
+    _expect(sanitized.selected_targets == ["windows:user"])

@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,6 +8,11 @@ import urllib.error
 
 from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_sentry_zero as sentry_mod
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_codacy_extract_total_open_handles_nested_and_missing_counts():
@@ -33,11 +38,9 @@ def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monke
 
     rc = codacy_mod.main()
 
-    if not (rc == 1):
-        raise AssertionError()
+    _expect(rc == 1)
 
-    if not ("escapes workspace root" in capsys.readouterr().err):
-        raise AssertionError()
+    _expect("escapes workspace root" in capsys.readouterr().err)
 
 
 
@@ -45,8 +48,7 @@ def test_sentry_collect_projects_prefers_args_and_env_fallback():
     args_with_projects = SimpleNamespace(project=["backend", "web"])
     args_without_projects = SimpleNamespace(project=[])
 
-    if not (sentry_mod._collect_projects(args_with_projects, {}) == ["backend", "web"]):
-        raise AssertionError()
+    _expect(sentry_mod._collect_projects(args_with_projects, {}) == ["backend", "web"])
 
     if not (sentry_mod._collect_projects(
         args_without_projects,
@@ -64,20 +66,15 @@ def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
 
     mode, project_results, findings, failures = sentry_mod._scan_projects("org", ["proj"], "token")
 
-    if not (mode == "strict"):
-        raise AssertionError()
+    _expect(mode == "strict")
 
-    if not (project_results == [{"project": "proj", "unresolved": 1}]):
-        raise AssertionError()
+    _expect(project_results == [{"project": "proj", "unresolved": 1}])
 
-    if not (findings == []):
-        raise AssertionError()
+    _expect(findings == [])
 
-    if not (any("no X-Hits" in item for item in failures)):
-        raise AssertionError()
+    _expect(any("no X-Hits" in item for item in failures))
 
-    if not (any("expected 0" in item for item in failures)):
-        raise AssertionError()
+    _expect(any("expected 0" in item for item in failures))
 
 
 
@@ -88,17 +85,13 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     monkeypatch.setattr(sentry_mod, "_request_project_issues", _raise_404)
     mode_404, project_results_404, findings_404, failures_404 = sentry_mod._scan_projects("org", ["proj"], "token")
 
-    if not (mode_404 == "skipped"):
-        raise AssertionError()
+    _expect(mode_404 == "skipped")
 
-    if not (project_results_404 == []):
-        raise AssertionError()
+    _expect(project_results_404 == [])
 
-    if not (failures_404 == []):
-        raise AssertionError()
+    _expect(failures_404 == [])
 
-    if not (findings_404 and "HTTP 404" in findings_404[0]):
-        raise AssertionError()
+    _expect(findings_404 and "HTTP 404" in findings_404[0])
 
 
     def _raise_500(org: str, project: str, token: str):
@@ -107,17 +100,13 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     monkeypatch.setattr(sentry_mod, "_request_project_issues", _raise_500)
     mode_500, project_results_500, findings_500, failures_500 = sentry_mod._scan_projects("org", ["proj"], "token")
 
-    if not (mode_500 == "error"):
-        raise AssertionError()
+    _expect(mode_500 == "error")
 
-    if not (project_results_500 == []):
-        raise AssertionError()
+    _expect(project_results_500 == [])
 
-    if not (findings_500 == []):
-        raise AssertionError()
+    _expect(findings_500 == [])
 
-    if not (failures_500 and "HTTP 500" in failures_500[0]):
-        raise AssertionError()
+    _expect(failures_500 and "HTTP 500" in failures_500[0])
 
 
 
@@ -138,11 +127,9 @@ def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
         lambda org, projects, token: ("strict", [{"project": "proj", "unresolved": 0}], [], []),
     )
 
-    if not (sentry_mod.main() == 0):
-        raise AssertionError()
+    _expect(sentry_mod.main() == 0)
 
-    if not ((tmp_path / "reports" / "sentry.json").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "sentry.json").exists())
 
 
     monkeypatch.setattr(
@@ -150,6 +137,4 @@ def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
         "_scan_projects",
         lambda org, projects, token: ("error", [{"project": "proj", "unresolved": 1}], [], ["failure"]),
     )
-    if not (sentry_mod.main() == 1):
-        raise AssertionError()
-
+    _expect(sentry_mod.main() == 1)

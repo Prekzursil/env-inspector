@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 from env_inspector_core.parsing import (
     parse_dotenv_text,
     parse_bash_exports,

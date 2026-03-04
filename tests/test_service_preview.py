@@ -1,6 +1,13 @@
+from __future__ import absolute_import, division
+
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_preview_set_does_not_mutate_file(tmp_path: Path, monkeypatch):
@@ -11,23 +18,19 @@ def test_preview_set_does_not_mutate_file(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     previews = svc.preview_set(key="API_TOKEN", value="x", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    if not (previews[0]["success"] is True):
-        raise AssertionError()
+    _expect(previews[0]["success"] is True)
 
 
     text_after_preview = env_file.read_text(encoding="utf-8")
-    if not (text_after_preview == "A=1\n"):
-        raise AssertionError()
+    _expect(text_after_preview == "A=1\n")
 
 
     result = svc.set_key(key="API_TOKEN", value="x", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
 
     text_after_apply = env_file.read_text(encoding="utf-8")
-    if not ("API_TOKEN=x" in text_after_apply):
-        raise AssertionError()
+    _expect("API_TOKEN=x" in text_after_apply)
 
 
 
@@ -44,14 +47,11 @@ def test_set_does_not_write_when_backup_fails(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(svc.backup_mgr, "backup_text", fail_backup)
 
     result = svc.set_key(key="A", value="2", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("backup write failed" in result["error_message"]):
-        raise AssertionError()
+    _expect("backup write failed" in result["error_message"])
 
-    if not (env_file.read_text(encoding="utf-8") == "A=1\n"):
-        raise AssertionError()
+    _expect(env_file.read_text(encoding="utf-8") == "A=1\n")
 
 
 
@@ -62,16 +62,13 @@ def test_audit_log_redacts_secret_diff(tmp_path: Path, monkeypatch):
 
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     result = svc.set_key(key="API_TOKEN", value="supersecretvalue", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    if not (result["success"] is True):
-        raise AssertionError()
+    _expect(result["success"] is True)
 
 
     log_text = (tmp_path / "state" / "audit.log").read_text(encoding="utf-8")
-    if not ("[secret diff masked]" in log_text):
-        raise AssertionError()
+    _expect("[secret diff masked]" in log_text)
 
-    if not ("supersecretvalue" not in log_text):
-        raise AssertionError()
+    _expect("supersecretvalue" not in log_text)
 
 
 
@@ -87,12 +84,8 @@ def test_set_rejects_dotenv_target_outside_approved_roots(tmp_path: Path, monkey
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     result = svc.set_key(key="A", value="2", targets=[f"dotenv:{env_file}"], scope_roots=[allowed_root])
 
-    if not (result["success"] is False):
-        raise AssertionError()
+    _expect(result["success"] is False)
 
-    if not ("outside approved roots" in (result["error_message"] or "")):
-        raise AssertionError()
+    _expect("outside approved roots" in (result["error_message"] or ""))
 
-    if not (env_file.read_text(encoding="utf-8") == "A=1\n"):
-        raise AssertionError()
-
+    _expect(env_file.read_text(encoding="utf-8") == "A=1\n")

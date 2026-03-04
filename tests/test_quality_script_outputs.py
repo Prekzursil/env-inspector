@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from types import SimpleNamespace
 from pathlib import Path
@@ -8,6 +8,11 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
 
 def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
     xml_path = tmp_path / "coverage.xml"
@@ -15,11 +20,9 @@ def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
 
     stats = coverage_mod.parse_coverage_xml("python", xml_path)
 
-    if not (stats.total == 2):
-        raise AssertionError()
+    _expect(stats.total == 2)
 
-    if not (stats.covered == 1):
-        raise AssertionError()
+    _expect(stats.covered == 1)
 
 
 
@@ -29,11 +32,9 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 
     stats = coverage_mod.parse_lcov("python", lcov_path)
 
-    if not (stats.total == 2):
-        raise AssertionError()
+    _expect(stats.total == 2)
 
-    if not (stats.covered == 1):
-        raise AssertionError()
+    _expect(stats.covered == 1)
 
 
 
@@ -53,14 +54,11 @@ def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
 
     rc = coverage_mod.main()
 
-    if not (rc == 0):
-        raise AssertionError()
+    _expect(rc == 0)
 
-    if not ((tmp_path / "reports" / "coverage.json").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "coverage.json").exists())
 
-    if not ((tmp_path / "reports" / "coverage.md").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "coverage.md").exists())
 
 
 
@@ -79,14 +77,11 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
 
     rc = codacy_mod.main()
 
-    if not (rc == 1):
-        raise AssertionError()
+    _expect(rc == 1)
 
-    if not ((tmp_path / "reports" / "codacy.json").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "codacy.json").exists())
 
-    if not ((tmp_path / "reports" / "codacy.md").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "codacy.md").exists())
 
 
 
@@ -103,14 +98,11 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
 
     rc = deepscan_mod.main()
 
-    if not (rc == 1):
-        raise AssertionError()
+    _expect(rc == 1)
 
-    if not ((tmp_path / "reports" / "deepscan.json").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "deepscan.json").exists())
 
-    if not ((tmp_path / "reports" / "deepscan.md").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "deepscan.md").exists())
 
 
 
@@ -131,12 +123,8 @@ def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch)
 
     rc = sentry_mod.main()
 
-    if not (rc == 0):
-        raise AssertionError()
+    _expect(rc == 0)
 
-    if not ((tmp_path / "reports" / "sentry.json").exists()):
-        raise AssertionError()
+    _expect((tmp_path / "reports" / "sentry.json").exists())
 
-    if not ((tmp_path / "reports" / "sentry.md").exists()):
-        raise AssertionError()
-
+    _expect((tmp_path / "reports" / "sentry.md").exists())

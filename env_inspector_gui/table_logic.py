@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value

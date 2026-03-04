@@ -1,5 +1,12 @@
+from __future__ import absolute_import, division
+
 import re
 from pathlib import Path
+
+def _expect(condition, message: str = "") -> None:
+    if not condition:
+        raise AssertionError(message)
+
 
 
 def test_release_workflow_pins_third_party_actions_to_shas():
@@ -11,12 +18,9 @@ def test_release_workflow_pins_third_party_actions_to_shas():
         if stripped.startswith("uses: "):
             uses_values.append(stripped.split("uses: ", 1)[1].strip())
 
-    if not (uses_values):
-        raise AssertionError("Expected at least one uses: entry in release workflow.")
+    _expect(uses_values, "Expected at least one uses: entry in release workflow.")
 
 
     sha_pin = re.compile(r"^[^@]+@[0-9a-f]{40}(?:\s+#\s+v\d[\w.\-]*)?$")
     unpinned = [value for value in uses_values if value and not value.startswith("./") and not sha_pin.match(value)]
-    if not (not unpinned):
-        raise AssertionError(f"Unpinned action refs found: {unpinned}")
-
+    _expect(not unpinned, f"Unpinned action refs found: {unpinned}")
