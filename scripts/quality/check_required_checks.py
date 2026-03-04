@@ -90,63 +90,30 @@ def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> dict[str,
     return payload
 
 
-def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
-    name = str(run.get("name") or "").strip()
-    if not name:
-        return None
-    return name, {
-        "state": str(run.get("status") or ""),
-        "conclusion": str(run.get("conclusion") or ""),
-        "source": "check_run",
-    }
-
-
-def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
-    name = str(status.get("context") or "").strip()
-    if not name:
-        return None
-    state = str(status.get("state") or "")
-    return name, {
-        "state": state,
-        "conclusion": state,
-        "source": "status",
-    }
-
-
 def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
     contexts: dict[str, dict[str, str]] = {}
 
     for run in check_runs_payload.get("check_runs", []) or []:
-        entry = _check_run_context(run)
-        if entry:
-            key, value = entry
-            contexts[key] = value
+        name = str(run.get("name") or "").strip()
+        if not name:
+            continue
+        contexts[name] = {
+            "state": str(run.get("status") or ""),
+            "conclusion": str(run.get("conclusion") or ""),
+            "source": "check_run",
+        }
 
     for status in status_payload.get("statuses", []) or []:
-        entry = _status_context(status)
-        if entry:
-            key, value = entry
-            contexts[key] = value
+        name = str(status.get("context") or "").strip()
+        if not name:
+            continue
+        contexts[name] = {
+            "state": str(status.get("state") or ""),
+            "conclusion": str(status.get("state") or ""),
+            "source": "status",
+        }
 
     return contexts
-
-
-def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
-    state = observed.get("state")
-    if state != "completed":
-        return f"{context}: status={state}"
-
-    conclusion = observed.get("conclusion")
-    if conclusion != "success":
-        return f"{context}: conclusion={conclusion}"
-    return None
-
-
-def _status_failure(context: str, observed: dict[str, str]) -> str | None:
-    conclusion = observed.get("conclusion")
-    if conclusion != "success":
-        return f"{context}: state={conclusion}"
-    return None
 
 
 def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple[str, list[str], list[str]]:
@@ -159,12 +126,18 @@ def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple
             missing.append(context)
             continue
 
-        if observed.get("source") == "check_run":
-            failure = _check_run_failure(context, observed)
+        source = observed.get("source")
+        if source == "check_run":
+            state = observed.get("state")
+            conclusion = observed.get("conclusion")
+            if state != "completed":
+                failed.append(f"{context}: status={state}")
+            elif conclusion != "success":
+                failed.append(f"{context}: conclusion={conclusion}")
         else:
-            failure = _status_failure(context, observed)
-        if failure:
-            failed.append(failure)
+            conclusion = observed.get("conclusion")
+            if conclusion != "success":
+                failed.append(f"{context}: state={conclusion}")
 
     status = "pass" if not missing and not failed else "fail"
     return status, missing, failed
@@ -197,105 +170,52 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _required_contexts(args: argparse.Namespace) -> list[str]:
-    required = [item.strip() for item in args.required_context if item.strip()]
-    if not required:
-        raise SystemExit("At least one --required-context is required")
-    return required
-
-
-def _github_token() -> str:
-    token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
-    if not token:
-        raise SystemExit("GITHUB_TOKEN or GH_TOKEN is required")
-    return token
-
-
-def _snapshot(
-    *,
-    repo_arg: str,
-    sha: str,
-    required: list[str],
-    contexts: dict[str, dict[str, str]],
-) -> dict[str, Any]:
-    status, missing, failed = _evaluate(required, contexts)
-    return {
-        "status": status,
-        "repo": repo_arg,
-        "sha": sha,
-        "required": required,
-        "missing": missing,
-        "failed": failed,
-        "contexts": contexts,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-def _has_in_progress_check_run(contexts: dict[str, dict[str, str]]) -> bool:
-    for observed in contexts.values():
-        if observed.get("source") == "check_run" and observed.get("state") != "completed":
-            return True
-    return False
-
-
-def _should_wait(payload: dict[str, Any]) -> bool:
-    if payload["status"] == "pass":
-        return False
-    if payload["missing"]:
-        return True
-    return _has_in_progress_check_run(payload["contexts"])
-
-
-def _collect_until_settled(
-    *,
-    owner_slug: str,
-    repo_slug: str,
-    repo_arg: str,
-    sha: str,
-    token: str,
-    required: list[str],
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> dict[str, Any]:
-    deadline = time.time() + max(timeout_seconds, 1)
-    final_payload: dict[str, Any] | None = None
-
-    while time.time() <= deadline:
-        check_runs = _api_get_check_runs(owner=owner_slug, repo=repo_slug, sha=sha, token=token)
-        statuses = _api_get_status(owner=owner_slug, repo=repo_slug, sha=sha, token=token)
-        contexts = _collect_contexts(check_runs, statuses)
-
-        final_payload = _snapshot(repo_arg=repo_arg, sha=sha, required=required, contexts=contexts)
-        if not _should_wait(final_payload):
-            break
-        time.sleep(max(poll_seconds, 1))
-
-    if final_payload is None:
-        raise SystemExit("No payload collected")
-    return final_payload
-
-
 def main() -> int:
     args = _parse_args()
-    required = _required_contexts(args)
-    token = _github_token()
+    token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
+    required = [item.strip() for item in args.required_context if item.strip()]
 
+    if not required:
+        raise SystemExit("At least one --required-context is required")
+    if not token:
+        raise SystemExit("GITHUB_TOKEN or GH_TOKEN is required")
     try:
         owner_slug, repo_slug = _parse_repo(args.repo)
         sha = _parse_sha(args.sha)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
 
-    final_payload = _collect_until_settled(
-        owner_slug=owner_slug,
-        repo_slug=repo_slug,
-        repo_arg=args.repo,
-        sha=sha,
-        token=token,
-        required=required,
-        timeout_seconds=args.timeout_seconds,
-        poll_seconds=args.poll_seconds,
-    )
+    deadline = time.time() + max(args.timeout_seconds, 1)
+
+    final_payload: dict[str, Any] | None = None
+    while time.time() <= deadline:
+        check_runs = _api_get_check_runs(owner=owner_slug, repo=repo_slug, sha=sha, token=token)
+        statuses = _api_get_status(owner=owner_slug, repo=repo_slug, sha=sha, token=token)
+        contexts = _collect_contexts(check_runs, statuses)
+        status, missing, failed = _evaluate(required, contexts)
+
+        final_payload = {
+            "status": status,
+            "repo": args.repo,
+            "sha": sha,
+            "required": required,
+            "missing": missing,
+            "failed": failed,
+            "contexts": contexts,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        }
+
+        if status == "pass":
+            break
+
+        # wait only while there are missing contexts or in-progress check-runs
+        in_progress = any(v.get("state") != "completed" for v in contexts.values() if v.get("source") == "check_run")
+        if not missing and not in_progress:
+            break
+        time.sleep(max(args.poll_seconds, 1))
+
+    if final_payload is None:
+        raise SystemExit("No payload collected")
 
     try:
         out_json = safe_output_path_in_workspace(args.out_json, "quality-zero-gate/required-checks.json")

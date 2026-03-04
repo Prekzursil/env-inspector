@@ -26,45 +26,18 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _numeric_total_from_dict(node: dict[str, Any]) -> int | None:
-    for key in TOTAL_KEYS:
-        value = node.get(key)
-        if isinstance(value, (int, float)):
-            return int(value)
-    return None
-
-
-def _iter_nested_nodes(payload: Any) -> list[Any]:
-    stack: list[Any] = [payload]
-    nodes: list[Any] = []
-    while stack:
-        current = stack.pop()
-        nodes.append(current)
-        if isinstance(current, dict):
-            stack.extend(current.values())
-            continue
-        if isinstance(current, list):
-            stack.extend(current)
-    return nodes
-
-
 def extract_total_open(payload: Any) -> int | None:
-    if not isinstance(payload, dict):
-        return None
-
-    pagination = payload.get("pagination")
-    if isinstance(pagination, dict):
-        total = _numeric_total_from_dict(pagination)
-        if total is not None:
-            return total
-
-    direct_total = _numeric_total_from_dict(payload)
-    if direct_total is not None:
-        return direct_total
-
-    for node in _iter_nested_nodes(payload):
-        if isinstance(node, dict):
-            total = _numeric_total_from_dict(node)
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            if key in TOTAL_KEYS and isinstance(value, (int, float)):
+                return int(value)
+        for nested in payload.values():
+            total = extract_total_open(nested)
+            if total is not None:
+                return total
+    elif isinstance(payload, list):
+        for nested in payload:
+            total = extract_total_open(nested)
             if total is not None:
                 return total
     return None
@@ -85,40 +58,6 @@ def _request_json(*, host: str, path: str, query: dict[str, str], token: str) ->
     if not isinstance(payload, dict):
         raise RuntimeError("Unexpected DeepScan response payload.")
     return payload
-
-
-def _resolve_scan_endpoint(open_issues_url: str, findings: list[str]) -> tuple[str, str, dict[str, str]] | None:
-    if not open_issues_url:
-        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
-        return None
-    try:
-        host, path, query = split_validated_https_url(
-            open_issues_url,
-            allowed_host_suffixes={"deepscan.io"},
-        )
-        return host, path, query
-    except ValueError as exc:
-        findings.append(str(exc))
-        return None
-
-
-def _scan_open_issue_total(
-    *, endpoint: tuple[str, str, dict[str, str]], token: str, findings: list[str]
-) -> int | None:
-    host, path, query = endpoint
-    try:
-        payload = _request_json(host=host, path=path, query=query, token=token)
-    except Exception as exc:  # pragma: no cover - network/runtime surface
-        findings.append(f"DeepScan API request failed: {exc}")
-        return None
-
-    open_issues = extract_total_open(payload)
-    if open_issues is None:
-        findings.append("DeepScan response did not include a parseable total issue count.")
-        return None
-    if open_issues != 0:
-        findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
-    return open_issues
 
 
 def _render_md(payload: dict) -> str:
@@ -152,12 +91,31 @@ def main() -> int:
 
     if not token:
         findings.append("DEEPSCAN_API_TOKEN is missing.")
+    if not open_issues_url:
+        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
+    else:
+        try:
+            host, path, query = split_validated_https_url(
+                open_issues_url,
+                allowed_host_suffixes={"deepscan.io"},
+            )
+        except ValueError as exc:
+            findings.append(str(exc))
 
-    endpoint = _resolve_scan_endpoint(open_issues_url, findings)
-    if not findings and endpoint is not None:
-        open_issues = _scan_open_issue_total(endpoint=endpoint, token=token, findings=findings)
+    status = "fail"
+    if not findings:
+        try:
+            payload = _request_json(host=host, path=path, query=query, token=token)
+            open_issues = extract_total_open(payload)
+            if open_issues is None:
+                findings.append("DeepScan response did not include a parseable total issue count.")
+            elif open_issues != 0:
+                findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
+            status = "pass" if not findings else "fail"
+        except Exception as exc:  # pragma: no cover - network/runtime surface
+            findings.append(f"DeepScan API request failed: {exc}")
+            status = "fail"
 
-    status = "pass" if not findings else "fail"
     payload = {
         "status": status,
         "open_issues": open_issues,
