@@ -13,14 +13,14 @@ from env_inspector_core.constants import (
     SOURCE_WSL_DOTENV,
     SOURCE_WSL_ETC_ENV,
 )
+from env_inspector_core.models import EnvRecord
+from env_inspector_core.service import EnvInspectorService
+import env_inspector_core.service as service_module
+
 
 def _expect(condition, message: str = "") -> None:
     if not condition:
         raise AssertionError(message)
-
-from env_inspector_core.models import EnvRecord
-from env_inspector_core.service import EnvInspectorService
-import env_inspector_core.service as service_module
 
 
 def _record(source_type: str, source_path: str, *, context: str = "linux", source_id: str = "Ubuntu") -> EnvRecord:
@@ -286,7 +286,9 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
             self.path = path
             self.roots = [allowed]
 
-    monkeypatch.setattr(service_module, "parse_scoped_dotenv_target", lambda target, roots: _Scoped(env_path))
+    import env_inspector_core.service_restore as restore_module
+
+    monkeypatch.setattr(restore_module, "parse_scoped_dotenv_target", lambda target, roots: _Scoped(env_path))
 
     with pytest.raises(RuntimeError, match="outside approved roots"):
         svc._restore_dotenv_target(
