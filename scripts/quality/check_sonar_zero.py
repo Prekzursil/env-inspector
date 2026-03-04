@@ -130,7 +130,7 @@ def _evaluate_sonar(
             branch,
             pull_request,
         )
-    except (urllib.error.URLError, ValueError, RuntimeError, json.JSONDecodeError) as exc:  # pragma: no cover
+    except (urllib.error.URLError, ValueError, RuntimeError) as exc:  # pragma: no cover
         return open_issues, quality_gate, open_hotspots, quality_gate_warning, [f"Sonar API request failed: {exc}"]
 
     if open_issues != 0:
@@ -213,3 +213,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

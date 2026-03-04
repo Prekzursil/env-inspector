@@ -504,12 +504,19 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        path = self._validated_powershell_restore_path(target)
+        if target == "powershell:current_user":
+            path = self._validated_powershell_restore_path("powershell:current_user")
+            requires_priv = False
+        elif target == "powershell:all_users":
+            path = self._validated_powershell_restore_path("powershell:all_users")
+            requires_priv = True
+        else:
+            raise RuntimeError(f"Unsupported PowerShell target: {target}")
+
         before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
         after = upsert_powershell_env(before, key, value or "") if action == "set" else remove_powershell_env(before, key)
         if apply_changes:
             self._write_text_file(path, after, ensure_parent=True)
-        requires_priv = target == "powershell:all_users"
         return before, after, str(path), requires_priv, None
 
     def _file_update(

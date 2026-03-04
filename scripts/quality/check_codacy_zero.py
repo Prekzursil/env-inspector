@@ -18,6 +18,8 @@ from security_helpers import encode_identifier, request_json_https, safe_output_
 
 TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "open_issues")
 CODACY_API_HOST = "app.codacy.com"
+CODACY_ISSUES_SEARCH_ENDPOINT = "issues/search"
+CODACY_ISSUES_OVERVIEW_ENDPOINT = "issues/overview"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -38,7 +40,7 @@ def _request_json(
     repo: str,
     token: str,
     branch: str = "",
-    endpoint: str = "issues/search",
+    endpoint: str = CODACY_ISSUES_SEARCH_ENDPOINT,
     limit: int | None = 1,
     method: str = "POST",
     data: Optional[Dict[str, Any]] = None,
@@ -194,7 +196,7 @@ def _scan_candidate(
         repo=repo,
         token=token,
         branch=branch,
-        endpoint="issues/overview",
+        endpoint=CODACY_ISSUES_OVERVIEW_ENDPOINT,
         limit=None,
         method="POST",
         data={},
@@ -208,7 +210,7 @@ def _scan_candidate(
             repo=repo,
             token=token,
             branch=branch,
-            endpoint="issues/search",
+            endpoint=CODACY_ISSUES_SEARCH_ENDPOINT,
             limit=1,
             method="POST",
             data={},
@@ -226,7 +228,7 @@ def _scan_candidate(
             repo=repo,
             token=token,
             branch=branch,
-            endpoint="issues/search",
+            endpoint=CODACY_ISSUES_SEARCH_ENDPOINT,
             limit=20,
             method="POST",
             data={},
@@ -342,3 +344,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

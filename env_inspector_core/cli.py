@@ -73,19 +73,18 @@ def _handle_list(args: argparse.Namespace, service: EnvInspectorService) -> int:
     )
     if args.output == "json":
         _print_json(rows)
-        return 0
-
-    export_text = service.export_records(
-        output=args.output,
-        include_raw_secrets=args.include_raw_secrets,
-        root=args.root,
-        context=args.context,
-        source=args.source,
-        wsl_path=args.wsl_path,
-        distro=args.distro,
-        scan_depth=args.scan_depth,
-    )
-    print(export_text, end="")
+    else:
+        export_text = service.export_records(
+            output=args.output,
+            include_raw_secrets=args.include_raw_secrets,
+            root=args.root,
+            context=args.context,
+            source=args.source,
+            wsl_path=args.wsl_path,
+            distro=args.distro,
+            scan_depth=args.scan_depth,
+        )
+        print(export_text, end="")
     return 0
 
 
@@ -168,3 +167,4 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2
     return handler(args, service)
+

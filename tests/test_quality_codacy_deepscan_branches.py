@@ -108,6 +108,14 @@ def test_codacy_query_open_issues_handles_http_paths(monkeypatch):
     assert any("HTTP 500" in item for item in findings_500)
 
 
+def test_codacy_query_open_issues_returns_candidate_value(monkeypatch):
+    monkeypatch.setattr(codacy_mod, "_scan_candidate", lambda **_kwargs: 0)
+
+    open_issues, findings = codacy_mod._query_open_issues("gh", "Prekzursil", "env-inspector", "tok", "")
+    assert open_issues == 0
+    assert findings == []
+
+
 def test_codacy_main_success_and_output_path_error(tmp_path: Path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CODACY_API_TOKEN", "env-token")
@@ -150,7 +158,7 @@ def test_deepscan_parse_open_issue_endpoint_paths():
     assert path == "/api/projects/1/issues/open"
     assert query == {"limit": "1"}
 
-    host2, path2, query2, findings2 = deepscan_mod._parse_open_issue_endpoint("http://deepscan.io/x")
+    host2, path2, query2, findings2 = deepscan_mod._parse_open_issue_endpoint("ftp://deepscan.io/x")
     assert host2 is None and path2 is None and query2 is None
     assert findings2
 
@@ -245,3 +253,4 @@ def test_codacy_scan_candidate_returns_none_when_totals_unparseable(monkeypatch)
 
     assert open_issues is None
     assert any("parseable total issue count" in item for item in findings)
+

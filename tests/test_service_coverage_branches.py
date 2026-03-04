@@ -149,6 +149,25 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     assert out_path == str(profile)
     assert "$env:A" in profile.read_text(encoding="utf-8")
 
+    _before2, _after2, out_path2, requires_priv2, _ = svc._update_powershell_file(
+        target="powershell:all_users",
+        key="A",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+    assert out_path2 == str(profile)
+    assert requires_priv2 is True
+
+    with pytest.raises(RuntimeError, match="Unsupported PowerShell target"):
+        svc._update_powershell_file(
+            target="powershell:unknown",
+            key="A",
+            value="1",
+            action="set",
+            apply_changes=False,
+        )
+
     monkeypatch.setattr(
         svc,
         "_update_wsl_file",
