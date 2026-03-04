@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from scripts.quality.snyk_policy import classify_scan, decide_policy, detect_findings, detect_quota_exhausted
 

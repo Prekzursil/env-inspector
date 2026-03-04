@@ -1,19 +1,19 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import re
 from collections.abc import Callable
 
-ENV_KEY_RE = re.compile(r"^(?:[A-Za-z]|_)\w*$")
-EXPORT_LINE_RE = re.compile(r"^\s*export\s+((?:[A-Za-z]|_)\w*)=(.*)$")
-ASSIGN_LINE_RE = re.compile(r"^\s*((?:[A-Za-z]|_)\w*)=(.*)$")
-POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:((?:[A-Za-z]|_)\w*)\s*=", re.IGNORECASE)
+ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
+ASSIGN_LINE_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
+POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE)
 
 
 def validate_env_key(key: str) -> None:
     if not key:
         raise ValueError("Environment key cannot be empty.")
     if not ENV_KEY_RE.match(key):
-        raise ValueError("Invalid key format. Use [A-Za-z_]\\w*.")
+        raise ValueError("Invalid key format. Use [A-Za-z_][A-Za-z0-9_]*.")
 
 
 def validate_env_value(value: str) -> None:

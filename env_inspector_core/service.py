@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import csv
 import difflib
@@ -136,17 +136,18 @@ class EnvInspectorService:
         self._write_text_file(safe_path, text, ensure_parent=True)
         return safe_path
 
-    def _validated_powershell_restore_path(self, target: str) -> Path:
-        if target not in {TARGET_POWERSHELL_CURRENT_USER, TARGET_POWERSHELL_ALL_USERS}:
-            raise RuntimeError(f"Unsupported PowerShell target: {target}")
-        profile = self._powershell_profile_path(target).resolve(strict=False)
+    def _powershell_target_path_and_roots(self, target: str) -> tuple[Path, list[Path], bool]:
         if target == TARGET_POWERSHELL_CURRENT_USER:
-            allowed_root = Path.home().resolve(strict=False)
-        else:
-            allowed_root = Path(r"C:\\Program Files").resolve(strict=False)
-        if not self._is_path_within(profile, allowed_root):
-            raise RuntimeError(f"PowerShell profile path is outside expected root: {profile}")
-        return profile
+            profile = self._powershell_profile_path(TARGET_POWERSHELL_CURRENT_USER).resolve(strict=False)
+            return profile, [Path.home().resolve(strict=False)], False
+        if target == TARGET_POWERSHELL_ALL_USERS:
+            profile = self._powershell_profile_path(TARGET_POWERSHELL_ALL_USERS).resolve(strict=False)
+            return profile, [Path(r"C:\\Program Files").resolve(strict=False)], True
+        raise RuntimeError(f"Unsupported PowerShell target: {target}")
+
+    def _validated_powershell_restore_path(self, target: str) -> Path:
+        profile, allowed_roots, _requires_priv = self._powershell_target_path_and_roots(target)
+        return self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
 
     @classmethod
     def _linux_etc_environment_path(cls) -> Path:
@@ -514,14 +515,17 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        path = self._validated_powershell_restore_path(target)
-        before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
-        after = upsert_powershell_env(before, key, value or "") if action == "set" else remove_powershell_env(before, key)
+        profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(target)
+        safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
+        before = safe_profile.read_text(encoding="utf-8", errors="ignore") if safe_profile.exists() else ""
+        after = (
+            upsert_powershell_env(before, key, value or "")
+            if action == "set"
+            else remove_powershell_env(before, key)
+        )
         if apply_changes:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(after, encoding="utf-8")
-        requires_priv = "all_users" in target
-        return before, after, str(path), requires_priv, None
+            self._write_text_file(safe_profile, after, ensure_parent=True)
+        return before, after, str(safe_profile), requires_priv, None
 
     def _file_update(
         self,
@@ -872,12 +876,7 @@ class EnvInspectorService:
         raise RuntimeError(f"Unsupported WSL restore target: {target}")
 
     def _restore_powershell_target(self, *, target: str, text: str) -> None:
-        profile = self._validated_powershell_restore_path(target)
-        if target == TARGET_POWERSHELL_CURRENT_USER:
-            allowed_roots = [Path.home().resolve(strict=False)]
-        else:
-            allowed_roots = [Path(r"C:\Program Files").resolve(strict=False)]
-        safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell restore target")
+        safe_profile = self._validated_powershell_restore_path(target)
         self._write_text_file(safe_profile, text, ensure_parent=True)
 
     def _restore_windows_registry_target(self, *, target: str, text: str) -> None:

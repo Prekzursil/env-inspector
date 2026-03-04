@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import SortState
