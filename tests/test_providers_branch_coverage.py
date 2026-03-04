@@ -15,7 +15,6 @@ def _case() -> unittest.TestCase:
     return unittest.TestCase()
 
 
-
 def test_is_workspace_scoped_path_checks_exact_and_descendant(tmp_path: Path):
     root = tmp_path.joinpath("workspace")
     root.mkdir()
@@ -95,6 +94,9 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
             }
             return mapping.get(path, "")
 
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return []
+
     rows = providers.collect_wsl_records(_FakeWsl(), include_etc=True)
 
     case = _case()
@@ -113,6 +115,9 @@ def test_collect_wsl_records_respects_excluded_distros():
         def read_file(self, distro: str, path: str) -> str:
             return ""
 
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return []
+
     rows = providers.collect_wsl_records(_FakeWsl(), include_etc=False, exclude_distros={"ubuntu"})
 
     _case().assertTrue(all(r.source_id != "Ubuntu" for r in rows))
@@ -122,6 +127,15 @@ def test_collect_wsl_helpers_return_empty_when_wsl_unavailable():
     class _FakeWsl:
         def available(self) -> bool:
             return False
+
+        def list_distros(self) -> List[str]:
+            return []
+
+        def read_file(self, distro: str, path: str) -> str:
+            return ""
+
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return []
 
     _case().assertEqual(providers.collect_wsl_records(_FakeWsl()), [])
     _case().assertEqual(
@@ -140,6 +154,9 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
 
         def read_file(self, distro: str, path: str) -> str:
             return "A=1\n"
+
+        def list_distros(self) -> List[str]:
+            return ["Ubuntu"]
 
     rows = providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2)
 
