@@ -25,6 +25,7 @@ def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monke
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
+        branch="feature/branch",
         token="",
         out_json=str(tmp_path.parent / "escaped.json"),
         out_md="reports/codacy.md",

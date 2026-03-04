@@ -57,6 +57,7 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
+        branch="feature/zero",
         token="",
         out_json="reports/codacy.json",
         out_md="reports/codacy.md",

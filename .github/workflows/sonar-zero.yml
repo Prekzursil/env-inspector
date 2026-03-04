@@ -17,13 +17,24 @@ jobs:
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'Prekzursil_env-inspector' }}
+      SONAR_BRANCH: ${{ github.ref_name }}
+      SONAR_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
     steps:
       - uses: actions/checkout@v6
-      - name: Assert Sonar open issue count and quality gate are zero/OK
+      - name: Assert Sonar open issue count and quality gate are zero/OK (PR scope)
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
           python3 scripts/quality/check_sonar_zero.py \
             --project-key "${SONAR_PROJECT_KEY}" \
-            --branch main \
+            --pull-request "${SONAR_PR_NUMBER}" \
+            --out-json "sonar-zero/sonar.json" \
+            --out-md "sonar-zero/sonar.md"
+      - name: Assert Sonar open issue count and quality gate are zero/OK (branch scope)
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          python3 scripts/quality/check_sonar_zero.py \
+            --project-key "${SONAR_PROJECT_KEY}" \
+            --branch "${SONAR_BRANCH}" \
             --out-json "sonar-zero/sonar.json" \
             --out-md "sonar-zero/sonar.md"
       - name: Upload Sonar artifacts

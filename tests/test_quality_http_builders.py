@@ -20,6 +20,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
         owner="Prekzursil",
         repo="env-inspector",
         token="token",
+        branch="feature/zero",
         method="POST",
         data={},
     )
@@ -28,6 +29,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
     assert captured["host"] == "api.codacy.com"
     assert captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search"
     assert captured["query"] == {"limit": "1"}
+    assert captured["data"] == {"branchName": "feature/zero"}
 
 
 def test_codacy_request_json_rejects_unsafe_identifier():
@@ -37,6 +39,7 @@ def test_codacy_request_json_rejects_unsafe_identifier():
             owner="Prekzursil",
             repo="env/inspector",
             token="token",
+            branch="",
             method="POST",
             data={},
         )

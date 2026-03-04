@@ -25,6 +25,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--provider", default="gh", help="Organization provider, for example gh")
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
+    parser.add_argument("--branch", default="", help="Optional branch name to scope issue totals")
     parser.add_argument("--token", default="", help="Codacy API token (falls back to CODACY_API_TOKEN env)")
     parser.add_argument("--out-json", default="codacy-zero/codacy.json", help="Output JSON path")
     parser.add_argument("--out-md", default="codacy-zero/codacy.md", help="Output markdown path")
@@ -37,6 +38,7 @@ def _request_json(
     owner: str,
     repo: str,
     token: str,
+    branch: str,
     method: str = "GET",
     data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -51,13 +53,19 @@ def _request_json(
     provider_slug = encode_identifier(provider, field_name="Codacy provider")
     owner_slug = encode_identifier(owner, field_name="Codacy owner")
     repo_slug = encode_identifier(repo, field_name="Codacy repository")
+
+    payload_data: dict[str, Any] = data or {}
+    branch_name = str(branch or "").strip()
+    if branch_name:
+        payload_data = {**payload_data, "branchName": branch_name}
+
     payload, _headers = request_json_https(
         host=CODACY_API_HOST,
         path=f"/api/v3/analysis/organizations/{provider_slug}/{owner_slug}/repositories/{repo_slug}/issues/search",
         headers=headers,
         method=method,
         query={"limit": "1"},
-        data=data,
+        data=payload_data,
     )
     if not isinstance(payload, dict):
         raise RuntimeError("Unexpected Codacy response payload.")
@@ -92,7 +100,14 @@ def _provider_candidates(preferred: str) -> list[str]:
     return list(dict.fromkeys(item for item in values if item))
 
 
-def _query_open_issues(*, provider: str, owner: str, repo: str, token: str) -> tuple[int | None, list[str]]:
+def _query_open_issues(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[int | None, list[str]]:
     findings: list[str] = []
     open_issues: int | None = None
     last_exc: Exception | None = None
@@ -104,6 +119,7 @@ def _query_open_issues(*, provider: str, owner: str, repo: str, token: str) -> t
                 owner=owner,
                 repo=repo,
                 token=token,
+                branch=branch,
                 method="POST",
                 data={},
             )
@@ -138,6 +154,7 @@ def _render_md(payload: dict) -> str:
         "",
         f"- Status: `{payload['status']}`",
         f"- Owner/repo: `{payload['owner']}/{payload['repo']}`",
+        f"- Branch: `{payload.get('branch') or 'default'}`",
         f"- Open issues: `{payload.get('open_issues')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -167,6 +184,7 @@ def main() -> int:
             owner=args.owner.strip(),
             repo=args.repo.strip(),
             token=token,
+            branch=args.branch,
         )
 
     status = "pass" if not findings else "fail"
@@ -175,6 +193,7 @@ def main() -> int:
         "owner": args.owner,
         "repo": args.repo,
         "provider": args.provider,
+        "branch": args.branch,
         "open_issues": open_issues,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
