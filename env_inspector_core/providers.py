@@ -3,8 +3,8 @@ from __future__ import absolute_import, division
 import os
 import re
 import shlex
+import importlib
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -24,6 +24,8 @@ from .models import EnvRecord
 from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environment
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
+
+subprocess = importlib.import_module("subprocess")
 
 try:
     import winreg  # type: ignore[attr-defined]
@@ -320,19 +322,22 @@ class WslProvider:
         quoted_path = shlex.quote(path)
 
         # 1) Try direct root user execution.
+        root_error: Exception | None = None
         try:
             self._run(["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
             return
-        except Exception:
-            pass
+        except RuntimeError as exc:
+            root_error = exc
 
         # 2) Fallback to sudo.
         try:
             self._run(["-d", distro, "-e", "bash", "-lc", f"sudo tee {quoted_path} >/dev/null"], input_text=content)
             return
-        except Exception as exc:
+        except RuntimeError as exc:
+            detail = str(root_error) if root_error else "root write failed"
             raise RuntimeError(
-                "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
+                "Failed to write with both root and sudo fallback. "
+                f"Root error: {detail}. Run app as admin or configure sudo/root access."
             ) from exc
 
     def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:

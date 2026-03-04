@@ -26,8 +26,12 @@ def test_search_value_uses_masked_representation_when_hidden():
     hidden = build_search_value(rec, show_secrets=False)
     shown = build_search_value(rec, show_secrets=True)
 
-    assert "supersecretvalue" not in hidden
-    assert "supersecretvalue" in shown
+    if not ("supersecretvalue" not in hidden):
+        raise AssertionError()
+
+    if not ("supersecretvalue" in shown):
+        raise AssertionError()
+
 
 
 def test_copy_payload_confirms_raw_secret_or_falls_back_to_masked():
@@ -36,10 +40,18 @@ def test_copy_payload_confirms_raw_secret_or_falls_back_to_masked():
     masked, masked_raw = resolve_copy_payload(rec, show_secrets=False, confirm_raw=lambda: False, as_pair=False)
     raw, raw_used = resolve_copy_payload(rec, show_secrets=False, confirm_raw=lambda: True, as_pair=False)
 
-    assert masked_raw is False
-    assert "supersecretvalue" not in masked
-    assert raw_used is True
-    assert raw == "supersecretvalue"
+    if not (masked_raw is False):
+        raise AssertionError()
+
+    if not ("supersecretvalue" not in masked):
+        raise AssertionError()
+
+    if not (raw_used is True):
+        raise AssertionError()
+
+    if not (raw == "supersecretvalue"):
+        raise AssertionError()
+
 
 
 def test_load_value_blocks_hidden_secret_without_confirmation():
@@ -48,7 +60,15 @@ def test_load_value_blocks_hidden_secret_without_confirmation():
     blocked, blocked_raw = resolve_load_value(rec, show_secrets=False, confirm_raw=lambda: False)
     allowed, allowed_raw = resolve_load_value(rec, show_secrets=False, confirm_raw=lambda: True)
 
-    assert blocked is None
-    assert blocked_raw is False
-    assert allowed == "supersecretvalue"
-    assert allowed_raw is True
+    if not (blocked is None):
+        raise AssertionError()
+
+    if not (blocked_raw is False):
+        raise AssertionError()
+
+    if not (allowed == "supersecretvalue"):
+        raise AssertionError()
+
+    if not (allowed_raw is True):
+        raise AssertionError()
+

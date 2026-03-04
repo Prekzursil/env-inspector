@@ -15,8 +15,12 @@ def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
 
     stats = coverage_mod.parse_coverage_xml("python", xml_path)
 
-    assert stats.total == 2
-    assert stats.covered == 1
+    if not (stats.total == 2):
+        raise AssertionError()
+
+    if not (stats.covered == 1):
+        raise AssertionError()
+
 
 
 def test_parse_lcov_reads_totals(tmp_path: Path):
@@ -25,8 +29,12 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 
     stats = coverage_mod.parse_lcov("python", lcov_path)
 
-    assert stats.total == 2
-    assert stats.covered == 1
+    if not (stats.total == 2):
+        raise AssertionError()
+
+    if not (stats.covered == 1):
+        raise AssertionError()
+
 
 
 def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
@@ -45,9 +53,15 @@ def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
 
     rc = coverage_mod.main()
 
-    assert rc == 0
-    assert (tmp_path / "reports" / "coverage.json").exists()
-    assert (tmp_path / "reports" / "coverage.md").exists()
+    if not (rc == 0):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "coverage.json").exists()):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "coverage.md").exists()):
+        raise AssertionError()
+
 
 
 def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
@@ -57,7 +71,7 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="",
+        token=None,
         out_json="reports/codacy.json",
         out_md="reports/codacy.md",
     )
@@ -65,9 +79,15 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
 
     rc = codacy_mod.main()
 
-    assert rc == 1
-    assert (tmp_path / "reports" / "codacy.json").exists()
-    assert (tmp_path / "reports" / "codacy.md").exists()
+    if not (rc == 1):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "codacy.json").exists()):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "codacy.md").exists()):
+        raise AssertionError()
+
 
 
 def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch):
@@ -75,7 +95,7 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
     monkeypatch.delenv("DEEPSCAN_API_TOKEN", raising=False)
     monkeypatch.delenv("DEEPSCAN_OPEN_ISSUES_URL", raising=False)
     args = SimpleNamespace(
-        token="",
+        token=None,
         out_json="reports/deepscan.json",
         out_md="reports/deepscan.md",
     )
@@ -83,9 +103,15 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
 
     rc = deepscan_mod.main()
 
-    assert rc == 1
-    assert (tmp_path / "reports" / "deepscan.json").exists()
-    assert (tmp_path / "reports" / "deepscan.md").exists()
+    if not (rc == 1):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "deepscan.json").exists()):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "deepscan.md").exists()):
+        raise AssertionError()
+
 
 
 def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch):
@@ -97,7 +123,7 @@ def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch)
     args = SimpleNamespace(
         org="",
         project=[],
-        token="",
+        token=None,
         out_json="reports/sentry.json",
         out_md="reports/sentry.md",
     )
@@ -105,6 +131,12 @@ def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch)
 
     rc = sentry_mod.main()
 
-    assert rc == 0
-    assert (tmp_path / "reports" / "sentry.json").exists()
-    assert (tmp_path / "reports" / "sentry.md").exists()
+    if not (rc == 0):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "sentry.json").exists()):
+        raise AssertionError()
+
+    if not ((tmp_path / "reports" / "sentry.md").exists()):
+        raise AssertionError()
+

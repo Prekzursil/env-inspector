@@ -15,8 +15,12 @@ def test_parse_named_path_accepts_workspace_file(tmp_path: Path, monkeypatch):
 
     name, path = coverage_mod.parse_named_path("python=coverage.xml")
 
-    assert name == "python"
-    assert path == coverage_file.resolve(strict=False)
+    if not (name == "python"):
+        raise AssertionError()
+
+    if not (path == coverage_file.resolve(strict=False)):
+        raise AssertionError()
+
 
 
 def test_parse_named_path_rejects_missing_format():
@@ -56,7 +60,9 @@ def test_safe_input_file_path_in_workspace_allows_relative_file(tmp_path: Path, 
 
     resolved = sec.safe_input_file_path_in_workspace("data.txt")
 
-    assert resolved == data.resolve(strict=False)
+    if not (resolved == data.resolve(strict=False)):
+        raise AssertionError()
+
 
 
 def test_safe_input_file_path_in_workspace_rejects_escape(tmp_path: Path, monkeypatch):

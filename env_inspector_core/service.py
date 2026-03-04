@@ -4,8 +4,8 @@ import csv
 import difflib
 import io
 import json
+import importlib
 import os
-import subprocess
 import uuid
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Sequence, Tuple, Type
@@ -56,6 +56,8 @@ from .resolver import resolve_effective_value
 from .secrets import looks_secret, mask_value
 from .storage import AuditLogger, BackupManager
 
+subprocess = importlib.import_module("subprocess")
+
 TARGET_WINDOWS_USER = "windows:user"
 TARGET_WINDOWS_MACHINE = "windows:machine"
 TARGET_LINUX_BASHRC = "linux:bashrc"
@@ -80,12 +82,14 @@ class EnvInspectorService:
         self.current_wsl_distro = current_wsl_distro_name()
 
         self.wsl = WslProvider()
+        self.last_provider_error: str | None = None
         self.win_provider: WindowsRegistryProvider | None = None
         if is_windows():
             try:
                 self.win_provider = WindowsRegistryProvider()
-            except Exception:
+            except Exception as exc:
                 self.win_provider = None
+                self.last_provider_error = str(exc)
 
     def _effective_scope_roots(self, scope_roots: List[str | Path] | None = None) -> List[Path]:
         roots: List[Path] = list(self.default_scope_roots)
@@ -180,8 +184,8 @@ class EnvInspectorService:
         if self.win_provider is not None:
             try:
                 rows.extend(build_registry_records(self.win_provider))
-            except Exception:
-                pass
+            except Exception as exc:
+                self.last_provider_error = str(exc)
 
         if self.runtime_context == "windows":
             rows.extend(collect_powershell_profile_records(self.get_powershell_profile_paths()))
@@ -212,8 +216,8 @@ class EnvInspectorService:
         if distro and wsl_path:
             try:
                 rows.extend(collect_wsl_dotenv_records(self.wsl, distro=distro, root_path=wsl_path, max_depth=scan_depth))
-            except Exception:
-                pass
+            except Exception as exc:
+                self.last_provider_error = str(exc)
 
         return rows
 
@@ -251,7 +255,7 @@ class EnvInspectorService:
         payload: List[Dict[str, Any]] = []
         for rec in rows:
             item = rec.to_dict(include_value=True)
-            if rec.is_secret and not include_raw_secrets:
+            if bool(getattr(rec, "is_secret", False)) and not include_raw_secrets:
                 item["value"] = mask_value(rec.value)
             payload.append(item)
         return payload

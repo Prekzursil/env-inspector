@@ -11,6 +11,12 @@ Write-Host "ignore"
 """
     rows = parse_powershell_profile_text(text)
     parsed = dict(rows)
-    assert parsed["API_TOKEN"] == "abc123"
-    assert parsed["PATH"] == "/usr/bin"
-    assert parsed["EMPTY"] == ""
+    if not (parsed["API_TOKEN"] == "abc123"):
+        raise AssertionError()
+
+    if not (parsed["PATH"] == "/usr/bin"):
+        raise AssertionError()
+
+    if not (parsed["EMPTY"] == ""):
+        raise AssertionError()
+

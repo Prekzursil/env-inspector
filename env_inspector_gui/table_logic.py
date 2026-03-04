@@ -4,8 +4,20 @@ from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
 
+def _secret_flag(record) -> bool:
+    return bool(getattr(record, "is_secret", False))
+
+
+def _persistent_flag(record) -> bool:
+    return bool(getattr(record, "is_persistent", False))
+
+
+def _mutable_flag(record) -> bool:
+    return bool(getattr(record, "is_mutable", False))
+
+
 def _record_matches_filters(rec, *, context: str, only_secrets: bool) -> bool:
-    if only_secrets and not rec.is_secret:
+    if only_secrets and not _secret_flag(rec):
         return False
     if context and rec.context != context:
         return False
@@ -18,9 +30,9 @@ def _to_displayed_row(rec, *, show_secrets: bool, search_value: str, idx: int) -
         visible_value=build_visible_value(rec, show_secrets=show_secrets),
         search_value=search_value,
         source_label=rec.source_type,
-        secret_text="yes" if rec.is_secret else "no",
-        persistent_text="yes" if rec.is_persistent else "no",
-        mutable_text="yes" if rec.is_mutable else "no",
+        secret_text="yes" if _secret_flag(rec) else "no",
+        persistent_text="yes" if _persistent_flag(rec) else "no",
+        mutable_text="yes" if _mutable_flag(rec) else "no",
         writable_text="yes" if rec.writable else "no",
         requires_privilege_text="yes" if rec.requires_privilege else "no",
         original_index=idx,
@@ -71,9 +83,9 @@ def _sort_key(row: DisplayedRow, column: str):
         return str_map[column]
 
     bool_map = {
-        "secret": bool(rec.is_secret),
-        "persistent": bool(rec.is_persistent),
-        "mutable": bool(rec.is_mutable),
+        "secret": _secret_flag(rec),
+        "persistent": _persistent_flag(rec),
+        "mutable": _mutable_flag(rec),
     }
     if column in bool_map:
         return bool_map[column]

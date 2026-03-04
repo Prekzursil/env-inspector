@@ -50,6 +50,10 @@ def _validate_hostname_allowlists(
         raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
 
 
+def _ip_flag(ip_value, attr: str) -> bool:
+    return bool(getattr(ip_value, attr, False))
+
+
 def _is_local_or_private_ip(hostname: str) -> bool:
     try:
         ip_value = ipaddress.ip_address(hostname)
@@ -57,11 +61,11 @@ def _is_local_or_private_ip(hostname: str) -> bool:
         return False
 
     checks = (
-        ip_value.is_private,
-        ip_value.is_loopback,
-        ip_value.is_link_local,
-        ip_value.is_reserved,
-        ip_value.is_multicast,
+        _ip_flag(ip_value, "is_private"),
+        _ip_flag(ip_value, "is_loopback"),
+        _ip_flag(ip_value, "is_link_local"),
+        _ip_flag(ip_value, "is_reserved"),
+        _ip_flag(ip_value, "is_multicast"),
     )
     return any(checks)
 

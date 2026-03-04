@@ -29,7 +29,9 @@ class _View:
 def test_var_roundtrip_set_get():
     var = _Var("initial")
     var.set("updated")
-    assert var.get() == "updated"
+    if not (var.get() == "updated"):
+        raise AssertionError()
+
 
 
 def test_context_change_triggers_full_refresh():
@@ -39,7 +41,9 @@ def test_context_change_triggers_full_refresh():
 
     EnvInspectorController.on_context_selected(ctrl)
 
-    assert calls == ["refresh"]
+    if not (calls == ["refresh"]):
+        raise AssertionError()
+
 
 
 def test_busy_state_disable_enable_around_refresh():
@@ -49,8 +53,12 @@ def test_busy_state_disable_enable_around_refresh():
     EnvInspectorController._set_busy(ctrl, True)
     EnvInspectorController._set_busy(ctrl, False)
 
-    assert ctrl.view.enabled_states == [False, True]
-    assert ctrl.view.busy_states == [True, False]
+    if not (ctrl.view.enabled_states == [False, True]):
+        raise AssertionError()
+
+    if not (ctrl.view.busy_states == [True, False]):
+        raise AssertionError()
+
 
 
 def test_refresh_updates_effective_value_when_key_present():
@@ -67,9 +75,15 @@ def test_refresh_updates_effective_value_when_key_present():
 
     EnvInspectorController.refresh_data(ctrl)
 
-    assert ("effective", "API_TOKEN") in events
-    assert next(((kind, value) for kind, value in events if kind == "busy"), None) == ("busy", True)
-    assert next(((kind, value) for kind, value in reversed(events) if kind == "busy"), None) == ("busy", False)
+    if not (("effective", "API_TOKEN") in events):
+        raise AssertionError()
+
+    if not (next(((kind, value) for kind, value in events if kind == "busy"), None) == ("busy", True)):
+        raise AssertionError()
+
+    if not (next(((kind, value) for kind, value in reversed(events) if kind == "busy"), None) == ("busy", False)):
+        raise AssertionError()
+
 
 
 def test_set_remove_operations_always_preview_before_apply():
@@ -93,8 +107,18 @@ def test_set_remove_operations_always_preview_before_apply():
     EnvInspectorController._run_operation(ctrl, "set")
     EnvInspectorController._run_operation(ctrl, "remove")
 
-    assert next(((kind, value) for kind, value in calls if kind == "preview"), None) == ("preview", "set")
-    assert ("confirm", False) in calls
-    assert ("apply", "set") in calls
-    assert ("preview", "remove") in calls
-    assert ("apply", "remove") in calls
+    if not (next(((kind, value) for kind, value in calls if kind == "preview"), None) == ("preview", "set")):
+        raise AssertionError()
+
+    if not (("confirm", False) in calls):
+        raise AssertionError()
+
+    if not (("apply", "set") in calls):
+        raise AssertionError()
+
+    if not (("preview", "remove") in calls):
+        raise AssertionError()
+
+    if not (("apply", "remove") in calls):
+        raise AssertionError()
+

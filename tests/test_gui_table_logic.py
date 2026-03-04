@@ -46,8 +46,12 @@ def test_build_display_rows_filters_context_and_only_secrets():
         show_secrets=False,
     )
 
-    assert [row.record.name for row in rows] == ["TOKEN"]
-    assert rows[0].visible_value != "supersecretvalue"
+    if not ([row.record.name for row in rows] == ["TOKEN"]):
+        raise AssertionError()
+
+    if not (rows[0].visible_value != "supersecretvalue"):
+        raise AssertionError()
+
 
 
 def test_hidden_secret_search_uses_masked_value_not_raw_secret():
@@ -60,7 +64,9 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
         only_secrets=False,
         show_secrets=False,
     )
-    assert hidden_rows == []
+    if not (hidden_rows == []):
+        raise AssertionError()
+
 
     shown_rows = build_display_rows(
         [record],
@@ -69,7 +75,9 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
         only_secrets=False,
         show_secrets=True,
     )
-    assert len(shown_rows) == 1
+    if not (len(shown_rows) == 1):
+        raise AssertionError()
+
 
 
 def test_sort_toggle_and_stable_sort_behavior():
@@ -87,11 +95,17 @@ def test_sort_toggle_and_stable_sort_behavior():
 
     state = SortState(column="name", descending=False)
     ordered = sort_display_rows(rows, state)
-    assert [row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"]
+    if not ([row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"]):
+        raise AssertionError()
+
 
     toggled = toggle_sort(state, "name")
-    assert toggled.column == "name"
-    assert toggled.descending is True
+    if not (toggled.column == "name"):
+        raise AssertionError()
+
+    if not (toggled.descending is True):
+        raise AssertionError()
+
 
 
 def test_bool_sort_columns_use_yes_no_semantics():
@@ -107,4 +121,6 @@ def test_bool_sort_columns_use_yes_no_semantics():
     )
 
     ordered = sort_display_rows(rows, SortState(column="secret", descending=False))
-    assert [row.record.name for row in ordered] == ["B", "A"]
+    if not ([row.record.name for row in ordered] == ["B", "A"]):
+        raise AssertionError()
+

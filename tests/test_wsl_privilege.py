@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -6,8 +5,15 @@ import pytest
 from env_inspector_core.providers import WslProvider
 
 
-def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> subprocess.CompletedProcess[bytes]:
-    return subprocess.CompletedProcess(args=["wsl"], returncode=returncode, stdout=stdout, stderr=stderr)
+class _ProcResult:
+    def __init__(self, returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> _ProcResult:
+    return _ProcResult(returncode=returncode, stdout=stdout, stderr=stderr)
 
 
 def test_write_file_with_privilege_root_success():
@@ -23,9 +29,15 @@ def test_write_file_with_privilege_root_success():
 
     provider.write_file_with_privilege("Ubuntu", "/etc/my env", "A=1\n")
 
-    assert any("-u" in c and "root" in c for c in calls)
-    assert "cat > '/etc/my env'" in calls[0][-1]
-    assert len(calls) == 1
+    if not (any("-u" in c and "root" in c for c in calls)):
+        raise AssertionError()
+
+    if not ("cat > '/etc/my env'" in calls[0][-1]):
+        raise AssertionError()
+
+    if not (len(calls) == 1):
+        raise AssertionError()
+
 
 
 def test_write_file_with_privilege_falls_back_to_sudo():
@@ -45,9 +57,15 @@ def test_write_file_with_privilege_falls_back_to_sudo():
 
     provider.write_file_with_privilege("Ubuntu", "/etc/environment", "A=1\n")
 
-    assert len(calls) == 2
-    assert "sudo tee /etc/environment >/dev/null" in calls[1][-1]
-    assert inputs[1] == b"A=1\n"
+    if not (len(calls) == 2):
+        raise AssertionError()
+
+    if not ("sudo tee /etc/environment >/dev/null" in calls[1][-1]):
+        raise AssertionError()
+
+    if not (inputs[1] == b"A=1\n"):
+        raise AssertionError()
+
 
 
 def test_write_file_with_privilege_raises_when_root_and_sudo_fail():
@@ -61,7 +79,9 @@ def test_write_file_with_privilege_raises_when_root_and_sudo_fail():
     with pytest.raises(RuntimeError) as exc:
         provider.write_file_with_privilege("Ubuntu", "/etc/environment", "A=1\n")
 
-    assert "root and sudo fallback" in str(exc.value)
+    if not ("root and sudo fallback" in str(exc.value)):
+        raise AssertionError()
+
 
 
 def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: Path):
@@ -77,6 +97,12 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     provider.wsl_exe = str(fake_wsl)
     provider._available_cache = None
 
-    assert provider.available() is False
-    assert calls
-    assert calls[0][-2:] == ["-l", "-q"]
+    if not (provider.available() is False):
+        raise AssertionError()
+
+    if not (calls):
+        raise AssertionError()
+
+    if not (calls[0][-2:] == ["-l", "-q"]):
+        raise AssertionError()
+

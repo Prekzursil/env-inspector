@@ -19,6 +19,10 @@ from .view import EnvInspectorView
 
 
 class EnvInspectorController(EnvInspectorControllerActionsMixin):
+    @staticmethod
+    def _record_flag(rec, attr: str) -> bool:
+        return bool(getattr(rec, attr, False))
+
     def __init__(self, root_path: Path) -> None:
         tk, filedialog, messagebox, ttk = self._load_tk_modules()
         self._assign_tk_modules(tk, filedialog, messagebox, ttk)
@@ -211,9 +215,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
                 ("context", rec.context),
                 ("source", rec.source_type),
                 ("source_path", rec.source_path),
-                ("secret", "yes" if rec.is_secret else "no"),
-                ("persistent", "yes" if rec.is_persistent else "no"),
-                ("mutable", "yes" if rec.is_mutable else "no"),
+                ("secret", "yes" if self._record_flag(rec, "is_secret") else "no"),
+                ("persistent", "yes" if self._record_flag(rec, "is_persistent") else "no"),
+                ("mutable", "yes" if self._record_flag(rec, "is_mutable") else "no"),
                 ("writable", "yes" if rec.writable else "no"),
                 ("requires_privilege", "yes" if rec.requires_privilege else "no"),
                 ("precedence_rank", str(rec.precedence_rank)),

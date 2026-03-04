@@ -26,9 +26,15 @@ def test_state_store_roundtrip(tmp_path: Path):
     save_ui_state(state_dir, state)
     loaded = load_ui_state(state_dir)
 
-    assert loaded.window_geometry == "1300x900"
-    assert loaded.selected_targets == ["windows:user", "dotenv:/tmp/.env"]
-    assert loaded.sort_descending is True
+    if not (loaded.window_geometry == "1300x900"):
+        raise AssertionError()
+
+    if not (loaded.selected_targets == ["windows:user", "dotenv:/tmp/.env"]):
+        raise AssertionError()
+
+    if not (loaded.sort_descending is True):
+        raise AssertionError()
+
 
 
 def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
@@ -38,9 +44,15 @@ def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
 
     loaded = load_ui_state(state_dir)
 
-    assert isinstance(loaded, PersistedUiState)
-    assert loaded.filter_text == ""
-    assert loaded.selected_targets == []
+    if not (isinstance(loaded, PersistedUiState)):
+        raise AssertionError()
+
+    if not (loaded.filter_text == ""):
+        raise AssertionError()
+
+    if not (loaded.selected_targets == []):
+        raise AssertionError()
+
 
 
 def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):
@@ -57,6 +69,12 @@ def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):
         fallback_root=tmp_path,
     )
 
-    assert sanitized.root_path == str(tmp_path)
-    assert sanitized.context == "windows"
-    assert sanitized.selected_targets == ["windows:user"]
+    if not (sanitized.root_path == str(tmp_path)):
+        raise AssertionError()
+
+    if not (sanitized.context == "windows"):
+        raise AssertionError()
+
+    if not (sanitized.selected_targets == ["windows:user"]):
+        raise AssertionError()
+

@@ -26,7 +26,9 @@ def test_parse_scoped_dotenv_target_allows_path_inside_scope(tmp_path: Path, mon
     roots = normalize_scope_roots([tmp_path])
     scoped = parse_scoped_dotenv_target(f"dotenv:{env_file}", roots=roots)
 
-    assert scoped.path == env_file.resolve()
+    if not (scoped.path == env_file.resolve()):
+        raise AssertionError()
+
 
 
 def test_parse_scoped_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch):

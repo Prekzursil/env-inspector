@@ -6,8 +6,12 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_core.secrets import mask_value
 
 
+def _secret_flag(record: EnvRecord) -> bool:
+    return bool(getattr(record, "is_secret", False))
+
+
 def build_visible_value(record: EnvRecord, *, show_secrets: bool) -> str:
-    if show_secrets or not record.is_secret:
+    if show_secrets or not _secret_flag(record):
         return record.value
     return mask_value(record.value)
 
@@ -32,8 +36,8 @@ def resolve_copy_payload(
     confirm_raw: Callable[[], bool],
     as_pair: bool,
 ) -> tuple[str, bool]:
-    use_raw = show_secrets or not record.is_secret
-    if record.is_secret and not show_secrets:
+    use_raw = show_secrets or not _secret_flag(record)
+    if _secret_flag(record) and not show_secrets:
         use_raw = confirm_raw()
 
     value = record.value if use_raw else mask_value(record.value)
@@ -47,7 +51,7 @@ def resolve_load_value(
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
 ) -> tuple[str | None, bool]:
-    if show_secrets or not record.is_secret:
+    if show_secrets or not _secret_flag(record):
         return record.value, True
 
     if confirm_raw():

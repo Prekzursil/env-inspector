@@ -13,6 +13,10 @@ MSG_SELECT_ROW_FIRST = "Select a row first."
 COPY_PROMPT_TITLE = "Confirm Sensitive Value"
 
 
+def _record_is_secret(rec: EnvRecord) -> bool:
+    return bool(getattr(rec, "is_secret", False))
+
+
 class EnvInspectorControllerActionsMixin:
     def load_selected(self) -> None:
         row = self._selected_row()
@@ -33,7 +37,7 @@ class EnvInspectorControllerActionsMixin:
 
         if loaded is not None:
             self.value_text.set(loaded)
-            if rec.is_secret and not raw:
+            if _record_is_secret(rec) and not raw:
                 self._set_status(f"Loaded masked value for: {rec.name}")
             else:
                 self._set_status(f"Loaded value for: {rec.name}")
@@ -73,7 +77,7 @@ class EnvInspectorControllerActionsMixin:
 
         self.tk.clipboard_clear()
         self.tk.clipboard_append(payload)
-        if rec.is_secret and not raw:
+        if _record_is_secret(rec) and not raw:
             self._set_status(f"Copied masked value for: {rec.name}")
         else:
             self._set_status(f"Copied value for: {rec.name}")
@@ -95,7 +99,7 @@ class EnvInspectorControllerActionsMixin:
 
         self.tk.clipboard_clear()
         self.tk.clipboard_append(payload)
-        if rec.is_secret and not raw:
+        if _record_is_secret(rec) and not raw:
             self._set_status(f"Copied masked pair for: {rec.name}")
         else:
             self._set_status(f"Copied pair: {rec.name}=...")
