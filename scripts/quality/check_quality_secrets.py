@@ -56,6 +56,20 @@ def _dedupe(items: list[str]) -> list[str]:
     return out
 
 
+def _apply_deepscan_policy(
+    required_secrets: list[str],
+    required_vars: list[str],
+    *,
+    policy_mode: str,
+) -> tuple[list[str], list[str]]:
+    if policy_mode != "github_check_context":
+        return required_secrets, required_vars
+
+    filtered_secrets = [name for name in required_secrets if name != "DEEPSCAN_API_TOKEN"]
+    filtered_vars = [name for name in required_vars if name != "DEEPSCAN_OPEN_ISSUES_URL"]
+    return filtered_secrets, filtered_vars
+
+
 def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
     missing_secrets = [name for name in required_secrets if not str(os.environ.get(name, "")).strip()]
     missing_vars = [name for name in required_vars if not str(os.environ.get(name, "")).strip()]
@@ -75,6 +89,7 @@ def _render_md(payload: dict) -> str:
         "",
         f"- Status: `{payload['status']}`",
         f"- Strict mode: `{payload.get('strict', False)}`",
+        f"- DeepScan policy mode: `{payload.get('deepscan_policy_mode', '')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
         "## Missing secrets",
@@ -97,8 +112,15 @@ def _render_md(payload: dict) -> str:
 
 def main() -> int:
     args = _parse_args()
+    deepscan_mode = str(os.environ.get("DEEPSCAN_POLICY_MODE", "provider_api")).strip().lower()
+
     required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))
+    required_secrets, required_vars = _apply_deepscan_policy(
+        required_secrets,
+        required_vars,
+        policy_mode=deepscan_mode,
+    )
 
     result = evaluate_env(required_secrets, required_vars)
     has_missing = bool(result["missing_secrets"] or result["missing_vars"])
@@ -109,6 +131,7 @@ def main() -> int:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "required_secrets": required_secrets,
         "required_vars": required_vars,
+        "deepscan_policy_mode": deepscan_mode,
         **result,
     }
 
