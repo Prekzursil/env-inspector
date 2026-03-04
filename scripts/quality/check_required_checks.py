@@ -64,6 +64,18 @@ def _is_transient_http_error(exc: urllib.error.HTTPError) -> bool:
     return int(exc.code) in _TRANSIENT_HTTP_CODES
 
 
+def _should_retry_http_error(*, exc: urllib.error.HTTPError, attempt: int, attempts: int) -> bool:
+    return _is_transient_http_error(exc) and attempt < attempts
+
+
+def _should_retry_url_error(*, attempt: int, attempts: int) -> bool:
+    return attempt < attempts
+
+
+def _next_retry_wait(wait_seconds: int) -> int:
+    return min(wait_seconds * 2, 10)
+
+
 def _request_payload_with_retry(
     *,
     owner: str,
@@ -76,15 +88,14 @@ def _request_payload_with_retry(
 ) -> Dict[str, Any]:
     wait_seconds = 1
     last_error: Optional[Exception] = None
+    total_attempts = max(attempts, 1)
 
-    for attempt in range(1, max(attempts, 1) + 1):
+    for attempt in range(1, total_attempts + 1):
         try:
             payload, _headers = request_json_https(
                 host=GITHUB_API_HOST,
                 path=f"/repos/{owner}/{repo}/commits/{sha}/{endpoint}",
-                headers={
-                    **_github_headers(token),
-                },
+                headers={**_github_headers(token)},
                 query=query,
                 method="GET",
             )
@@ -93,15 +104,15 @@ def _request_payload_with_retry(
             return payload
         except urllib.error.HTTPError as exc:
             last_error = exc
-            if not _is_transient_http_error(exc) or attempt >= attempts:
+            if not _should_retry_http_error(exc=exc, attempt=attempt, attempts=total_attempts):
                 raise
         except urllib.error.URLError as exc:
             last_error = exc
-            if attempt >= attempts:
+            if not _should_retry_url_error(attempt=attempt, attempts=total_attempts):
                 raise
 
         time.sleep(wait_seconds)
-        wait_seconds = min(wait_seconds * 2, 10)
+        wait_seconds = _next_retry_wait(wait_seconds)
 
     if last_error is not None:
         raise last_error
