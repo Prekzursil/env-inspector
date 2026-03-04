@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Callable, List, Tuple
 
 ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
@@ -21,21 +22,82 @@ def validate_env_value(value: str) -> None:
 
 
 def strip_outer_quotes(value: str) -> str:
-    v = value.strip()
-    if len(v) >= 2 and ((v[0] == v[-1] == "'") or (v[0] == v[-1] == '"')):
-        v = v[1:-1]
-    return v.replace("'\"'\"'", "'")
+    stripped = value.strip()
+    if len(stripped) >= 2 and ((stripped[0] == stripped[-1] == "'") or (stripped[0] == stripped[-1] == '"')):
+        stripped = stripped[1:-1]
+    return stripped.replace("'\"'\"'", "'")
 
 
 def shell_single_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
+def _split_content(content: str) -> Tuple[List[str], bool]:
+    return content.splitlines(), content.endswith("\n")
+
+
+def _join_lines(lines: List[str], *, keep_trailing_newline: bool) -> str:
+    text = "\n".join(lines)
+    if keep_trailing_newline and lines:
+        return text + "\n"
+    return text
+
+
+def _append_with_separator(lines: List[str], line: str) -> None:
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.append(line)
+
+
+def _upsert_lines(
+    content: str,
+    *,
+    new_line: str,
+    matches_key: Callable[[str], bool],
+) -> str:
+    lines, had_trailing_newline = _split_content(content)
+    output: List[str] = []
+    replaced = False
+
+    for line in lines:
+        if matches_key(line):
+            if not replaced:
+                output.append(new_line)
+                replaced = True
+            continue
+        output.append(line)
+
+    if not replaced:
+        _append_with_separator(output, new_line)
+
+    return _join_lines(output, keep_trailing_newline=had_trailing_newline or bool(output))
+
+
+def _remove_lines(content: str, *, should_remove: Callable[[str], bool]) -> str:
+    lines, had_trailing_newline = _split_content(content)
+    output = [line for line in lines if not should_remove(line)]
+    return _join_lines(output, keep_trailing_newline=had_trailing_newline and bool(output))
+
+
+def _extract_assignment_key(stripped_line: str) -> str:
+    match = ASSIGN_LINE_RE.match(stripped_line)
+    return match.group(1) if match else ""
+
+
+def _extract_export_key(stripped_line: str) -> str:
+    match = EXPORT_LINE_RE.match(stripped_line)
+    return match.group(1) if match else ""
+
+
+def _is_comment_or_blank(stripped_line: str) -> bool:
+    return not stripped_line or stripped_line.startswith("#")
+
+
 def parse_dotenv_text(text: str) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+        if _is_comment_or_blank(stripped):
             continue
         if stripped.startswith("export "):
             stripped = stripped[len("export ") :].strip()
@@ -44,9 +106,8 @@ def parse_dotenv_text(text: str) -> list[tuple[str, str]]:
         key, value = stripped.split("=", 1)
         key = key.strip()
         value = strip_outer_quotes(value.strip())
-        if not key or not ENV_KEY_RE.match(key):
-            continue
-        rows.append((key, value))
+        if key and ENV_KEY_RE.match(key):
+            rows.append((key, value))
     return rows
 
 
@@ -54,10 +115,9 @@ def parse_bash_exports(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in text.splitlines():
         match = EXPORT_LINE_RE.match(line)
-        if not match:
-            continue
-        key, raw_value = match.group(1), match.group(2).strip()
-        values[key] = strip_outer_quotes(raw_value)
+        if match:
+            key, raw_value = match.group(1), match.group(2).strip()
+            values[key] = strip_outer_quotes(raw_value)
     return values
 
 
@@ -65,13 +125,12 @@ def parse_etc_environment(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+        if _is_comment_or_blank(stripped):
             continue
         match = ASSIGN_LINE_RE.match(stripped)
-        if not match:
-            continue
-        key, raw_value = match.group(1), match.group(2)
-        values[key] = strip_outer_quotes(raw_value)
+        if match:
+            key, raw_value = match.group(1), match.group(2)
+            values[key] = strip_outer_quotes(raw_value)
     return values
 
 
@@ -79,103 +138,48 @@ def upsert_export(content: str, key: str, value: str) -> str:
     validate_env_key(key)
     validate_env_value(value)
     export_line = f"export {key}={shell_single_quote(value)}"
-    lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    replaced = False
-    for line in lines:
-        match = EXPORT_LINE_RE.match(line)
-        if match and match.group(1) == key:
-            if not replaced:
-                out.append(export_line)
-                replaced = True
-            continue
-        out.append(line)
-
-    if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(export_line)
-
-    text = "\n".join(out)
-    if had_trailing_newline or out:
-        text += "\n"
-    return text
+    return _upsert_lines(content, new_line=export_line, matches_key=lambda line: _extract_export_key(line) == key)
 
 
 def remove_export(content: str, key: str) -> str:
     validate_env_key(key)
-    lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    for line in lines:
-        match = EXPORT_LINE_RE.match(line)
-        if match and match.group(1) == key:
-            continue
-        out.append(line)
-
-    text = "\n".join(out)
-    if had_trailing_newline and out:
-        text += "\n"
-    return text
+    return _remove_lines(content, should_remove=lambda line: _extract_export_key(line) == key)
 
 
 def upsert_key_value(content: str, key: str, value: str, *, quote: bool = False) -> str:
     validate_env_key(key)
     validate_env_value(value)
-    new_value = shell_single_quote(value) if quote else value
-    line_out = f"{key}={new_value}"
-    lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
+    line_out = f"{key}={shell_single_quote(value) if quote else value}"
+    lines, had_trailing_newline = _split_content(content)
+    output: List[str] = []
     replaced = False
+
     for line in lines:
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            out.append(line)
+        if _is_comment_or_blank(stripped):
+            output.append(line)
             continue
-        match = ASSIGN_LINE_RE.match(stripped)
-        if match and match.group(1) == key:
+        if _extract_assignment_key(stripped) == key:
             if not replaced:
-                out.append(line_out)
+                output.append(line_out)
                 replaced = True
             continue
-        out.append(line)
+        output.append(line)
 
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line_out)
+        _append_with_separator(output, line_out)
 
-    text = "\n".join(out)
-    if had_trailing_newline or out:
-        text += "\n"
-    return text
+    return _join_lines(output, keep_trailing_newline=had_trailing_newline or bool(output))
 
 
 def remove_key_value(content: str, key: str) -> str:
     validate_env_key(key)
-    lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-    out: list[str] = []
-    for line in lines:
-        stripped = line.strip()
-        match = ASSIGN_LINE_RE.match(stripped)
-        if match and match.group(1) == key:
-            continue
-        if EXPORT_LINE_RE.match(stripped):
-            m2 = EXPORT_LINE_RE.match(stripped)
-            if m2 and m2.group(1) == key:
-                continue
-        out.append(line)
 
-    text = "\n".join(out)
-    if had_trailing_newline and out:
-        text += "\n"
-    return text
+    def _should_remove(line: str) -> bool:
+        stripped = line.strip()
+        return _extract_assignment_key(stripped) == key or _extract_export_key(stripped) == key
+
+    return _remove_lines(content, should_remove=_should_remove)
 
 
 def upsert_powershell_env(content: str, key: str, value: str) -> str:
@@ -184,44 +188,18 @@ def upsert_powershell_env(content: str, key: str, value: str) -> str:
     escaped = value.replace("'", "''")
     line_out = f"$env:{key} = '{escaped}'"
 
-    lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
-
-    out: list[str] = []
-    replaced = False
-    for line in lines:
+    def _matches_key(line: str) -> bool:
         match = POWERSHELL_ENV_RE.match(line)
-        if match and match.group(1).lower() == key.lower():
-            if not replaced:
-                out.append(line_out)
-                replaced = True
-            continue
-        out.append(line)
+        return bool(match and match.group(1).lower() == key.lower())
 
-    if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line_out)
-
-    text = "\n".join(out)
-    if had_trailing_newline or out:
-        text += "\n"
-    return text
+    return _upsert_lines(content, new_line=line_out, matches_key=_matches_key)
 
 
 def remove_powershell_env(content: str, key: str) -> str:
     validate_env_key(key)
-    lines = content.splitlines()
-    had_trailing_newline = content.endswith("\n")
 
-    out: list[str] = []
-    for line in lines:
+    def _should_remove(line: str) -> bool:
         match = POWERSHELL_ENV_RE.match(line)
-        if match and match.group(1).lower() == key.lower():
-            continue
-        out.append(line)
+        return bool(match and match.group(1).lower() == key.lower())
 
-    text = "\n".join(out)
-    if had_trailing_newline and out:
-        text += "\n"
-    return text
+    return _remove_lines(content, should_remove=_should_remove)

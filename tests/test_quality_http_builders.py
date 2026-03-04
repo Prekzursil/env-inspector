@@ -25,7 +25,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
     )
 
     assert payload == {"total": 0}
-    assert captured["host"] == "api.codacy.com"
+    assert captured["host"] == "app.codacy.com"
     assert captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search"
     assert captured["query"] == {"limit": "1"}
 

@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
 
 import argparse
 import base64
 import json
+import os
 import sys
-import urllib.parse
-import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Dict, List, Optional, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import normalize_https_url, safe_output_path_in_workspace
+from security_helpers import request_json_https, safe_output_path_in_workspace
 
-SONAR_API_BASE = "https://sonarcloud.io"
+SONAR_HOST = "sonarcloud.io"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -39,110 +38,99 @@ def _auth_header(token: str) -> str:
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
-def _request_json(url: str, auth_header: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sonarcloud.io"}).rstrip("/")
-    request = urllib.request.Request(
-        safe_url,
+def _request_json(path: str, query: Dict[str, str], auth_header: str) -> Dict[str, object]:
+    payload, _headers = request_json_https(
+        host=SONAR_HOST,
+        path=path,
         headers={
             "Accept": "application/json",
             "Authorization": auth_header,
             "User-Agent": "reframe-sonar-zero-gate",
         },
         method="GET",
+        query=query,
     )
-    with urllib.request.urlopen(request, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Sonar response payload.")
+    return payload
 
 
-def _apply_scope(query: dict[str, str], *, branch: str, pull_request: str) -> dict[str, str]:
+def _apply_scope(query: Dict[str, str], branch: str, pull_request: str) -> Dict[str, str]:
+    scoped = dict(query)
     if pull_request:
-        query["pullRequest"] = pull_request
+        scoped["pullRequest"] = pull_request
     elif branch:
-        query["branch"] = branch
-    return query
+        scoped["branch"] = branch
+    return scoped
 
 
-def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
-    query = {
-        "componentKeys": project_key,
-        "resolved": "false",
-        "ps": "1",
-    }
-    return _apply_scope(query, branch=branch, pull_request=pull_request)
-
-
-def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
-    query = {"projectKey": project_key}
-    return _apply_scope(query, branch=branch, pull_request=pull_request)
-
-
-def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
-    query = {
-        "projectKey": project_key,
-        "status": "TO_REVIEW",
-        "ps": "1",
-    }
-    return _apply_scope(query, branch=branch, pull_request=pull_request)
+def _to_int(value: object) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _fetch_sonar_status(
-    *,
-    api_base: str,
     auth_header: str,
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int, str, int]:
-    issues_url = (
-        f"{api_base}/api/issues/search?"
-        f"{urllib.parse.urlencode(_build_issue_query(project_key, branch=branch, pull_request=pull_request))}"
+) -> Tuple[int, str, int]:
+    issue_query = _apply_scope(
+        {
+            "componentKeys": project_key,
+            "resolved": "false",
+            "ps": "1",
+        },
+        branch,
+        pull_request,
     )
-    issues_payload = _request_json(issues_url, auth_header)
-    open_issues = int((issues_payload.get("paging") or {}).get("total") or 0)
+    issues_payload = _request_json("/api/issues/search", issue_query, auth_header)
+    open_issues = _to_int(((issues_payload.get("paging") or {}).get("total")))
 
-    gate_url = (
-        f"{api_base}/api/qualitygates/project_status?"
-        f"{urllib.parse.urlencode(_build_quality_gate_query(project_key, branch=branch, pull_request=pull_request))}"
-    )
-    gate_payload = _request_json(gate_url, auth_header)
-    quality_gate = str((gate_payload.get("projectStatus") or {}).get("status") or "UNKNOWN")
+    gate_query = _apply_scope({"projectKey": project_key}, branch, pull_request)
+    gate_payload = _request_json("/api/qualitygates/project_status", gate_query, auth_header)
+    quality_gate = str(((gate_payload.get("projectStatus") or {}).get("status")) or "UNKNOWN")
 
-    hotspots_url = (
-        f"{api_base}/api/hotspots/search?"
-        f"{urllib.parse.urlencode(_build_hotspot_query(project_key, branch=branch, pull_request=pull_request))}"
+    hotspot_query = _apply_scope(
+        {
+            "projectKey": project_key,
+            "status": "TO_REVIEW",
+            "ps": "1",
+        },
+        branch,
+        pull_request,
     )
-    hotspots_payload = _request_json(hotspots_url, auth_header)
-    open_hotspots = int((hotspots_payload.get("paging") or {}).get("total") or 0)
+    hotspots_payload = _request_json("/api/hotspots/search", hotspot_query, auth_header)
+    open_hotspots = _to_int(((hotspots_payload.get("paging") or {}).get("total")))
 
     return open_issues, quality_gate, open_hotspots
 
 
 def _evaluate_sonar(
-    *,
     token: str,
-    api_base: str,
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int | None, str | None, int | None, str | None, list[str]]:
-    findings: list[str] = []
-    open_issues: int | None = None
-    quality_gate: str | None = None
-    open_hotspots: int | None = None
-    quality_gate_warning: str | None = None
+) -> Tuple[Optional[int], Optional[str], Optional[int], Optional[str], List[str]]:
+    findings: List[str] = []
+    open_issues: Optional[int] = None
+    quality_gate: Optional[str] = None
+    open_hotspots: Optional[int] = None
+    quality_gate_warning: Optional[str] = None
 
     if not token:
         return open_issues, quality_gate, open_hotspots, quality_gate_warning, ["SONAR_TOKEN is missing."]
 
     try:
         open_issues, quality_gate, open_hotspots = _fetch_sonar_status(
-            api_base=api_base,
-            auth_header=_auth_header(token),
-            project_key=project_key,
-            branch=branch,
-            pull_request=pull_request,
+            _auth_header(token),
+            project_key,
+            branch,
+            pull_request,
         )
-    except Exception as exc:  # pragma: no cover - network/runtime surface
+    except (urllib.error.URLError, ValueError, RuntimeError, json.JSONDecodeError) as exc:  # pragma: no cover
         return open_issues, quality_gate, open_hotspots, quality_gate_warning, [f"Sonar API request failed: {exc}"]
 
     if open_issues != 0:
@@ -158,7 +146,7 @@ def _evaluate_sonar(
     return open_issues, quality_gate, open_hotspots, quality_gate_warning, findings
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, object]) -> str:
     lines = [
         "# Sonar Zero Gate",
         "",
@@ -185,22 +173,18 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
-    api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={"sonarcloud.io"}).rstrip("/")
 
     open_issues, quality_gate, open_hotspots, quality_gate_warning, findings = _evaluate_sonar(
-        token=token,
-        api_base=api_base,
-        project_key=args.project_key,
-        branch=args.branch,
-        pull_request=args.pull_request,
+        token,
+        args.project_key,
+        args.branch,
+        args.pull_request,
     )
 
     status = "pass" if not findings else "fail"
-    payload = {
+    payload: Dict[str, object] = {
         "status": status,
         "project_key": args.project_key,
         "open_issues": open_issues,

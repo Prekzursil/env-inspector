@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
@@ -17,7 +17,7 @@ if str(_HELPER_ROOT) not in sys.path:
 from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
 
 TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
-CODACY_API_HOST = "api.codacy.com"
+CODACY_API_HOST = "app.codacy.com"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -33,21 +33,21 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _request_json(
-    *,
     provider: str,
     owner: str,
     repo: str,
     token: str,
     branch: str = "",
     limit: int = 1,
-    method: str = "GET",
-    data: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    method: str = "POST",
+    data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     headers = {
         "Accept": "application/json",
-        "api-token": token,
         "User-Agent": "reframe-codacy-zero-gate",
     }
+    if token:
+        headers["api-token"] = token
     if data is not None:
         headers["Content-Type"] = "application/json"
 
@@ -55,7 +55,7 @@ def _request_json(
     owner_slug = encode_identifier(owner, field_name="Codacy owner")
     repo_slug = encode_identifier(repo, field_name="Codacy repository")
 
-    payload_data: dict[str, Any] = data or {}
+    payload_data: Dict[str, Any] = data or {}
     branch_name = str(branch or "").strip()
     if branch_name:
         payload_data = {**payload_data, "branchName": branch_name}
@@ -73,9 +73,9 @@ def _request_json(
     return payload
 
 
-def _walk_nodes(payload: Any) -> list[Any]:
-    stack: list[Any] = [payload]
-    nodes: list[Any] = []
+def _walk_nodes(payload: Any) -> List[Any]:
+    stack: List[Any] = [payload]
+    nodes: List[Any] = []
     while stack:
         node = stack.pop()
         nodes.append(node)
@@ -86,7 +86,7 @@ def _walk_nodes(payload: Any) -> list[Any]:
     return nodes
 
 
-def _numeric_total_from_dict(node: dict[str, Any], keys: tuple[str, ...] = TOTAL_KEYS) -> int | None:
+def _numeric_total_from_dict(node: Dict[str, Any], keys: Tuple[str, ...] = TOTAL_KEYS) -> Optional[int]:
     for key in keys:
         value = node.get(key)
         if isinstance(value, (int, float)):
@@ -94,7 +94,7 @@ def _numeric_total_from_dict(node: dict[str, Any], keys: tuple[str, ...] = TOTAL
     return None
 
 
-def extract_total_open(payload: Any) -> int | None:
+def extract_total_open(payload: Any) -> Optional[int]:
     if not isinstance(payload, dict):
         return None
 
@@ -117,12 +117,12 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _provider_candidates(preferred: str) -> list[str]:
+def _provider_candidates(preferred: str) -> List[str]:
     values = [preferred, "gh", "github"]
     return list(dict.fromkeys(item for item in values if item))
 
 
-def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
+def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
     for key in keys:
         value = str(issue.get(key) or "").strip()
         if value:
@@ -130,7 +130,7 @@ def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
     return ""
 
 
-def _format_issue_sample(issue: dict[str, Any]) -> str | None:
+def _format_issue_sample(issue: Dict[str, Any]) -> Optional[str]:
     pattern = _first_text(issue, ("patternId", "pattern"))
     path = _first_text(issue, ("filename", "filePath", "path"))
     message = _first_text(issue, ("message", "title"))
@@ -143,12 +143,12 @@ def _format_issue_sample(issue: dict[str, Any]) -> str | None:
     return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
-def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]:
+def _sample_issue_findings(payload: Dict[str, Any], limit: int = 5) -> List[str]:
     data = payload.get("data")
     if not isinstance(data, list):
         return []
 
-    findings: list[str] = []
+    findings: List[str] = []
     for item in data:
         if not isinstance(item, dict):
             continue
@@ -162,14 +162,13 @@ def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]
 
 
 def _scan_candidate(
-    *,
     candidate: str,
     owner: str,
     repo: str,
     token: str,
     branch: str,
-    findings: list[str],
-) -> int | None:
+    findings: List[str],
+) -> Optional[int]:
     payload = _request_json(
         provider=candidate,
         owner=owner,
@@ -201,16 +200,15 @@ def _scan_candidate(
 
 
 def _query_open_issues(
-    *,
     provider: str,
     owner: str,
     repo: str,
     token: str,
     branch: str,
-) -> tuple[int | None, list[str]]:
-    findings: list[str] = []
-    open_issues: int | None = None
-    last_exc: Exception | None = None
+) -> Tuple[Optional[int], List[str]]:
+    findings: List[str] = []
+    open_issues: Optional[int] = None
+    last_error: Optional[Exception] = None
     candidates = _provider_candidates(provider)
 
     for candidate in candidates:
@@ -225,23 +223,23 @@ def _query_open_issues(
             )
             return open_issues, findings
         except urllib.error.HTTPError as exc:
-            last_exc = exc
+            last_error = exc
             if exc.code == 404:
                 continue
             findings.append(f"Codacy API request failed: HTTP {exc.code}")
             return open_issues, findings
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            last_exc = exc
+        except (urllib.error.URLError, ValueError, RuntimeError) as exc:  # pragma: no cover
+            last_error = exc
             findings.append(f"Codacy API request failed: {exc}")
             return open_issues, findings
 
     findings.append(f"Codacy API endpoint was not found for provider(s): {', '.join(candidates)}.")
-    if last_exc is not None:
-        findings.append(f"Last Codacy API error: {last_exc}")
+    if last_error is not None:
+        findings.append(f"Last Codacy API error: {last_error}")
     return open_issues, findings
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, object]) -> str:
     lines = [
         "# Codacy Zero Gate",
         "",
@@ -262,13 +260,11 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     branch = getattr(args, "branch", "")
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    findings: list[str] = []
-    open_issues: int | None = None
+    findings: List[str] = []
+    open_issues: Optional[int] = None
 
     if not token:
         findings.append("CODACY_API_TOKEN is missing.")
@@ -282,7 +278,7 @@ def main() -> int:
         )
 
     status = "pass" if not findings else "fail"
-    payload = {
+    payload: Dict[str, object] = {
         "status": status,
         "owner": args.owner,
         "repo": args.repo,
@@ -310,4 +306,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
