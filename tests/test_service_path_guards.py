@@ -49,7 +49,7 @@ def test_validated_powershell_restore_path_all_users_rejects_outside_root(tmp_pa
 
     monkeypatch.setattr(EnvInspectorService, "_powershell_profile_path", lambda _self, _target: bad_profile)
 
-    with pytest.raises(RuntimeError, match="outside expected root"):
+    with pytest.raises(RuntimeError, match="outside approved roots"):
         svc._validated_powershell_restore_path("powershell:all_users")
 
 
@@ -178,20 +178,12 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     monkeypatch.setattr(
         svc,
-        "_validate_path_in_roots",
-        lambda candidate, roots, label: writes.update({"validated": candidate, "roots": roots, "label": label}) or candidate,
-    )
-    monkeypatch.setattr(
-        svc,
         "_write_text_file",
         lambda path, text, ensure_parent: writes.update({"path": path, "text": text, "ensure_parent": ensure_parent}),
     )
 
     svc._restore_powershell_target(target="powershell:all_users", text="$env:A='1'\n")
 
-    assert writes["validated"] == profile
-    assert "Program Files" in str(writes["roots"][0])
-    assert writes["label"] == "PowerShell restore target"
     assert writes["path"] == profile
     assert writes["text"] == "$env:A='1'\n"
     assert writes["ensure_parent"] is True

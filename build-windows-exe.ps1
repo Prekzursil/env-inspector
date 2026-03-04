@@ -48,4 +48,5 @@ if (-not $py) {
   --name "env-inspector" `
   "env_inspector.py"
 
-Write-Host "Built dist/env-inspector.exe"
+Write-Output "Built dist/env-inspector.exe"
+
