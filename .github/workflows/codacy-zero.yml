@@ -13,12 +13,17 @@ jobs:
     name: Codacy Zero
     runs-on: ubuntu-latest
     env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       CHECK_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
+      - name: Wait for Codacy provider context to settle
+        run: |
+          python3 scripts/quality/check_required_checks.py                 --repo "${GITHUB_REPOSITORY}"                 --sha "${CHECK_SHA}"                 --required-context "Codacy Static Code Analysis"                 --timeout-seconds 1500                 --poll-seconds 20                 --out-json "codacy-zero/codacy-context.json"                 --out-md "codacy-zero/codacy-context.md"
       - name: Assert Codacy provider open issue count is zero
         run: |
           python3 scripts/quality/check_codacy_zero.py                 --provider gh                 --owner "${REPO_OWNER}"                 --repo "${REPO_NAME}"                 --branch "${CHECK_BRANCH}"                 --out-json "codacy-zero/codacy.json"                 --out-md "codacy-zero/codacy.md"

@@ -12,7 +12,7 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 
 
-def _raise(exc: Exception):
+def _raise(exc):
     raise exc
 
 

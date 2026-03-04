@@ -13,13 +13,25 @@ jobs:
     name: DeepScan Zero
     runs-on: ubuntu-latest
     env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DEEPSCAN_POLICY_MODE: ${{ vars.DEEPSCAN_POLICY_MODE }}
       DEEPSCAN_API_TOKEN: ${{ secrets.DEEPSCAN_API_TOKEN }}
       DEEPSCAN_OPEN_ISSUES_URL: ${{ vars.DEEPSCAN_OPEN_ISSUES_URL }}
     steps:
       - uses: actions/checkout@v6
-      - name: Assert DeepScan provider open issue count is zero
+      - name: Assert DeepScan provider context is green
+        run: |
+          python3 scripts/quality/check_required_checks.py                 --repo "${GITHUB_REPOSITORY}"                 --sha "${CHECK_SHA}"                 --required-context "DeepScan"                 --timeout-seconds 1500                 --poll-seconds 20                 --out-json "deepscan-zero/deepscan-context.json"                 --out-md "deepscan-zero/deepscan-context.md"
+      - name: Assert DeepScan provider open issue count is zero (provider API mode)
+        if: ${{ env.DEEPSCAN_POLICY_MODE != 'github_check_context' }}
         run: |
           python3 scripts/quality/check_deepscan_zero.py                 --out-json "deepscan-zero/deepscan.json"                 --out-md "deepscan-zero/deepscan.md"
+      - name: Record DeepScan context mode artifact
+        if: ${{ env.DEEPSCAN_POLICY_MODE == 'github_check_context' }}
+        run: |
+          cp deepscan-zero/deepscan-context.json deepscan-zero/deepscan.json
+          cp deepscan-zero/deepscan-context.md deepscan-zero/deepscan.md
       - name: Upload DeepScan artifacts
         if: always()
         uses: actions/upload-artifact@v4
