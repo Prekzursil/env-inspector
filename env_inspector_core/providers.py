@@ -57,10 +57,16 @@ def current_wsl_distro_name() -> str | None:
     return name or None
 
 
-def _is_root_within_workspace(root: Path, workspace_root: Path) -> bool:
-    root_text = str(root)
-    workspace_text = str(workspace_root)
-    return root_text == workspace_text or root_text.startswith(workspace_text + os.sep)
+def _resolve_scoped_root(root: Path, workspace_root: Path) -> Path | None:
+    try:
+        resolved_root = Path(root).expanduser().resolve(strict=False)
+        resolved_workspace = Path(workspace_root).expanduser().resolve(strict=False)
+        resolved_root.relative_to(resolved_workspace)
+    except ValueError:
+        return None
+    if not resolved_root.exists() or not resolved_root.is_dir():
+        return None
+    return resolved_root
 
 
 def _path_depth(root: Path, current: str) -> int:
@@ -84,13 +90,10 @@ def _walk_env_files(root: Path, max_depth: int) -> list[Path]:
 
 
 def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
-    root = Path(root)
-    workspace_root = Path.cwd()
-    if not _is_root_within_workspace(root, workspace_root):
+    scoped_root = _resolve_scoped_root(root, Path.cwd())
+    if scoped_root is None:
         return []
-    if not root.exists() or not root.is_dir():
-        return []
-    return _walk_env_files(root, max_depth)
+    return _walk_env_files(scoped_root, max_depth)
 
 
 def collect_process_records(context: str = "windows") -> list[EnvRecord]:
@@ -578,3 +581,4 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
+

@@ -7,7 +7,7 @@ import sys
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
@@ -16,7 +16,7 @@ if str(_HELPER_ROOT) not in sys.path:
 
 from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
 
-TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
+TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "open_issues")
 CODACY_API_HOST = "app.codacy.com"
 
 
@@ -38,13 +38,14 @@ def _request_json(
     repo: str,
     token: str,
     branch: str = "",
-    limit: int = 1,
+    endpoint: str = "issues/search",
+    limit: int | None = 1,
     method: str = "POST",
     data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     headers = {
         "Accept": "application/json",
-        "User-Agent": "reframe-codacy-zero-gate",
+        "User-Agent": "env-inspector-codacy-zero-gate",
     }
     if token:
         headers["api-token"] = token
@@ -55,17 +56,21 @@ def _request_json(
     owner_slug = encode_identifier(owner, field_name="Codacy owner")
     repo_slug = encode_identifier(repo, field_name="Codacy repository")
 
-    payload_data: Dict[str, Any] = data or {}
+    payload_data: Dict[str, Any] = dict(data or {})
     branch_name = str(branch or "").strip()
     if branch_name:
-        payload_data = {**payload_data, "branchName": branch_name}
+        payload_data["branchName"] = branch_name
+
+    query: dict[str, str] = {}
+    if limit is not None:
+        query["limit"] = str(max(int(limit), 1))
 
     payload, _headers = request_json_https(
         host=CODACY_API_HOST,
-        path=f"/api/v3/analysis/organizations/{provider_slug}/{owner_slug}/repositories/{repo_slug}/issues/search",
+        path=f"/api/v3/analysis/organizations/{provider_slug}/{owner_slug}/repositories/{repo_slug}/{endpoint}",
         headers=headers,
         method=method,
-        query={"limit": str(max(limit, 1))},
+        query=query,
         data=payload_data,
     )
     if not isinstance(payload, dict):
@@ -73,20 +78,7 @@ def _request_json(
     return payload
 
 
-def _walk_nodes(payload: Any) -> List[Any]:
-    stack: List[Any] = [payload]
-    nodes: List[Any] = []
-    while stack:
-        node = stack.pop()
-        nodes.append(node)
-        if isinstance(node, dict):
-            stack.extend(node.values())
-        elif isinstance(node, list):
-            stack.extend(node)
-    return nodes
-
-
-def _numeric_total_from_dict(node: Dict[str, Any], keys: Tuple[str, ...] = TOTAL_KEYS) -> Optional[int]:
+def _numeric_total_from_dict(node: Dict[str, Any], keys: Sequence[str] = TOTAL_KEYS) -> Optional[int]:
     for key in keys:
         value = node.get(key)
         if isinstance(value, (int, float)):
@@ -94,9 +86,46 @@ def _numeric_total_from_dict(node: Dict[str, Any], keys: Tuple[str, ...] = TOTAL
     return None
 
 
+def _sum_count_rows(rows: Any) -> Optional[int]:
+    if not isinstance(rows, list):
+        return None
+    totals: List[int] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        total = row.get("total")
+        if isinstance(total, (int, float)):
+            totals.append(int(total))
+    return sum(totals) if totals else None
+
+
+def _extract_overview_total(payload: Dict[str, Any]) -> Optional[int]:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return None
+    counts = data.get("counts")
+    if not isinstance(counts, dict):
+        return None
+
+    # Severity levels represent the issue cardinality without double counting.
+    levels_total = _sum_count_rows(counts.get("levels"))
+    if levels_total is not None:
+        return levels_total
+
+    for key in ("categories", "patterns", "languages", "authors"):
+        total = _sum_count_rows(counts.get(key))
+        if total is not None:
+            return total
+    return None
+
+
 def extract_total_open(payload: Any) -> Optional[int]:
     if not isinstance(payload, dict):
         return None
+
+    overview_total = _extract_overview_total(payload)
+    if overview_total is not None:
+        return overview_total
 
     pagination = payload.get("pagination")
     if isinstance(pagination, dict):
@@ -104,17 +133,7 @@ def extract_total_open(payload: Any) -> Optional[int]:
         if total is not None:
             return total
 
-    direct_total = _numeric_total_from_dict(payload)
-    if direct_total is not None:
-        return direct_total
-
-    for node in _walk_nodes(payload):
-        if not isinstance(node, dict):
-            continue
-        total = _numeric_total_from_dict(node)
-        if total is not None:
-            return total
-    return None
+    return _numeric_total_from_dict(payload)
 
 
 def _provider_candidates(preferred: str) -> List[str]:
@@ -169,17 +188,33 @@ def _scan_candidate(
     branch: str,
     findings: List[str],
 ) -> Optional[int]:
-    payload = _request_json(
+    overview_payload = _request_json(
         provider=candidate,
         owner=owner,
         repo=repo,
         token=token,
         branch=branch,
-        limit=1,
+        endpoint="issues/overview",
+        limit=None,
         method="POST",
         data={},
     )
-    open_issues = extract_total_open(payload)
+    open_issues = extract_total_open(overview_payload)
+    if open_issues is None:
+        findings.append("Codacy overview response did not include a parseable issue count.")
+        search_payload = _request_json(
+            provider=candidate,
+            owner=owner,
+            repo=repo,
+            token=token,
+            branch=branch,
+            endpoint="issues/search",
+            limit=1,
+            method="POST",
+            data={},
+        )
+        open_issues = extract_total_open(search_payload)
+
     if open_issues is None:
         findings.append("Codacy response did not include a parseable total issue count.")
         return None
@@ -191,6 +226,7 @@ def _scan_candidate(
             repo=repo,
             token=token,
             branch=branch,
+            endpoint="issues/search",
             limit=20,
             method="POST",
             data={},

@@ -504,13 +504,12 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        path = self._powershell_profile_path(target)
+        path = self._validated_powershell_restore_path(target)
         before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
         after = upsert_powershell_env(before, key, value or "") if action == "set" else remove_powershell_env(before, key)
         if apply_changes:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(after, encoding="utf-8")
-        requires_priv = "all_users" in target
+            self._write_text_file(path, after, ensure_parent=True)
+        requires_priv = target == "powershell:all_users"
         return before, after, str(path), requires_priv, None
 
     def _file_update(
