@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
-from typing import List
 from pathlib import Path
+from typing import List
 import unittest
+
+import pytest
 
 import env_inspector_core.providers as providers
 from env_inspector_core.constants import SOURCE_WSL_BASHRC, SOURCE_WSL_ETC_ENV
@@ -31,6 +33,26 @@ def test_discover_dotenv_files_returns_empty_when_root_rejected(monkeypatch, tmp
     monkeypatch.setattr(providers, "resolve_scan_root", _raise)
 
     _case().assertEqual(providers.discover_dotenv_files(tmp_path), [])
+
+
+def test_iter_dotenv_candidates_prunes_dirs_when_depth_exceeds_limit(tmp_path: Path):
+    root = tmp_path.joinpath("workspace")
+    nested = root.joinpath("nested")
+    nested.mkdir(parents=True)
+    nested.joinpath(".env").write_text("A=1\n", encoding="utf-8")
+
+    rows = providers._iter_dotenv_candidates(root, max_depth=0)
+
+    _case().assertEqual(rows, [])
+
+
+def test_windows_registry_provider_guard_and_invalid_scope(monkeypatch):
+    monkeypatch.setattr(providers, "is_windows", lambda: False)
+    with pytest.raises(RuntimeError):
+        providers.WindowsRegistryProvider()
+
+    with pytest.raises(ValueError):
+        providers.WindowsRegistryProvider._scope_to_key("unsupported-scope")
 
 
 def test_wsl_decode_falls_back_on_invalid_utf16_bytes():
@@ -94,6 +116,17 @@ def test_collect_wsl_records_respects_excluded_distros():
 
     _case().assertTrue(all(r.source_id != "Ubuntu" for r in rows))
 
+
+def test_collect_wsl_helpers_return_empty_when_wsl_unavailable():
+    class _FakeWsl:
+        def available(self) -> bool:
+            return False
+
+    _case().assertEqual(providers.collect_wsl_records(_FakeWsl()), [])
+    _case().assertEqual(
+        providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2),
+        [],
+    )
 
 
 def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
