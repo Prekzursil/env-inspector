@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 #!/usr/bin/env python3
 from typing import Dict, List, Tuple
 import argparse

@@ -1,15 +1,23 @@
 from __future__ import absolute_import
 
 from typing import Dict, List
+import secrets
 import sys
-import urllib.error
 import unittest
+import urllib.error
 
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 
+
+def _case() -> unittest.TestCase:
+    return unittest.TestCase()
+
+
+def _token() -> str:
+    return secrets.token_hex(8)
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:
@@ -21,7 +29,7 @@ def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
 
     args = codacy_mod._parse_args()
 
-    case = unittest.TestCase()
+    case = _case()
     case.assertEqual(args.owner, "Prekzursil")
     case.assertEqual(args.repo, "env-inspector")
 
@@ -39,13 +47,13 @@ def test_codacy_request_json_applies_branch_name(monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="tok",
+        token=_token(),
         branch="main",
         method="POST",
         data={"sample": 1},
     )
 
-    case = unittest.TestCase()
+    case = _case()
     case.assertEqual(payload, {"total": 0})
     case.assertEqual(captured["data"], {"sample": 1, "branchName": "main"})
 
@@ -54,16 +62,16 @@ def test_codacy_request_json_rejects_non_dict_payload(monkeypatch):
     monkeypatch.setattr(codacy_mod, "request_json_https", lambda **_kwargs: ([], {}))
 
     with pytest.raises(RuntimeError, match="Unexpected Codacy response payload"):
-        codacy_mod._request_json(provider="gh", owner="Prekzursil", repo="env-inspector", token="t")
+        codacy_mod._request_json(provider="gh", owner="Prekzursil", repo="env-inspector", token=_token())
 
 
 def test_codacy_extract_helpers_cover_empty_and_fallback_paths():
-    assert codacy_mod.extract_total_open([]) is None
-    assert codacy_mod._provider_candidates("gh") == ["gh", "github"]
-    assert codacy_mod._first_text({"a": ""}, ("a", "b")) == ""
-    assert codacy_mod._format_issue_sample({"patternId": "", "filename": "", "message": ""}) is None
-    assert codacy_mod._sample_issue_findings({"data": "not-a-list"}) == []
-
+    case = _case()
+    case.assertIsNone(codacy_mod.extract_total_open([]))
+    case.assertEqual(codacy_mod._provider_candidates("gh"), ["gh", "github"])
+    case.assertEqual(codacy_mod._first_text({"a": ""}, ("a", "b")), "")
+    case.assertIsNone(codacy_mod._format_issue_sample({"patternId": "", "filename": "", "message": ""}))
+    case.assertEqual(codacy_mod._sample_issue_findings({"data": "not-a-list"}), [])
 
 
 def test_codacy_sample_issue_findings_skips_invalid_items_and_honors_limit():
@@ -78,8 +86,9 @@ def test_codacy_sample_issue_findings_skips_invalid_items_and_honors_limit():
 
     findings = codacy_mod._sample_issue_findings(payload, limit=1)
 
-    assert len(findings) == 1
-    assert "Sample issue" in findings[0]
+    case = _case()
+    case.assertEqual(len(findings), 1)
+    case.assertIn("Sample issue", findings[0])
 
 
 def test_codacy_fetch_open_issues_handles_none_count(monkeypatch):
@@ -89,14 +98,16 @@ def test_codacy_fetch_open_issues_handles_none_count(monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
 
-    assert handled is True
-    assert open_issues is None
-    assert findings and "parseable total" in findings[0]
-    assert error is None
+    case = _case()
+    case.assertTrue(handled)
+    case.assertIsNone(open_issues)
+    case.assertTrue(bool(findings))
+    case.assertIn("parseable total", findings[0])
+    case.assertIsNone(error)
 
 
 def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
@@ -106,13 +117,14 @@ def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
-    assert handled is True
-    assert open_issues == 0
-    assert findings == []
-    assert error is None
+    case = _case()
+    case.assertTrue(handled)
+    case.assertEqual(open_issues, 0)
+    case.assertEqual(findings, [])
+    case.assertIsNone(error)
 
     calls = {"count": 0}
 
@@ -127,13 +139,13 @@ def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
-    assert handled is True
-    assert open_issues == 2
-    assert any("Sample issue" in item for item in findings)
-    assert error is None
+    case.assertTrue(handled)
+    case.assertEqual(open_issues, 2)
+    case.assertTrue(any("Sample issue" in item for item in findings))
+    case.assertIsNone(error)
 
 
 def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
@@ -142,39 +154,42 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
-    assert handled is False
-    assert open_issues is None
-    assert findings == []
-    assert isinstance(error, urllib.error.HTTPError)
+    case = _case()
+    case.assertFalse(handled)
+    case.assertIsNone(open_issues)
+    case.assertEqual(findings, [])
+    case.assertIsInstance(error, urllib.error.HTTPError)
 
     monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(_http_error(500)))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
-    assert handled is True
-    assert open_issues is None
-    assert findings and "HTTP 500" in findings[0]
-    assert isinstance(error, urllib.error.HTTPError)
+    case.assertTrue(handled)
+    case.assertIsNone(open_issues)
+    case.assertTrue(bool(findings))
+    case.assertIn("HTTP 500", findings[0])
+    case.assertIsInstance(error, urllib.error.HTTPError)
 
     monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(ValueError("bad")))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
-    assert handled is True
-    assert open_issues is None
-    assert findings and "bad" in findings[0]
-    assert isinstance(error, ValueError)
+    case.assertTrue(handled)
+    case.assertIsNone(open_issues)
+    case.assertTrue(bool(findings))
+    case.assertIn("bad", findings[0])
+    case.assertIsInstance(error, ValueError)
 
 
 def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
@@ -190,45 +205,48 @@ def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
 
-    assert open_issues == 0
-    assert findings == []
+    case = _case()
+    case.assertEqual(open_issues, 0)
+    case.assertEqual(findings, [])
 
     monkeypatch.setattr(codacy_mod, "_fetch_open_issues_for_provider", lambda **_kwargs: (False, None, [], _http_error(404)))
     open_issues, findings = codacy_mod._query_open_issues(
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="t",
+        token=_token(),
         branch="",
     )
 
-    assert open_issues is None
-    assert any("endpoint was not found" in item for item in findings)
-    assert any("Last Codacy API error" in item for item in findings)
+    case.assertIsNone(open_issues)
+    case.assertTrue(any("endpoint was not found" in item for item in findings))
+    case.assertTrue(any("Last Codacy API error" in item for item in findings))
 
 
 def test_deepscan_extract_total_open_and_request_guard(monkeypatch):
     payload = {"outer": [{"nested": {"open_issues": 3}}, {"hits": 2}]}
-    assert deepscan_mod.extract_total_open(payload) in {2, 3}
+    case = _case()
+    case.assertIn(deepscan_mod.extract_total_open(payload), {2, 3})
 
     monkeypatch.setattr(deepscan_mod, "request_json_https", lambda **_kwargs: ([], {}))
     with pytest.raises(RuntimeError, match="Unexpected DeepScan response payload"):
-        deepscan_mod._request_json(host="deepscan.io", path="/api", query={}, token="t")
+        deepscan_mod._request_json(host="deepscan.io", path="/api", query={}, token=_token())
 
 
 def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     host, path, query = deepscan_mod._resolve_deepscan_endpoint(
         "https://deepscan.io/api/projects/1/issues/open?scope=pull-request"
     )
-    assert host == "deepscan.io"
-    assert path == "/api/projects/1/issues/open"
-    assert query == {"scope": "pull-request"}
+    case = _case()
+    case.assertEqual(host, "deepscan.io")
+    case.assertEqual(path, "/api/projects/1/issues/open")
+    case.assertEqual(query, {"scope": "pull-request"})
 
-    findings: List[str] = []
+    findings: List = []
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
@@ -238,11 +256,12 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
         host="deepscan.io",
         path="/api",
         query={},
-        token="t",
+        token=_token(),
         findings=findings,
     )
-    assert open_issues is None
-    assert findings and "DeepScan API request failed" in findings[0]
+    case.assertIsNone(open_issues)
+    case.assertTrue(bool(findings))
+    case.assertIn("DeepScan API request failed", findings[0])
 
     findings.clear()
     monkeypatch.setattr(deepscan_mod, "_request_json", lambda **_kwargs: {"open_issues": 2})
@@ -250,16 +269,35 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
         host="deepscan.io",
         path="/api",
         query={},
-        token="t",
+        token=_token(),
         findings=findings,
     )
-    assert open_issues == 2
-    assert findings and "expected 0" in findings[0]
+    case.assertEqual(open_issues, 2)
+    case.assertTrue(bool(findings))
+    case.assertIn("expected 0", findings[0])
+
+
+def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
+    findings: List = []
+    monkeypatch.setattr(deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}})
+
+    open_issues = deepscan_mod._fetch_open_issues(
+        host="deepscan.io",
+        path="/api",
+        query={},
+        token=_token(),
+        findings=findings,
+    )
+
+    case = _case()
+    case.assertIsNone(open_issues)
+    case.assertTrue(bool(findings))
+    case.assertIn("parseable total issue count", findings[0])
 
 
 def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("DEEPSCAN_API_TOKEN", "tok")
+    monkeypatch.setenv("DEEPSCAN_API_TOKEN", _token())
     monkeypatch.setenv("DEEPSCAN_OPEN_ISSUES_URL", "https://deepscan.io/api/projects/1/issues/open")
     monkeypatch.setattr(
         deepscan_mod,
@@ -271,31 +309,12 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
 
     rc = deepscan_mod.main()
 
-    assert rc == 0
-
-
-def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
-    findings: List[str] = []
-    monkeypatch.setattr(deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}})
-
-    open_issues = deepscan_mod._fetch_open_issues(
-        host="deepscan.io",
-        path="/api",
-        query={},
-        token="t",
-        findings=findings,
-    )
-
-    assert open_issues is None
-    assert findings and "parseable total issue count" in findings[0]
-
+    _case().assertEqual(rc, 0)
 
 
 def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
-    import unittest
-
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("CODACY_API_TOKEN", "tok")
+    monkeypatch.setenv("CODACY_API_TOKEN", _token())
     monkeypatch.setattr(
         codacy_mod,
         "_parse_args",
@@ -317,5 +336,4 @@ def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
 
     rc = codacy_mod.main()
 
-    case = unittest.TestCase()
-    case.assertEqual(rc, 0)
+    _case().assertEqual(rc, 0)

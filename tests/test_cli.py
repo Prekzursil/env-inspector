@@ -9,7 +9,7 @@ from env_inspector_core.cli import build_parser, run_cli
 
 
 class FakeService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.last_set: dict | None = None
         self.last_remove: dict | None = None
         self.last_preview_set: dict | None = None
@@ -188,7 +188,10 @@ def test_run_cli_returns_error_for_unknown_command(monkeypatch, capsys):
         def parse_args(self, _argv):
             return argparse.Namespace(command="unknown")
 
-    monkeypatch.setattr(cli_mod, "build_parser", lambda: _DummyParser())
+    def _build_dummy_parser():
+        return _DummyParser()
+
+    monkeypatch.setattr(cli_mod, "build_parser", _build_dummy_parser)
 
     rc = cli_mod.run_cli(["unknown"], service=FakeService())
 
