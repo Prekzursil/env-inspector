@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
 from env_inspector_gui.controller import EnvInspectorController
 

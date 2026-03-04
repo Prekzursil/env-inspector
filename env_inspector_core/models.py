@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
 from dataclasses import asdict, dataclass
 from typing import Any

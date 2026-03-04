@@ -5,7 +5,7 @@
 - GUI mode: launched when no subcommand is provided
 """
 
-from __future__ import annotations
+from __future__ import absolute_import
 
 import argparse
 import os
