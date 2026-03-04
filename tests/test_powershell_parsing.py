@@ -1,3 +1,4 @@
+from tests.conftest import ensure
 from env_inspector_core.providers import parse_powershell_profile_text
 
 

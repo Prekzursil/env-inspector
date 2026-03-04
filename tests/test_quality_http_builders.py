@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import ensure
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod

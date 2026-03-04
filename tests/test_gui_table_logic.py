@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import ensure
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import SortState
 from env_inspector_gui.table_logic import build_display_rows, sort_display_rows, toggle_sort
