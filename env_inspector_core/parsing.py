@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-_ENV_KEY_PATTERN = r"(?:[^\W\d])\w*"
+_ENV_KEY_PATTERN = r"[A-Za-z_]\w*"
 ENV_KEY_RE = re.compile(rf"^{_ENV_KEY_PATTERN}$")
 EXPORT_LINE_RE = re.compile(rf"^\s*export\s+({_ENV_KEY_PATTERN})=(.*)$")
 ASSIGN_LINE_RE = re.compile(rf"^\s*({_ENV_KEY_PATTERN})=(.*)$")
@@ -194,4 +194,3 @@ def remove_powershell_env(content: str, key: str) -> str:
     lines = content.splitlines()
     out = [line for line in lines if not _matches_powershell_key(line, key)]
     return _render_remove(out, content.endswith("\n"))
-
