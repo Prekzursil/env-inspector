@@ -25,6 +25,6 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
 
     code = env_inspector.main()
 
-    assert code == 2
+    ensure(code == 2)
     err = capsys.readouterr().err
-    assert "Invalid --root" in err
+    ensure('Invalid --root' in err)

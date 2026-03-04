@@ -15,8 +15,8 @@ def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
 
     stats = coverage_mod.parse_coverage_xml("python", xml_path)
 
-    assert stats.total == 2
-    assert stats.covered == 1
+    ensure(stats.total == 2)
+    ensure(stats.covered == 1)
 
 
 def test_parse_lcov_reads_totals(tmp_path: Path):
@@ -25,8 +25,8 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 
     stats = coverage_mod.parse_lcov("python", lcov_path)
 
-    assert stats.total == 2
-    assert stats.covered == 1
+    ensure(stats.total == 2)
+    ensure(stats.covered == 1)
 
 
 def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
@@ -45,9 +45,9 @@ def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
 
     rc = coverage_mod.main()
 
-    assert rc == 0
-    assert (tmp_path / "reports" / "coverage.json").exists()
-    assert (tmp_path / "reports" / "coverage.md").exists()
+    ensure(rc == 0)
+    ensure((tmp_path / 'reports' / 'coverage.json').exists())
+    ensure((tmp_path / 'reports' / 'coverage.md').exists())
 
 
 def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
@@ -65,9 +65,9 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
 
     rc = codacy_mod.main()
 
-    assert rc == 1
-    assert (tmp_path / "reports" / "codacy.json").exists()
-    assert (tmp_path / "reports" / "codacy.md").exists()
+    ensure(rc == 1)
+    ensure((tmp_path / 'reports' / 'codacy.json').exists())
+    ensure((tmp_path / 'reports' / 'codacy.md').exists())
 
 
 def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch):
@@ -83,9 +83,9 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
 
     rc = deepscan_mod.main()
 
-    assert rc == 1
-    assert (tmp_path / "reports" / "deepscan.json").exists()
-    assert (tmp_path / "reports" / "deepscan.md").exists()
+    ensure(rc == 1)
+    ensure((tmp_path / 'reports' / 'deepscan.json').exists())
+    ensure((tmp_path / 'reports' / 'deepscan.md').exists())
 
 
 def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch):
@@ -105,6 +105,6 @@ def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch)
 
     rc = sentry_mod.main()
 
-    assert rc == 0
-    assert (tmp_path / "reports" / "sentry.json").exists()
-    assert (tmp_path / "reports" / "sentry.md").exists()
+    ensure(rc == 0)
+    ensure((tmp_path / 'reports' / 'sentry.json').exists())
+    ensure((tmp_path / 'reports' / 'sentry.md').exists())
