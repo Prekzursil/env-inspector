@@ -57,16 +57,19 @@ def current_wsl_distro_name() -> str | None:
     return name or None
 
 
-def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
-    root = Path(root)
-    workspace_root = Path.cwd()
-    root_text = str(root)
+def _is_workspace_scoped_path(path: Path, workspace_root: Path) -> bool:
+    path_text = str(path)
     workspace_text = str(workspace_root)
-    if root_text != workspace_text and not root_text.startswith(workspace_text + os.sep):
-        return []
-    if not root.exists() or not root.is_dir():
-        return []
+    if path_text == workspace_text:
+        return True
+    return path_text.startswith(workspace_text + os.sep)
 
+
+def _dotenv_matches(filename: str) -> bool:
+    return filename == ".env" or filename.startswith(".env.")
+
+
+def _iter_dotenv_candidates(root: Path, max_depth: int) -> list[Path]:
     files: list[Path] = []
     for current, dirs, filenames in os.walk(root):  # codeql[py/path-injection] root constrained to workspace scope
         rel = Path(os.path.relpath(current, root))
@@ -75,10 +78,18 @@ def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
             dirs[:] = []
             continue
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        for filename in filenames:
-            if filename == ".env" or filename.startswith(".env."):
-                files.append(Path(current) / filename)
-    return sorted(files)
+        files.extend(Path(current) / filename for filename in filenames if _dotenv_matches(filename))
+    return files
+
+
+def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
+    root = Path(root)
+    workspace_root = Path.cwd()
+    if not _is_workspace_scoped_path(root, workspace_root):
+        return []
+    if not root.exists() or not root.is_dir():
+        return []
+    return sorted(_iter_dotenv_candidates(root, max_depth=max_depth))
 
 
 def collect_process_records(context: str = "windows") -> list[EnvRecord]:
@@ -335,24 +346,35 @@ class WslProvider:
         return [line.strip() for line in text.splitlines() if line.strip()]
 
 
+def _normalize_powershell_assignment_value(raw_value: str) -> str:
+    value = raw_value.strip()
+    if value.endswith(";"):
+        value = value[:-1].strip()
+    if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
+        return value[1:-1]
+    return value
+
+
+def _parse_powershell_assignment(line: str, regex: re.Pattern[str]) -> tuple[str, str] | None:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+
+    match = regex.search(stripped)
+    if not match:
+        return None
+    key = match.group(1)
+    value = _normalize_powershell_assignment_value(match.group(2))
+    return key, value
+
+
 def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
-    # Handles common patterns: $env:KEY = "value" or 'value'
     regex = re.compile(r"\$env:([A-Za-z_]\w*)\s*=\s*(.+)$")
     for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        m = regex.search(stripped)
-        if not m:
-            continue
-        key = m.group(1)
-        value = m.group(2).strip()
-        if value.endswith(";"):
-            value = value[:-1].strip()
-        if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
-            value = value[1:-1]
-        rows.append((key, value))
+        entry = _parse_powershell_assignment(line, regex)
+        if entry:
+            rows.append(entry)
     return rows
 
 
@@ -466,6 +488,37 @@ def collect_linux_records(
     return rows
 
 
+def _append_wsl_records(
+    rows: list[EnvRecord],
+    *,
+    distro: str,
+    context: str,
+    source_type: str,
+    source_path: str,
+    pairs: dict[str, str],
+    precedence_rank: int,
+    requires_privilege: bool,
+) -> None:
+    for key, value in pairs.items():
+        rows.append(
+            EnvRecord(
+                source_type=source_type,
+                source_id=distro,
+                source_path=source_path,
+                context=context,
+                name=key,
+                value=value,
+                is_secret=looks_secret(key, value),
+                is_persistent=True,
+                is_mutable=True,
+                precedence_rank=precedence_rank,
+                writable=True,
+                requires_privilege=requires_privilege,
+                last_error=None,
+            )
+        )
+
+
 def collect_wsl_records(
     wsl: WslProvider,
     include_etc: bool = True,
@@ -474,52 +527,37 @@ def collect_wsl_records(
     rows: list[EnvRecord] = []
     if not wsl.available():
         return rows
+
     excluded = {x.lower() for x in (exclude_distros or set())}
     for distro in wsl.list_distros():
         if distro.lower() in excluded:
             continue
-        context = f"wsl:{distro}"
 
-        bash_text = wsl.read_file(distro, "~/.bashrc")
-        for key, value in parse_bash_exports(bash_text).items():
-            rows.append(
-                EnvRecord(
-                    source_type=SOURCE_WSL_BASHRC,
-                    source_id=distro,
-                    source_path=f"{distro}:~/.bashrc",
-                    context=context,
-                    name=key,
-                    value=value,
-                    is_secret=looks_secret(key, value),
-                    is_persistent=True,
-                    is_mutable=True,
-                    precedence_rank=20,
-                    writable=True,
-                    requires_privilege=False,
-                    last_error=None,
-                )
-            )
+        context = f"wsl:{distro}"
+        bash_pairs = parse_bash_exports(wsl.read_file(distro, "~/.bashrc"))
+        _append_wsl_records(
+            rows,
+            distro=distro,
+            context=context,
+            source_type=SOURCE_WSL_BASHRC,
+            source_path=f"{distro}:~/.bashrc",
+            pairs=bash_pairs,
+            precedence_rank=20,
+            requires_privilege=False,
+        )
 
         if include_etc:
-            etc_text = wsl.read_file(distro, "/etc/environment")
-            for key, value in parse_etc_environment(etc_text).items():
-                rows.append(
-                    EnvRecord(
-                        source_type=SOURCE_WSL_ETC_ENV,
-                        source_id=distro,
-                        source_path=f"{distro}:/etc/environment",
-                        context=context,
-                        name=key,
-                        value=value,
-                        is_secret=looks_secret(key, value),
-                        is_persistent=True,
-                        is_mutable=True,
-                        precedence_rank=10,
-                        writable=True,
-                        requires_privilege=True,
-                        last_error=None,
-                    )
-                )
+            etc_pairs = parse_etc_environment(wsl.read_file(distro, "/etc/environment"))
+            _append_wsl_records(
+                rows,
+                distro=distro,
+                context=context,
+                source_type=SOURCE_WSL_ETC_ENV,
+                source_path=f"{distro}:/etc/environment",
+                pairs=etc_pairs,
+                precedence_rank=10,
+                requires_privilege=True,
+            )
     return rows
 
 

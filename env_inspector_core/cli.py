@@ -51,22 +51,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _is_successful_payload(item: dict) -> bool:
+    return bool(item.get("success", False))
+
+
+def _list_payload_success(payload: list[object]) -> bool:
+    items = [item for item in payload if isinstance(item, dict)]
+    return bool(items) and all(_is_successful_payload(item) for item in items)
+
+
 def _emit_payload(payload: object) -> int:
     print(json.dumps(payload, ensure_ascii=True, indent=2))
 
     if isinstance(payload, dict):
-        return 0 if bool(payload.get("success", False)) else 1
-
+        return 0 if _is_successful_payload(payload) else 1
     if isinstance(payload, list):
-        items = [item for item in payload if isinstance(item, dict)]
-        if not items:
-            return 1
-        any_failures = any(not bool(item.get("success", False)) for item in items)
-        return 1 if any_failures else 0
-
+        return 0 if _list_payload_success(payload) else 1
     return 1
 
-def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
+
+def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
     rows = service.list_records(
         root=args.root,
         context=args.context,
@@ -78,7 +82,7 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> int
     )
     if args.output == "json":
         print(json.dumps(rows, ensure_ascii=True, indent=2))
-        return 0
+        return
 
     rendered = service.export_records(
         output=args.output,
@@ -91,7 +95,7 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> int
         scan_depth=args.scan_depth,
     )
     print(rendered, end="")
-    return 0
+    return
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
@@ -143,8 +147,11 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         return 0
 
     active_service = service or EnvInspectorService()
+    if args.command == "list":
+        _list_records(active_service, args)
+        return 0
+
     handlers = {
-        "list": _list_records,
         "set": _set_key,
         "remove": _remove_key,
         "export": _export_records,
@@ -156,4 +163,3 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2
     return handler(active_service, args)
-

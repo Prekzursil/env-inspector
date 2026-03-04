@@ -70,11 +70,24 @@ def _apply_deepscan_policy(
     return filtered_secrets, filtered_vars
 
 
+def _is_missing(name: str) -> bool:
+    return not str(os.environ.get(name, "")).strip()
+
+
+def _partition_required(names: list[str]) -> tuple[list[str], list[str]]:
+    missing: list[str] = []
+    present: list[str] = []
+    for name in names:
+        if _is_missing(name):
+            missing.append(name)
+        else:
+            present.append(name)
+    return missing, present
+
+
 def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
-    missing_secrets = [name for name in required_secrets if not str(os.environ.get(name, "")).strip()]
-    missing_vars = [name for name in required_vars if not str(os.environ.get(name, "")).strip()]
-    present_secrets = [name for name in required_secrets if name not in missing_secrets]
-    present_vars = [name for name in required_vars if name not in missing_vars]
+    missing_secrets, present_secrets = _partition_required(required_secrets)
+    missing_vars, present_vars = _partition_required(required_vars)
     return {
         "missing_secrets": missing_secrets,
         "missing_vars": missing_vars,

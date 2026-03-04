@@ -82,14 +82,53 @@ def _fetch_sonar_status(
     branch: str,
     pull_request: str,
 ) -> tuple[int, str]:
-    issues_url = f"{api_base}/api/issues/search?{urllib.parse.urlencode(_build_issue_query(project_key, branch=branch, pull_request=pull_request))}"
+    issues_url = (
+        f"{api_base}/api/issues/search?"
+        f"{urllib.parse.urlencode(_build_issue_query(project_key, branch=branch, pull_request=pull_request))}"
+    )
     issues_payload = _request_json(issues_url, auth_header)
     open_issues = int((issues_payload.get("paging") or {}).get("total") or 0)
 
-    gate_url = f"{api_base}/api/qualitygates/project_status?{urllib.parse.urlencode(_build_quality_gate_query(project_key, branch=branch, pull_request=pull_request))}"
+    gate_url = (
+        f"{api_base}/api/qualitygates/project_status?"
+        f"{urllib.parse.urlencode(_build_quality_gate_query(project_key, branch=branch, pull_request=pull_request))}"
+    )
     gate_payload = _request_json(gate_url, auth_header)
     quality_gate = str((gate_payload.get("projectStatus") or {}).get("status") or "UNKNOWN")
     return open_issues, quality_gate
+
+
+def _evaluate_sonar(
+    *,
+    token: str,
+    api_base: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+) -> tuple[int | None, str | None, list[str]]:
+    findings: list[str] = []
+    open_issues: int | None = None
+    quality_gate: str | None = None
+
+    if not token:
+        return open_issues, quality_gate, ["SONAR_TOKEN is missing."]
+
+    try:
+        open_issues, quality_gate = _fetch_sonar_status(
+            api_base=api_base,
+            auth_header=_auth_header(token),
+            project_key=project_key,
+            branch=branch,
+            pull_request=pull_request,
+        )
+    except Exception as exc:  # pragma: no cover - network/runtime surface
+        return open_issues, quality_gate, [f"Sonar API request failed: {exc}"]
+
+    if open_issues != 0:
+        findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
+    if quality_gate != "OK":
+        findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
+    return open_issues, quality_gate, findings
 
 
 def _render_md(payload: dict) -> str:
@@ -119,27 +158,13 @@ def main() -> int:
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
     api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={"sonarcloud.io"}).rstrip("/")
 
-    findings: list[str] = []
-    open_issues: int | None = None
-    quality_gate: str | None = None
-
-    if not token:
-        findings.append("SONAR_TOKEN is missing.")
-    else:
-        try:
-            open_issues, quality_gate = _fetch_sonar_status(
-                api_base=api_base,
-                auth_header=_auth_header(token),
-                project_key=args.project_key,
-                branch=args.branch,
-                pull_request=args.pull_request,
-            )
-            if open_issues != 0:
-                findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
-            if quality_gate != "OK":
-                findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            findings.append(f"Sonar API request failed: {exc}")
+    open_issues, quality_gate, findings = _evaluate_sonar(
+        token=token,
+        api_base=api_base,
+        project_key=args.project_key,
+        branch=args.branch,
+        pull_request=args.pull_request,
+    )
 
     status = "pass" if not findings else "fail"
     payload = {

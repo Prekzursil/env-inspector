@@ -25,6 +25,16 @@ def _name_suggests_secret(name: str) -> bool:
     return any(f"_{marker}_" in padded for marker in _SECRET_MARKERS)
 
 
+def _is_path_like(candidate: str) -> bool:
+    return candidate.startswith(("/", "./", "../")) or "://" in candidate or "\\" in candidate or ":" in candidate
+
+
+def _is_base64_secret(candidate: str) -> bool:
+    if len(candidate) < 48 or not BASE64ISH_RE.match(candidate):
+        return False
+    return not _is_path_like(candidate)
+
+
 def looks_secret(name: str, value: str) -> bool:
     if _name_suggests_secret(name):
         return True
@@ -33,12 +43,7 @@ def looks_secret(name: str, value: str) -> bool:
     if GITHUB_TOKEN_RE.match(candidate):
         return True
 
-    if len(candidate) >= 48 and BASE64ISH_RE.match(candidate):
-        if candidate.startswith(("/", "./", "../")) or "://" in candidate or "\\" in candidate or ":" in candidate:
-            return False
-        return True
-
-    return False
+    return _is_base64_secret(candidate)
 
 
 def mask_value(value: str, reveal: bool = False) -> str:
