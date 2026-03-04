@@ -86,29 +86,34 @@ def _walk_nodes(payload: Any) -> list[Any]:
     return nodes
 
 
+def _numeric_total_from_dict(node: dict[str, Any]) -> int | None:
+    for key in TOTAL_KEYS:
+        value = node.get(key)
+        if isinstance(value, (int, float)):
+            return int(value)
+    return None
+
+
 def extract_total_open(payload: Any) -> int | None:
     if not isinstance(payload, dict):
         return None
 
     pagination = payload.get("pagination")
     if isinstance(pagination, dict):
-        for key in ("total", "totalItems", "count"):
-            value = pagination.get(key)
-            if isinstance(value, (int, float)):
-                return int(value)
+        total = _numeric_total_from_dict(pagination)
+        if total is not None:
+            return total
 
-    for key in TOTAL_KEYS:
-        value = payload.get(key)
-        if isinstance(value, (int, float)):
-            return int(value)
+    direct_total = _numeric_total_from_dict(payload)
+    if direct_total is not None:
+        return direct_total
 
     for node in _walk_nodes(payload):
         if not isinstance(node, dict):
             continue
-        for key, value in node.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
-                return int(value)
-
+        total = _numeric_total_from_dict(node)
+        if total is not None:
+            return total
     return None
 
 
@@ -156,6 +161,45 @@ def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]
     return findings
 
 
+def _scan_candidate(
+    *,
+    candidate: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+    findings: list[str],
+) -> int | None:
+    payload = _request_json(
+        provider=candidate,
+        owner=owner,
+        repo=repo,
+        token=token,
+        branch=branch,
+        limit=1,
+        method="POST",
+        data={},
+    )
+    open_issues = extract_total_open(payload)
+    if open_issues is None:
+        findings.append("Codacy response did not include a parseable total issue count.")
+        return None
+    if open_issues != 0:
+        findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
+        sample_payload = _request_json(
+            provider=candidate,
+            owner=owner,
+            repo=repo,
+            token=token,
+            branch=branch,
+            limit=20,
+            method="POST",
+            data={},
+        )
+        findings.extend(_sample_issue_findings(sample_payload))
+    return open_issues
+
+
 def _query_open_issues(
     *,
     provider: str,
@@ -167,35 +211,18 @@ def _query_open_issues(
     findings: list[str] = []
     open_issues: int | None = None
     last_exc: Exception | None = None
+    candidates = _provider_candidates(provider)
 
-    for candidate in _provider_candidates(provider):
+    for candidate in candidates:
         try:
-            payload = _request_json(
-                provider=candidate,
+            open_issues = _scan_candidate(
+                candidate=candidate,
                 owner=owner,
                 repo=repo,
                 token=token,
                 branch=branch,
-                limit=1,
-                method="POST",
-                data={},
+                findings=findings,
             )
-            open_issues = extract_total_open(payload)
-            if open_issues is None:
-                findings.append("Codacy response did not include a parseable total issue count.")
-            elif open_issues != 0:
-                findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
-                sample_payload = _request_json(
-                    provider=candidate,
-                    owner=owner,
-                    repo=repo,
-                    token=token,
-                    branch=branch,
-                    limit=20,
-                    method="POST",
-                    data={},
-                )
-                findings.extend(_sample_issue_findings(sample_payload))
             return open_issues, findings
         except urllib.error.HTTPError as exc:
             last_exc = exc
@@ -208,9 +235,7 @@ def _query_open_issues(
             findings.append(f"Codacy API request failed: {exc}")
             return open_issues, findings
 
-    findings.append(
-        f"Codacy API endpoint was not found for provider(s): {', '.join(_provider_candidates(provider))}."
-    )
+    findings.append(f"Codacy API endpoint was not found for provider(s): {', '.join(candidates)}.")
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")
     return open_issues, findings

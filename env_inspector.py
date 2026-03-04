@@ -28,7 +28,13 @@ def _legacy_print_secrets(root: str | Path) -> int:
         return 2
 
     svc = EnvInspectorService()
-    rows = svc.list_records(root=safe_root, include_raw_secrets=True)
+    original_cwd = Path.cwd()
+    os.chdir(safe_root)
+    try:
+        # Read records from the validated root without forwarding raw CLI path input.
+        rows = svc.list_records(include_raw_secrets=True)
+    finally:
+        os.chdir(original_cwd)
     for row in rows:
         if row.get("is_secret"):
             print(f"{row.get('source_type')}:{row.get('source_id')}\t{row.get('name')}")
