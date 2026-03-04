@@ -138,7 +138,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         )
 
     profile = tmp_path / "profile.ps1"
-    monkeypatch.setattr(EnvInspectorService, "_powershell_profile_path", lambda _self, _target: profile)
+    monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     _before, _after, out_path, _requires_priv, _ = svc._update_powershell_file(
         target="powershell:current_user",
         key="A",
@@ -258,3 +258,4 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
             text="A=1\n",
             scope_roots=[allowed],
         )
+

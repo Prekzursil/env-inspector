@@ -9,14 +9,21 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
 
-def test_codacy_walk_nodes_and_extract_total_open():
-    payload = {"outer": [{"nested": {"open_issues": 7}}, {"other": "x"}]}
+def test_codacy_extract_total_open_from_overview_and_pagination():
+    overview_payload = {
+        "data": {
+            "counts": {
+                "levels": [
+                    {"name": "Error", "total": 2},
+                    {"name": "Warning", "total": 5},
+                ]
+            }
+        }
+    }
 
-    nodes = codacy_mod._walk_nodes(payload)
-
-    assert payload in nodes
-    assert codacy_mod.extract_total_open(payload) == 7
-    assert codacy_mod.extract_total_open({"outer": [{"nested": "value"}]}) is None
+    assert codacy_mod.extract_total_open(overview_payload) == 7
+    assert codacy_mod.extract_total_open({"pagination": {"total": 3}}) == 3
+    assert codacy_mod.extract_total_open({"data": {"counts": {"levels": []}}}) is None
 
 
 def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monkeypatch, capsys):

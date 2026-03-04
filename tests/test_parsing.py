@@ -1,10 +1,13 @@
+from env_inspector_core import parsing
 from env_inspector_core.parsing import (
     parse_dotenv_text,
     parse_bash_exports,
     parse_etc_environment,
-    upsert_export,
+    remove_key_value,
     remove_export,
     remove_powershell_env,
+    upsert_export,
+    upsert_key_value,
     upsert_powershell_env,
 )
 
@@ -69,3 +72,23 @@ def test_upsert_and_remove_powershell_env_roundtrip():
 
     removed = remove_powershell_env(appended, "API_TOKEN")
     assert "$env:API_TOKEN" not in removed
+
+
+def test_upsert_key_value_preserves_comments_and_appends_when_missing():
+    base = "# keep\nA=1\n"
+    updated = upsert_key_value(base, "B", "2", quote=False)
+
+    assert updated.startswith("# keep\n")
+    assert "B=2" in updated
+
+
+def test_remove_key_value_strips_assignment_and_export_variants():
+    text = "A=1\nexport A=2\nB=3\n"
+
+    removed = remove_key_value(text, "A")
+
+    assert removed == "B=3\n"
+
+
+def test_join_lines_handles_no_trailing_newline_case():
+    assert parsing._join_lines(["A=1"], keep_trailing_newline=False) == "A=1"

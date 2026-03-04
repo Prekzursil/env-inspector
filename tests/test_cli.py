@@ -1,6 +1,8 @@
 import json
+from argparse import Namespace
 
-from env_inspector_core.cli import build_parser, run_cli
+from env_inspector_core import cli as cli_mod
+from env_inspector_core.cli import _command_success, build_parser, run_cli
 
 
 class FakeService:
@@ -54,6 +56,14 @@ def test_run_cli_list_json_contract(capsys):
     out = capsys.readouterr().out
     payload = json.loads(out)
     assert payload[0]["name"] == "API_TOKEN"
+
+
+def test_run_cli_list_non_json_routes_to_export(capsys):
+    code = run_cli(["list", "--output", "table"], service=FakeService())
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert out == "name,value\\nAPI_TOKEN,abc***123\\n"
 
 
 def test_run_cli_set_and_remove(capsys):
@@ -119,3 +129,30 @@ def test_run_cli_export_backup_and_restore(capsys):
     assert "API_TOKEN,abc***123" in out
     assert "backup1" in out
     assert "op-restore" in out
+
+
+def test_command_success_handles_non_dict_sequences():
+    assert _command_success([{"success": True}, {"success": True}]) is True
+    assert _command_success([{"success": True}, {"success": False}]) is False
+
+
+def test_run_cli_without_command_prints_help(monkeypatch):
+    parser = build_parser()
+
+    monkeypatch.setattr(parser, "parse_args", lambda _argv=None: Namespace(command=None))
+    monkeypatch.setattr(cli_mod, "build_parser", lambda: parser)
+
+    code = run_cli([])
+
+    assert code == 0
+
+
+def test_run_cli_unknown_command_returns_error(monkeypatch):
+    parser = build_parser()
+
+    monkeypatch.setattr(parser, "parse_args", lambda _argv=None: Namespace(command="bogus"))
+    monkeypatch.setattr(cli_mod, "build_parser", lambda: parser)
+
+    code = run_cli([])
+
+    assert code == 2

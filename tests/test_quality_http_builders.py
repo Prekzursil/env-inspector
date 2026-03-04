@@ -30,6 +30,32 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
     assert captured["query"] == {"limit": "1"}
 
 
+def test_codacy_request_json_overview_omits_limit_and_includes_branch(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def _fake_request_json_https(**kwargs):
+        captured.update(kwargs)
+        return {"data": {"counts": {"levels": [{"name": "Error", "total": 0}]}}}, {}
+
+    monkeypatch.setattr(codacy_mod, "request_json_https", _fake_request_json_https)
+    payload = codacy_mod._request_json(
+        provider="gh",
+        owner="Prekzursil",
+        repo="env-inspector",
+        token="token",
+        branch="fix/true-zero-provider-parity-v2",
+        endpoint="issues/overview",
+        limit=None,
+        method="POST",
+        data={},
+    )
+
+    assert codacy_mod.extract_total_open(payload) == 0
+    assert captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/overview"
+    assert captured["query"] == {}
+    assert captured["data"]["branchName"] == "fix/true-zero-provider-parity-v2"
+
+
 def test_codacy_request_json_rejects_unsafe_identifier():
     with pytest.raises(ValueError, match="unsupported characters"):
         codacy_mod._request_json(
