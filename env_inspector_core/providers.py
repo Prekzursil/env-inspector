@@ -22,6 +22,7 @@ from .constants import (
 )
 from .models import EnvRecord
 from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environment
+from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
 
 try:
@@ -59,12 +60,14 @@ def current_wsl_distro_name() -> str | None:
 
 def _resolve_scoped_root(root: Path, workspace_root: Path) -> Path | None:
     try:
-        resolved_root = Path(root).expanduser().resolve(strict=False)
-        resolved_workspace = Path(workspace_root).expanduser().resolve(strict=False)
+        resolved_root = resolve_scan_root(root)
+    except PathPolicyError:
+        return None
+
+    resolved_workspace = Path(workspace_root).expanduser().resolve(strict=False)
+    try:
         resolved_root.relative_to(resolved_workspace)
     except ValueError:
-        return None
-    if not resolved_root.exists() or not resolved_root.is_dir():
         return None
     return resolved_root
 

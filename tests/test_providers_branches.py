@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
-from env_inspector_core import providers as providers_mod
 from env_inspector_core.providers import (
     WslProvider,
     _append_wsl_bashrc_records,
@@ -14,11 +14,22 @@ from env_inspector_core.providers import (
 )
 
 
-def test_resolve_scoped_root_requires_existing_directory(tmp_path: Path):
+def test_resolve_scoped_root_requires_existing_directory(tmp_path: Path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(tmp_path)
 
     assert _resolve_scoped_root(workspace / "missing", workspace) is None
+
+
+def test_resolve_scoped_root_rejects_path_outside_workspace_root(tmp_path: Path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    sibling = tmp_path / "sibling"
+    workspace.mkdir(parents=True, exist_ok=True)
+    sibling.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(tmp_path)
+
+    assert _resolve_scoped_root(sibling, workspace) is None
 
 
 def test_discover_dotenv_files_honors_depth_limit(tmp_path: Path, monkeypatch):
@@ -38,11 +49,11 @@ def test_discover_dotenv_files_honors_depth_limit(tmp_path: Path, monkeypatch):
 
 def test_wsl_scan_dotenv_files_filters_blank_lines(monkeypatch):
     provider = WslProvider(wsl_exe="wsl")
-    monkeypatch.setattr(provider, "_run", lambda *_args, **_kwargs: "\n/tmp/.env\n\n/tmp/.env.local\n")
+    monkeypatch.setattr(provider, "_run", lambda *_args, **_kwargs: "\n/opt/env/.env\n\n/opt/env/.env.local\n")
 
-    rows = provider.scan_dotenv_files("Ubuntu", "/tmp", 2)
+    rows = provider.scan_dotenv_files("Ubuntu", "/opt/env", 2)
 
-    assert rows == ["/tmp/.env", "/tmp/.env.local"]
+    assert rows == ["/opt/env/.env", "/opt/env/.env.local"]
 
 
 def test_normalize_powershell_value_handles_semicolon_and_unquoted_values():
@@ -50,7 +61,7 @@ def test_normalize_powershell_value_handles_semicolon_and_unquoted_values():
     assert _normalize_powershell_value("raw-value") == "raw-value"
 
 
-def test_append_wsl_helpers_and_collect_records_include_and_exclude(monkeypatch):
+def test_append_wsl_helpers_and_collect_records_include_and_exclude():
     rows = []
     _append_wsl_bashrc_records(rows, distro="Ubuntu", context="wsl:Ubuntu", bash_text="export A='1'\n")
     _append_wsl_etc_records(rows, distro="Ubuntu", context="wsl:Ubuntu", etc_text="B=2\n")
@@ -70,7 +81,7 @@ def test_append_wsl_helpers_and_collect_records_include_and_exclude(monkeypatch)
                 return "export A='1'\n"
             return "B=2\n"
 
-    collected = collect_wsl_records(_FakeWsl(), include_etc=True, exclude_distros={"ubuntu"})
+    collected = collect_wsl_records(cast(WslProvider, _FakeWsl()), include_etc=True, exclude_distros={"ubuntu"})
 
     assert all(item.source_id == "Debian" for item in collected)
     assert any(item.source_type == "wsl_etc_environment" for item in collected)
@@ -81,4 +92,5 @@ def test_collect_wsl_records_returns_empty_when_unavailable():
         def available(self) -> bool:
             return False
 
-    assert collect_wsl_records(_FakeUnavailable(), include_etc=True, exclude_distros=None) == []
+    assert collect_wsl_records(cast(WslProvider, _FakeUnavailable()), include_etc=True, exclude_distros=None) == []
+

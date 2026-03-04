@@ -123,7 +123,7 @@ def _evaluate_open_issues(*, host: str, path: str, query: Dict[str, str], token:
             findings.append("DeepScan response did not include a parseable total issue count.")
         elif open_issues != 0:
             findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
-    except (urllib.error.URLError, ValueError, RuntimeError, json.JSONDecodeError) as exc:  # pragma: no cover
+    except (urllib.error.URLError, ValueError, RuntimeError) as exc:  # pragma: no cover
         findings.append(f"DeepScan API request failed: {exc}")
 
     return open_issues, findings
@@ -167,3 +167,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
