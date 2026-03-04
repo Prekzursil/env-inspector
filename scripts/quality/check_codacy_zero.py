@@ -86,8 +86,8 @@ def _walk_nodes(payload: Any) -> list[Any]:
     return nodes
 
 
-def _numeric_total_from_dict(node: dict[str, Any]) -> int | None:
-    for key in TOTAL_KEYS:
+def _numeric_total_from_dict(node: dict[str, Any], keys: tuple[str, ...] = TOTAL_KEYS) -> int | None:
+    for key in keys:
         value = node.get(key)
         if isinstance(value, (int, float)):
             return int(value)
@@ -100,7 +100,7 @@ def extract_total_open(payload: Any) -> int | None:
 
     pagination = payload.get("pagination")
     if isinstance(pagination, dict):
-        total = _numeric_total_from_dict(pagination)
+        total = _numeric_total_from_dict(pagination, keys=("total", "totalItems", "count"))
         if total is not None:
             return total
 
@@ -310,3 +310,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

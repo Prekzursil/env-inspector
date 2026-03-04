@@ -95,7 +95,6 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> Non
         scan_depth=args.scan_depth,
     )
     print(rendered, end="")
-    return
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
@@ -163,3 +162,4 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2
     return handler(active_service, args)
+

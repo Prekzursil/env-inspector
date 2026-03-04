@@ -54,26 +54,26 @@ def _request_json(url: str, auth_header: str) -> dict[str, Any]:
         return json.loads(resp.read().decode("utf-8"))
 
 
+def _apply_scope(query: dict[str, str], *, branch: str, pull_request: str) -> dict[str, str]:
+    if pull_request:
+        query["pullRequest"] = pull_request
+    elif branch:
+        query["branch"] = branch
+    return query
+
+
 def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
     query = {
         "componentKeys": project_key,
         "resolved": "false",
         "ps": "1",
     }
-    if branch:
-        query["branch"] = branch
-    if pull_request:
-        query["pullRequest"] = pull_request
-    return query
+    return _apply_scope(query, branch=branch, pull_request=pull_request)
 
 
 def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
     query = {"projectKey": project_key}
-    if branch:
-        query["branch"] = branch
-    if pull_request:
-        query["pullRequest"] = pull_request
-    return query
+    return _apply_scope(query, branch=branch, pull_request=pull_request)
 
 
 def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
@@ -82,11 +82,7 @@ def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) ->
         "status": "TO_REVIEW",
         "ps": "1",
     }
-    if branch:
-        query["branch"] = branch
-    if pull_request:
-        query["pullRequest"] = pull_request
-    return query
+    return _apply_scope(query, branch=branch, pull_request=pull_request)
 
 
 def _fetch_sonar_status(
@@ -154,7 +150,10 @@ def _evaluate_sonar(
     if open_hotspots != 0:
         findings.append(f"Sonar reports {open_hotspots} open security hotspots pending review (expected 0).")
     if quality_gate != "OK":
-        quality_gate_warning = f"Sonar quality gate status is {quality_gate}; SonarCloud Code Analysis remains the authoritative quality gate check."
+        quality_gate_warning = (
+            f"Sonar quality gate status is {quality_gate}; "
+            "SonarCloud Code Analysis remains the authoritative quality gate check."
+        )
 
     return open_issues, quality_gate, open_hotspots, quality_gate_warning, findings
 
