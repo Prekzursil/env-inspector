@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division, annotations
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
@@ -267,22 +267,18 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
 def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    class _FakeProvider:
-        USER_SCOPE = "User"
-        MACHINE_SCOPE = "Machine"
+    import types
 
-        def list_scope(self, scope: str):
-            return {"A": "1"}
+    fake_provider = types.SimpleNamespace(
+        USER_SCOPE="User",
+        MACHINE_SCOPE="Machine",
+        list_scope=lambda _scope: {"A": "1"},
+        set_scope_value=lambda _scope, _key, _value: None,
+        remove_scope_value=lambda _scope, _key: None,
+    )
 
-        @staticmethod
-        def set_scope_value(scope: str, key: str, value: str):
-            return None
+    svc.win_provider = fake_provider  # type: ignore[assignment]
 
-        @staticmethod
-        def remove_scope_value(scope: str, key: str):
-            return None
-
-    svc.win_provider = _FakeProvider()  # type: ignore[assignment]
 
     _before_user, _after_user, _path_user, user_requires_priv, _ = svc._registry_write(
         "windows:user",
@@ -389,3 +385,5 @@ def test_list_records_raw_builds_env_records_from_payload(tmp_path: Path, monkey
     case.assertEqual(len(rows), 1)
     case.assertEqual(rows[0].name, "A")
     case.assertEqual(rows[0].value, "1")
+
+
