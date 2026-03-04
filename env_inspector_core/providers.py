@@ -1,4 +1,4 @@
-from __future__ import annotations, absolute_import, division
+from __future__ import absolute_import, division
 
 import os
 import re
@@ -6,7 +6,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .constants import (
     SOURCE_DOTENV,
@@ -70,8 +70,8 @@ def _dotenv_matches(filename: str) -> bool:
     return filename == ".env" or filename.startswith(".env.")
 
 
-def _iter_dotenv_candidates(root: Path, max_depth: int) -> list[Path]:
-    files: list[Path] = []
+def _iter_dotenv_candidates(root: Path, max_depth: int) -> List[Path]:
+    files: List[Path] = []
     for current, dirs, filenames in os.walk(root):  # codeql[py/path-injection] root constrained to workspace scope
         rel = Path(os.path.relpath(current, root))
         depth = 0 if str(rel) == "." else len(rel.parts)
@@ -83,7 +83,7 @@ def _iter_dotenv_candidates(root: Path, max_depth: int) -> list[Path]:
     return files
 
 
-def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
+def discover_dotenv_files(root: Path, max_depth: int = 5) -> List[Path]:
     try:
         safe_root = resolve_scan_root(root)
     except PathPolicyError:
@@ -91,8 +91,8 @@ def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
     return sorted(_iter_dotenv_candidates(safe_root, max_depth=max_depth))
 
 
-def collect_process_records(context: str = "windows") -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+def collect_process_records(context: str = "windows") -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
     for key, value in sorted(os.environ.items(), key=lambda kv: kv[0].lower()):
         rows.append(
             EnvRecord(
@@ -123,20 +123,20 @@ class WindowsRegistryProvider:
             raise RuntimeError("Windows registry provider only available on Windows.")
 
     @staticmethod
-    def _scope_to_key(scope: str) -> tuple[Any, str]:
+    def _scope_to_key(scope: str) -> Tuple[Any, str]:
         if scope == WindowsRegistryProvider.USER_SCOPE:
             return winreg.HKEY_CURRENT_USER, r"Environment"
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
             return winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
         raise ValueError(f"Unsupported scope: {scope}")
 
-    def list_scope(self, scope: str) -> dict[str, str]:
+    def list_scope(self, scope: str) -> Dict[str, str]:
         root, path = self._scope_to_key(scope)
         access = winreg.KEY_READ
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
             access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
 
-        values: dict[str, str] = {}
+        values: Dict[str, str] = {}
         with winreg.OpenKey(root, path, 0, access) as regkey:
             index = 0
             while True:
@@ -169,8 +169,8 @@ class WindowsRegistryProvider:
                 pass
 
 
-def build_registry_records(provider: WindowsRegistryProvider) -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
     for key, value in sorted(provider.list_scope(provider.USER_SCOPE).items(), key=lambda kv: kv[0].lower()):
         rows.append(
             EnvRecord(
@@ -222,7 +222,7 @@ class WslProvider:
 
     @staticmethod
     def _discover_wsl_exe() -> str | None:
-        candidates: list[Path] = []
+        candidates: List[Path] = []
 
         if is_windows():
             system_root = os.environ.get("SystemRoot")
@@ -274,7 +274,7 @@ class WslProvider:
                 return data.decode(errors="ignore")
         return data.decode(errors="ignore")
 
-    def _run(self, args: list[str], input_text: str | None = None) -> str:
+    def _run(self, args: List[str], input_text: str | None = None) -> str:
         if not self.available() or not self.wsl_exe:
             raise RuntimeError("wsl.exe not available")
         proc = self.runner(
@@ -290,14 +290,14 @@ class WslProvider:
             raise RuntimeError((err or out).strip() or f"wsl command failed ({proc.returncode})")
         return out
 
-    def list_distros(self) -> list[str]:
+    def list_distros(self) -> List[str]:
         text = self._run(["-l", "-q"])
-        distros: list[str] = []
+        distros: List[str] = []
         for raw in text.splitlines():
             name = raw.replace("\x00", "").strip().strip("*").strip()
             if name:
                 distros.append(name)
-        deduped: list[str] = []
+        deduped: List[str] = []
         seen: set[str] = set()
         for d in distros:
             if d not in seen:
@@ -305,7 +305,7 @@ class WslProvider:
                 seen.add(d)
         return deduped
 
-    def list_distros_for_ui(self) -> list[str]:
+    def list_distros_for_ui(self) -> List[str]:
         return [d for d in self.list_distros() if not _HELPER_DISTRO_RE.match(d)]
 
     def read_file(self, distro: str, path: str) -> str:
@@ -335,7 +335,7 @@ class WslProvider:
                 "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
             ) from exc
 
-    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> list[str]:
+    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
         quoted_root = shlex.quote(root_path)
         command = (
             f"find {quoted_root} -maxdepth {max_depth} -type f "
@@ -382,8 +382,8 @@ def _parse_powershell_assignment(line: str) -> Optional[Tuple[str, str]]:
     return key, value
 
 
-def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
-    rows: list[tuple[str, str]] = []
+def parse_powershell_profile_text(text: str) -> List[Tuple[str, str]]:
+    rows: List[Tuple[str, str]] = []
     for line in text.splitlines():
         entry = _parse_powershell_assignment(line)
         if entry:
@@ -391,8 +391,8 @@ def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
     return rows
 
 
-def collect_dotenv_records(root: Path, max_depth: int = 5, context: str = "windows") -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+def collect_dotenv_records(root: Path, max_depth: int = 5, context: str = "windows") -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
     for path in discover_dotenv_files(root, max_depth=max_depth):
         try:
             text = path.read_text(encoding="utf-8")
@@ -419,8 +419,8 @@ def collect_dotenv_records(root: Path, max_depth: int = 5, context: str = "windo
     return rows
 
 
-def collect_powershell_profile_records(profile_paths: list[Path]) -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+def collect_powershell_profile_records(profile_paths: List[Path]) -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
     for path in profile_paths:
         if not path.exists():
             continue
@@ -452,8 +452,8 @@ def collect_linux_records(
     bashrc_path: Path | None = None,
     etc_environment_path: Path | None = None,
     context: str = "linux",
-) -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+) -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
 
     bashrc = bashrc_path or (Path.home() / ".bashrc")
     if bashrc.exists():
@@ -502,13 +502,13 @@ def collect_linux_records(
 
 
 def _append_wsl_records(
-    rows: list[EnvRecord],
+    rows: List[EnvRecord],
     *,
     distro: str,
     context: str,
     source_type: str,
     source_path: str,
-    pairs: dict[str, str],
+    pairs: Dict[str, str],
     precedence_rank: int,
     requires_privilege: bool,
 ) -> None:
@@ -536,8 +536,8 @@ def collect_wsl_records(
     wsl: WslProvider,
     include_etc: bool = True,
     exclude_distros: set[str] | None = None,
-) -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+) -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
     if not wsl.available():
         return rows
 
@@ -574,8 +574,8 @@ def collect_wsl_records(
     return rows
 
 
-def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, max_depth: int) -> list[EnvRecord]:
-    rows: list[EnvRecord] = []
+def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
+    rows: List[EnvRecord] = []
     if not wsl.available():
         return rows
     for path in wsl.scan_dotenv_files(distro, root_path, max_depth):

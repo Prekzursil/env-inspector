@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+from __future__ import absolute_import
 
 import argparse
 import base64
@@ -8,7 +8,7 @@ import os
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 try:
     from ._security_imports import normalize_https_url, request_json_https, safe_output_path_in_workspace
@@ -37,7 +37,7 @@ def _auth_header(token: str) -> str:
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
-def _request_json(*, path: str, query: dict[str, str], auth_header: str) -> dict[str, Any]:
+def _request_json(*, path: str, query: Dict[str, str], auth_header: str) -> Dict[str, Any]:
     payload, _headers = request_json_https(
         host=SONAR_API_HOST,
         path=path,
@@ -54,7 +54,7 @@ def _request_json(*, path: str, query: dict[str, str], auth_header: str) -> dict
     return payload
 
 
-def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
+def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> Dict[str, str]:
     query = {
         "componentKeys": project_key,
         "resolved": "false",
@@ -76,7 +76,7 @@ def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: st
     return query
 
 
-def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
+def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) -> Dict[str, str]:
     query = {
         "projectKey": project_key,
         "status": "TO_REVIEW",
@@ -95,7 +95,7 @@ def _fetch_sonar_status(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int, str, int]:
+) -> Tuple[int, str, int]:
     issues_payload = _request_json(
         path="/api/issues/search",
         query=_build_issue_query(project_key, branch=branch, pull_request=pull_request),
@@ -127,7 +127,7 @@ def _evaluate_sonar(
     branch: str,
     pull_request: str,
 ) -> tuple:
-    findings: list[str] = []
+    findings: List[str] = []
     open_issues: int | None = None
     quality_gate: str | None = None
     open_hotspots: int | None = None

@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import List, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -53,7 +53,7 @@ def _is_successful_payload(item: dict) -> bool:
     return bool(item.get("success", False))
 
 
-def _list_payload_success(payload: list[object]) -> bool:
+def _list_payload_success(payload: List[object]) -> bool:
     items = [item for item in payload if isinstance(item, dict)]
     return bool(items) and all(_is_successful_payload(item) for item in items)
 

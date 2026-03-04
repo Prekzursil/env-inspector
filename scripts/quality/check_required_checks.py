@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+from __future__ import absolute_import
 
 import argparse
 import json
@@ -8,7 +8,7 @@ import re
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 try:
     from ._security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
@@ -31,7 +31,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _parse_repo(raw: str) -> tuple[str, str]:
+def _parse_repo(raw: str) -> Tuple[str, str]:
     text = (raw or "").strip()
     if "/" not in text:
         raise ValueError("Repo must be in owner/repo format.")
@@ -49,7 +49,7 @@ def _parse_sha(raw: str) -> str:
     return sha.lower()
 
 
-def _github_headers(token: str) -> dict[str, str]:
+def _github_headers(token: str) -> Dict[str, str]:
     return {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {token}",
@@ -58,7 +58,7 @@ def _github_headers(token: str) -> dict[str, str]:
     }
 
 
-def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> dict[str, Any]:
+def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
     payload, _headers = request_json_https(
         host=GITHUB_API_HOST,
         path=f"/repos/{owner}/{repo}/commits/{sha}/check-runs",
@@ -73,7 +73,7 @@ def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> dict[
     return payload
 
 
-def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> dict[str, Any]:
+def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
     payload, _headers = request_json_https(
         host=GITHUB_API_HOST,
         path=f"/repos/{owner}/{repo}/commits/{sha}/status",
@@ -87,7 +87,7 @@ def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> dict[str,
     return payload
 
 
-def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
+def _check_run_context(run: Dict[str, Any]) -> Tuple[str, Dict[str, str]] | None:
     name = str(run.get("name") or "").strip()
     if not name:
         return None
@@ -98,7 +98,7 @@ def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None
     }
 
 
-def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
+def _status_context(status: Dict[str, Any]) -> Tuple[str, Dict[str, str]] | None:
     name = str(status.get("context") or "").strip()
     if not name:
         return None
@@ -110,8 +110,8 @@ def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None
     }
 
 
-def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
-    contexts: dict[str, dict[str, str]] = {}
+def _collect_contexts(check_runs_payload: Dict[str, Any], status_payload: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+    contexts: Dict[str, Dict[str, str]] = {}
 
     for run in check_runs_payload.get("check_runs", []) or []:
         entry = _check_run_context(run)
@@ -128,7 +128,7 @@ def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[s
     return contexts
 
 
-def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
+def _check_run_failure(context: str, observed: Dict[str, str]) -> str | None:
     state = observed.get("state")
     if state != "completed":
         return f"{context}: status={state}"
@@ -139,16 +139,16 @@ def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
     return None
 
 
-def _status_failure(context: str, observed: dict[str, str]) -> str | None:
+def _status_failure(context: str, observed: Dict[str, str]) -> str | None:
     conclusion = observed.get("conclusion")
     if conclusion != "success":
         return f"{context}: state={conclusion}"
     return None
 
 
-def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple[str, list[str], list[str]]:
-    missing: list[str] = []
-    failed: list[str] = []
+def _evaluate(required: List[str], contexts: Dict[str, Dict[str, str]]) -> Tuple[str, List[str], List[str]]:
+    missing: List[str] = []
+    failed: List[str] = []
 
     for context in required:
         observed = contexts.get(context)
@@ -194,7 +194,7 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _required_contexts(args: argparse.Namespace) -> list[str]:
+def _required_contexts(args: argparse.Namespace) -> List[str]:
     required = [item.strip() for item in args.required_context if item.strip()]
     if not required:
         raise SystemExit("At least one --required-context is required")
@@ -212,9 +212,9 @@ def _snapshot(
     *,
     repo_arg: str,
     sha: str,
-    required: list[str],
-    contexts: dict[str, dict[str, str]],
-) -> dict[str, Any]:
+    required: List[str],
+    contexts: Dict[str, Dict[str, str]],
+) -> Dict[str, Any]:
     status, missing, failed = _evaluate(required, contexts)
     return {
         "status": status,
@@ -228,14 +228,14 @@ def _snapshot(
     }
 
 
-def _has_in_progress_check_run(contexts: dict[str, dict[str, str]]) -> bool:
+def _has_in_progress_check_run(contexts: Dict[str, Dict[str, str]]) -> bool:
     for observed in contexts.values():
         if observed.get("source") == "check_run" and observed.get("state") != "completed":
             return True
     return False
 
 
-def _should_wait(payload: dict[str, Any]) -> bool:
+def _should_wait(payload: Dict[str, Any]) -> bool:
     if payload["status"] == "pass":
         return False
     if payload["missing"]:
@@ -250,12 +250,12 @@ def _collect_until_settled(
     repo_arg: str,
     sha: str,
     token: str,
-    required: list[str],
+    required: List[str],
     timeout_seconds: int,
     poll_seconds: int,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     deadline = time.time() + max(timeout_seconds, 1)
-    final_payload: dict[str, Any] | None = None
+    final_payload: Dict[str, Any] | None = None
 
     while time.time() <= deadline:
         check_runs = _api_get_check_runs(owner=owner_slug, repo=repo_slug, sha=sha, token=token)

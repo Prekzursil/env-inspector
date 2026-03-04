@@ -1,7 +1,9 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
+from typing import Dict, List
 import sys
 import urllib.error
+import unittest
 
 import pytest
 
@@ -19,12 +21,13 @@ def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
 
     args = codacy_mod._parse_args()
 
-    assert args.owner == "Prekzursil"
-    assert args.repo == "env-inspector"
+    case = unittest.TestCase()
+    case.assertEqual(args.owner, "Prekzursil")
+    case.assertEqual(args.repo, "env-inspector")
 
 
 def test_codacy_request_json_applies_branch_name(monkeypatch):
-    captured: dict[str, object] = {}
+    captured: Dict = {}
 
     def _fake_request_json_https(**kwargs):
         captured.update(kwargs)
@@ -42,8 +45,9 @@ def test_codacy_request_json_applies_branch_name(monkeypatch):
         data={"sample": 1},
     )
 
-    assert payload == {"total": 0}
-    assert captured["data"] == {"sample": 1, "branchName": "main"}
+    case = unittest.TestCase()
+    case.assertEqual(payload, {"total": 0})
+    case.assertEqual(captured["data"], {"sample": 1, "branchName": "main"})
 
 
 def test_codacy_request_json_rejects_non_dict_payload(monkeypatch):
@@ -224,7 +228,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     assert path == "/api/projects/1/issues/open"
     assert query == {"scope": "pull-request"}
 
-    findings: list[str] = []
+    findings: List[str] = []
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
@@ -271,7 +275,7 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
 
 
 def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
-    findings: list[str] = []
+    findings: List[str] = []
     monkeypatch.setattr(deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}})
 
     open_issues = deepscan_mod._fetch_open_issues(

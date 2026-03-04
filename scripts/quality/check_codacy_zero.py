@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
+from __future__ import absolute_import, division
 
 import argparse
 import json
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 try:
     from ._security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
@@ -39,8 +39,8 @@ def _request_json(
     branch: str = "",
     limit: int = 1,
     method: str = "GET",
-    data: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    data: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
     headers = {
         "Accept": "application/json",
         "api-token": token,
@@ -53,7 +53,7 @@ def _request_json(
     owner_slug = encode_identifier(owner, field_name="Codacy owner")
     repo_slug = encode_identifier(repo, field_name="Codacy repository")
 
-    payload_data: dict[str, Any] = data or {}
+    payload_data: Dict[str, Any] = data or {}
     branch_name = str(branch or "").strip()
     if branch_name:
         payload_data = {**payload_data, "branchName": branch_name}
@@ -89,7 +89,7 @@ def extract_total_open(payload: Any) -> int | None:
         if total is not None:
             return total
 
-    stack: list[Any] = [payload]
+    stack: List[Any] = [payload]
     while stack:
         node = stack.pop()
         if isinstance(node, dict):
@@ -104,12 +104,12 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _provider_candidates(preferred: str) -> list[str]:
+def _provider_candidates(preferred: str) -> List[str]:
     values = [preferred, "gh", "github"]
     return list(dict.fromkeys(item for item in values if item))
 
 
-def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
+def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
     for key in keys:
         value = str(issue.get(key) or "").strip()
         if value:
@@ -130,7 +130,7 @@ def _format_issue_sample(issue: dict) -> str | None:
     return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
-def _sample_issue_findings(payload: dict, limit: int = 5) -> list[str]:
+def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
     data = payload.get("data")
     if not isinstance(data, list):
         return []
@@ -155,8 +155,8 @@ def _fetch_open_issues_for_provider(
     repo: str,
     token: str,
     branch: str,
-) -> tuple[bool, int | None, list[str], Exception | None]:
-    findings: list[str] = []
+) -> Tuple[bool, int | None, List[str], Exception | None]:
+    findings: List[str] = []
     open_issues: int | None = None
 
     try:
@@ -208,7 +208,7 @@ def _query_open_issues(
     repo: str,
     token: str,
     branch: str,
-) -> tuple[int | None, list[str]]:
+) -> Tuple[int | None, List[str]]:
     last_exc: Exception | None = None
 
     for candidate in _provider_candidates(provider):
@@ -258,7 +258,7 @@ def main() -> int:
     args = _parse_args()
     branch = getattr(args, "branch", "")
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    findings: list[str] = []
+    findings: List[str] = []
     open_issues: int | None = None
 
     if not token:

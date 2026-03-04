@@ -1,5 +1,6 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
+from typing import List
 from pathlib import Path
 import unittest
 
@@ -61,7 +62,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
         def available(self) -> bool:
             return True
 
-        def list_distros(self) -> list[str]:
+        def list_distros(self) -> List[str]:
             return ["Ubuntu"]
 
         def read_file(self, distro: str, path: str) -> str:
@@ -83,7 +84,7 @@ def test_collect_wsl_records_respects_excluded_distros():
         def available(self) -> bool:
             return True
 
-        def list_distros(self) -> list[str]:
+        def list_distros(self) -> List[str]:
             return ["Ubuntu", "Debian"]
 
         def read_file(self, distro: str, path: str) -> str:
@@ -92,3 +93,23 @@ def test_collect_wsl_records_respects_excluded_distros():
     rows = providers.collect_wsl_records(_FakeWsl(), include_etc=False, exclude_distros={"ubuntu"})
 
     _case().assertTrue(all(r.source_id != "Ubuntu" for r in rows))
+
+
+
+def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
+    class _FakeWsl:
+        def available(self) -> bool:
+            return True
+
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return ["/workspace/.env"]
+
+        def read_file(self, distro: str, path: str) -> str:
+            return "A=1\n"
+
+    rows = providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2)
+
+    case = _case()
+    case.assertEqual(len(rows), 1)
+    case.assertEqual(rows[0].name, "A")
+    case.assertEqual(rows[0].value, "1")

@@ -349,3 +349,35 @@ def test_list_backups_uses_target_filter_when_provided(tmp_path: Path):
     case = unittest.TestCase()
     case.assertIn(str(backup_path), all_backups)
     case.assertIn(str(backup_path), scoped_backups)
+
+
+
+def test_list_records_raw_builds_env_records_from_payload(tmp_path: Path, monkeypatch):
+    import unittest
+
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    sample_payload = [
+        {
+            "source_type": "dotenv",
+            "source_id": "dotenv",
+            "source_path": str(tmp_path / ".env"),
+            "context": "windows",
+            "name": "A",
+            "value": "1",
+            "is_secret": False,
+            "is_persistent": True,
+            "is_mutable": True,
+            "precedence_rank": 10,
+            "writable": True,
+            "requires_privilege": False,
+            "last_error": None,
+        }
+    ]
+    monkeypatch.setattr(svc, "list_records", lambda **_kwargs: sample_payload)
+
+    rows = svc.list_records_raw()
+
+    case = unittest.TestCase()
+    case.assertEqual(len(rows), 1)
+    case.assertEqual(rows[0].name, "A")
+    case.assertEqual(rows[0].value, "1")

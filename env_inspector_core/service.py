@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import absolute_import
 
 import csv
 import difflib
@@ -8,7 +8,7 @@ import os
 import subprocess
 import uuid
 from pathlib import Path, PurePosixPath
-from typing import Any, List, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple, Type
 
 from .constants import (
     DEFAULT_BACKUP_RETENTION,
@@ -87,14 +87,14 @@ class EnvInspectorService:
             except Exception:
                 self.win_provider = None
 
-    def _effective_scope_roots(self, scope_roots: list[str | Path] | None = None) -> list[Path]:
-        roots: list[Path] = list(self.default_scope_roots)
+    def _effective_scope_roots(self, scope_roots: List[str | Path] | None = None) -> List[Path]:
+        roots: List[Path] = list(self.default_scope_roots)
         if scope_roots:
             roots.extend(normalize_scope_roots(scope_roots))
         return normalize_scope_roots(roots)
 
     @staticmethod
-    def get_powershell_profile_paths() -> list[Path]:
+    def get_powershell_profile_paths() -> List[Path]:
         docs = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents"
         current = docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
         all_users = Path(r"C:\\Program Files\\PowerShell\\7\\profile.ps1")
@@ -156,14 +156,14 @@ class EnvInspectorService:
             raise RuntimeError(f"Unexpected /etc/environment resolution: {path}")
         return path
 
-    def list_contexts(self) -> list[str]:
+    def list_contexts(self) -> List[str]:
         contexts = [self.runtime_context]
         if self.wsl.available():
             for distro in self._bridge_distros():
                 contexts.append(f"wsl:{distro}")
         return contexts
 
-    def _bridge_distros(self) -> list[str]:
+    def _bridge_distros(self) -> List[str]:
         if not self.wsl.available():
             return []
         distros = self.wsl.list_distros_for_ui()
@@ -172,8 +172,8 @@ class EnvInspectorService:
             distros = [d for d in distros if d.lower() != current]
         return distros
 
-    def _collect_host_rows(self, root_path: Path, scan_depth: int) -> list[EnvRecord]:
-        rows: list[EnvRecord] = []
+    def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
+        rows: List[EnvRecord] = []
         rows.extend(collect_process_records(context=self.runtime_context))
         rows.extend(collect_dotenv_records(root_path, max_depth=scan_depth, context=self.runtime_context))
 
@@ -196,8 +196,8 @@ class EnvInspectorService:
         scan_depth: int,
         distro: str | None,
         wsl_path: str | None,
-    ) -> list[EnvRecord]:
-        rows: list[EnvRecord] = []
+    ) -> List[EnvRecord]:
+        rows: List[EnvRecord] = []
         if not self.wsl.available():
             return rows
 
@@ -219,11 +219,11 @@ class EnvInspectorService:
 
     @staticmethod
     def _apply_row_filters(
-        rows: list[EnvRecord],
+        rows: List[EnvRecord],
         *,
-        source: list[str] | None,
+        source: List[str] | None,
         context: str | None,
-    ) -> list[EnvRecord]:
+    ) -> List[EnvRecord]:
         if source:
             source_set = set(source)
             rows = [r for r in rows if r.source_type in source_set]
@@ -236,19 +236,19 @@ class EnvInspectorService:
         *,
         root: str | Path | None = None,
         context: str | None = None,
-        source: list[str] | None = None,
+        source: List[str] | None = None,
         wsl_path: str | None = None,
         distro: str | None = None,
         scan_depth: int = DEFAULT_SCAN_DEPTH,
         include_raw_secrets: bool = False,
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         root_path = resolve_scan_root(root or Path.cwd())
         rows = self._collect_host_rows(root_path, scan_depth)
         rows.extend(self._collect_wsl_rows(scan_depth=scan_depth, distro=distro, wsl_path=wsl_path))
         rows = self._apply_row_filters(rows, source=source, context=context)
         rows.sort(key=lambda r: (r.name.lower(), r.context, r.source_type, r.source_path))
 
-        payload: list[dict[str, Any]] = []
+        payload: List[Dict[str, Any]] = []
         for rec in rows:
             item = rec.to_dict(include_value=True)
             if rec.is_secret and not include_raw_secrets:
@@ -256,14 +256,14 @@ class EnvInspectorService:
             payload.append(item)
         return payload
 
-    def list_records_raw(self, **kwargs: Any) -> list[EnvRecord]:
+    def list_records_raw(self, **kwargs: Any) -> List[EnvRecord]:
         payload = self.list_records(include_raw_secrets=True, **kwargs)
-        rows: list[EnvRecord] = []
+        rows: List[EnvRecord] = []
         for item in payload:
             rows.append(EnvRecord(**item))
         return rows
 
-    def resolve_effective(self, key: str, context: str, records: list[EnvRecord]) -> EnvRecord | None:
+    def resolve_effective(self, key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
         return resolve_effective_value(records, key, context)
 
     @staticmethod
@@ -307,7 +307,7 @@ class EnvInspectorService:
             + (f" Details: {err}" if err else "")
         )
 
-    def available_targets(self, records: list[EnvRecord], context: str | None = None) -> list[str]:
+    def available_targets(self, records: List[EnvRecord], context: str | None = None) -> List[str]:
         targets: set[str] = set()
         for record in records:
             if context and record.context != context:
@@ -355,7 +355,7 @@ class EnvInspectorService:
         action: str,
         *,
         apply_changes: bool,
-    ) -> tuple[str, str, str | None, bool, str | None]:
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         if self.win_provider is None:
             raise RuntimeError("Windows registry provider unavailable.")
         scope = WindowsRegistryProvider.USER_SCOPE if target == TARGET_WINDOWS_USER else WindowsRegistryProvider.MACHINE_SCOPE
@@ -389,8 +389,8 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         apply_changes: bool,
-        scope_roots: list[Path],
-    ) -> tuple[str, str, str | None, bool, str | None]:
+        scope_roots: List[Path],
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
         path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="dotenv target path")
         before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
@@ -420,7 +420,7 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         apply_changes: bool,
-    ) -> tuple[str, str, str | None, bool, str | None]:
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         if target == TARGET_LINUX_BASHRC:
             bashrc_path = Path.home() / ".bashrc"
             before = bashrc_path.read_text(encoding="utf-8", errors="ignore") if bashrc_path.exists() else ""
@@ -459,7 +459,7 @@ class EnvInspectorService:
             raise RuntimeError(WSL_DOTENV_PATH_ERROR)
         return str(path)
 
-    def _parse_wsl_dotenv_target(self, target: str) -> tuple[str, str]:
+    def _parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
         raw = target[len(WSL_DOTENV_TARGET_PREFIX) :]
         try:
             distro, path = raw.split(":", 1)
@@ -467,7 +467,7 @@ class EnvInspectorService:
             raise RuntimeError(f"Unsupported WSL target: {target}") from exc
         return self._validate_wsl_distro_name(distro), self._validate_wsl_dotenv_path(path)
 
-    def _resolve_wsl_target(self, target: str) -> tuple[str, str, str, bool]:
+    def _resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
         if target.startswith(WSL_DOTENV_TARGET_PREFIX):
             distro, path = self._parse_wsl_dotenv_target(target)
             return distro, path, "key_value", False
@@ -495,7 +495,7 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         apply_changes: bool,
-    ) -> tuple[str, str, str | None, bool, str | None]:
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         distro, path, style, requires_priv = self._resolve_wsl_target(target)
         before = self.wsl.read_file(distro, path)
         after = self._mutate_shell_content(before, key=key, value=value, action=action, style=style)
@@ -514,7 +514,7 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         apply_changes: bool,
-    ) -> tuple[str, str, str | None, bool, str | None]:
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(target)
         safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
         before = safe_profile.read_text(encoding="utf-8", errors="ignore") if safe_profile.exists() else ""
@@ -535,8 +535,8 @@ class EnvInspectorService:
         action: str,
         *,
         apply_changes: bool,
-        scope_roots: list[Path],
-    ) -> tuple[str, str, str | None, bool, str | None]:
+        scope_roots: List[Path],
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         if target.startswith(DOTENV_TARGET_PREFIX):
             return self._update_dotenv_file(
                 target=target,
@@ -580,13 +580,13 @@ class EnvInspectorService:
         action: str,
         *,
         apply_changes: bool,
-        scope_roots: list[Path],
-    ) -> tuple[str, str, str | None, bool, str | None]:
+        scope_roots: List[Path],
+    ) -> Tuple[str, str, str | None, bool, str | None]:
         if target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
             return self._registry_write(target, key, value, action, apply_changes=apply_changes)
         return self._file_update(target, key, value, action, apply_changes=apply_changes, scope_roots=scope_roots)
 
-    def _validate_target_for_operation(self, target: str, *, scope_roots: list[Path]) -> None:
+    def _validate_target_for_operation(self, target: str, *, scope_roots: List[Path]) -> None:
         if target in {
             TARGET_WINDOWS_USER,
             TARGET_WINDOWS_MACHINE,
@@ -636,7 +636,7 @@ class EnvInspectorService:
             value_masked=value_masked,
         )
     @staticmethod
-    def _operation_error_types() -> Tuple[type[BaseException], ...]:
+    def _operation_error_types() -> Tuple[Type[BaseException], ...]:
         return (
             RuntimeError,
             ValueError,
@@ -654,7 +654,7 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         resolved_scope_roots: Sequence[Path],
-    ) -> tuple[str, str]:
+    ) -> Tuple[str, str]:
         self._validate_target_for_operation(target, scope_roots=list(resolved_scope_roots))
         before, after, _, _, _ = self._plan_target_operation(
             target=target,
@@ -761,17 +761,17 @@ class EnvInspectorService:
         *,
         key: str,
         value: str | None,
-        targets: list[str],
+        targets: List[str],
         preview_only: bool = False,
-        scope_roots: list[str | Path] | None = None,
-    ) -> list[OperationResult]:
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[OperationResult]:
         validate_env_key(key)
         if action == "set":
             validate_env_value(value or "")
 
         secret_operation = looks_secret(key, value or "")
         resolved_scope_roots = self._effective_scope_roots(scope_roots)
-        results: list[OperationResult] = []
+        results: List[OperationResult] = []
         for target in targets:
             result = self._execute_target_operation(
                 action=action,
@@ -806,9 +806,9 @@ class EnvInspectorService:
         *,
         key: str,
         value: str,
-        targets: list[str],
-        scope_roots: list[str | Path] | None = None,
-    ) -> list[dict[str, Any]]:
+        targets: List[str],
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[Dict[str, Any]]:
         return [
             r.to_dict()
             for r in self._apply("set", key=key, value=value, targets=targets, preview_only=True, scope_roots=scope_roots)
@@ -818,9 +818,9 @@ class EnvInspectorService:
         self,
         *,
         key: str,
-        targets: list[str],
-        scope_roots: list[str | Path] | None = None,
-    ) -> list[dict[str, Any]]:
+        targets: List[str],
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[Dict[str, Any]]:
         return [
             r.to_dict()
             for r in self._apply(
@@ -838,9 +838,9 @@ class EnvInspectorService:
         *,
         key: str,
         value: str,
-        targets: list[str],
-        scope_roots: list[str | Path] | None = None,
-    ) -> dict[str, Any]:
+        targets: List[str],
+        scope_roots: List[str | Path] | None = None,
+    ) -> Dict[str, Any]:
         results = self._apply("set", key=key, value=value, targets=targets, preview_only=False, scope_roots=scope_roots)
         if len(results) == 1:
             return results[0].to_dict()
@@ -850,9 +850,9 @@ class EnvInspectorService:
         self,
         *,
         key: str,
-        targets: list[str],
-        scope_roots: list[str | Path] | None = None,
-    ) -> dict[str, Any]:
+        targets: List[str],
+        scope_roots: List[str | Path] | None = None,
+    ) -> Dict[str, Any]:
         results = self._apply("remove", key=key, value=None, targets=targets, preview_only=False, scope_roots=scope_roots)
         if len(results) == 1:
             return results[0].to_dict()
@@ -884,12 +884,12 @@ class EnvInspectorService:
             lines.append(f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}")
         return "\n".join(lines) + ("\n" if lines else "")
 
-    def list_backups(self, *, target: str | None = None) -> list[str]:
+    def list_backups(self, *, target: str | None = None) -> List[str]:
         if target:
             return [str(p) for p in self.backup_mgr.list_backups(target)]
         return [str(p) for p in self.backup_mgr.list_all_backups()]
 
-    def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: list[Path]) -> None:
+    def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
         self._write_scoped_text_file(
             candidate_path=scoped.path,
@@ -940,7 +940,7 @@ class EnvInspectorService:
         for key, value in data.items():
             self.win_provider.set_scope_value(scope, key, str(value))
 
-    def _restore_target(self, *, target: str, text: str, scope_roots: list[Path]) -> None:
+    def _restore_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
         if target.startswith(DOTENV_TARGET_PREFIX):
             self._restore_dotenv_target(target=target, text=text, scope_roots=scope_roots)
             return
@@ -962,8 +962,8 @@ class EnvInspectorService:
         self,
         *,
         backup: str,
-        scope_roots: list[str | Path] | None = None,
-    ) -> dict[str, Any]:
+        scope_roots: List[str | Path] | None = None,
+    ) -> Dict[str, Any]:
         operation_id = f"restore-{uuid.uuid4().hex[:10]}"
         path = Path(backup)
         try:
