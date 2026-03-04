@@ -6,6 +6,10 @@
 
 Desktop + CLI utility for inspecting and editing environment variables across Windows, WSL, and Linux contexts.
 
+## Project status
+
+- Maintenance mode (starting with v2.0.0): critical fixes and hotfixes only.
+
 ## Why this tool exists
 
 Environment values often live in multiple places at once: process env, shell profiles, registry, `.env` files, and WSL distro files. Env Inspector gives one view across those sources and a safer write flow with previews, backups, and audit logging.
