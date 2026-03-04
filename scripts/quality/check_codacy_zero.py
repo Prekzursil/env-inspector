@@ -6,15 +6,12 @@ import json
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
-
-from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
+try:
+    from ._security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
+except ImportError:  # pragma: no cover - direct script execution
+    from _security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
 
 TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
 CODACY_API_HOST = "api.codacy.com"
@@ -73,17 +70,12 @@ def _request_json(
     return payload
 
 
-def _walk_nodes(payload: Any) -> list[Any]:
-    stack: list[Any] = [payload]
-    nodes: list[Any] = []
-    while stack:
-        node = stack.pop()
-        nodes.append(node)
-        if isinstance(node, dict):
-            stack.extend(node.values())
-        elif isinstance(node, list):
-            stack.extend(node)
-    return nodes
+def _extract_numeric_total(payload: dict[str, Any], keys: tuple[str, ...]) -> int | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, (int, float)):
+            return int(value)
+    return None
 
 
 def extract_total_open(payload: Any) -> int | None:
@@ -92,22 +84,21 @@ def extract_total_open(payload: Any) -> int | None:
 
     pagination = payload.get("pagination")
     if isinstance(pagination, dict):
-        for key in ("total", "totalItems", "count"):
-            value = pagination.get(key)
-            if isinstance(value, (int, float)):
-                return int(value)
+        total = _extract_numeric_total(pagination, ("total", "totalItems", "count"))
+        if total is not None:
+            return total
 
-    for key in TOTAL_KEYS:
-        value = payload.get(key)
-        if isinstance(value, (int, float)):
-            return int(value)
-
-    for node in _walk_nodes(payload):
-        if not isinstance(node, dict):
+    stack: list[Any] = [payload]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            total = _extract_numeric_total(node, TOTAL_KEYS)
+            if total is not None:
+                return total
+            stack.extend(node.values())
             continue
-        for key, value in node.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
-                return int(value)
+        if isinstance(node, list):
+            stack.extend(node)
 
     return None
 

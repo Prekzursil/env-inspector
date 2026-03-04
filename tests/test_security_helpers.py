@@ -86,16 +86,19 @@ def test_request_json_https_http_error(monkeypatch):
 
     class _Connection:
         def __init__(self, host: str, timeout: int):
-            pass
+            # Fake connection keeps constructor signature only.
+            _ = (host, timeout)
 
         def request(self, method, path, body=None, headers=None):
-            pass
+            # No-op request used to trigger the canned HTTP error response.
+            _ = (method, path, body, headers)
 
         def getresponse(self):
             return _Response()
 
         def close(self):
-            pass
+            # Nothing to close for this in-memory stub.
+            return None
 
     monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
 

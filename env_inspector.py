@@ -28,7 +28,8 @@ def _legacy_print_secrets(root: str | Path) -> int:
         return 2
 
     svc = EnvInspectorService()
-    rows = svc.list_records(root=safe_root, include_raw_secrets=True)
+    validated_root = resolve_scan_root(safe_root)
+    rows = svc.list_records(root=validated_root, include_raw_secrets=True)
     for row in rows:
         if row.get("is_secret"):
             print(f"{row.get('source_type')}:{row.get('source_id')}\t{row.get('name')}")
