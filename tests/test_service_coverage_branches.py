@@ -64,8 +64,12 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
 def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
-    monkeypatch.setattr(service_module, "collect_wsl_records", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
-    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    def _raise_runtime_error(*_args, **_kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(service_module, "collect_wsl_records", _raise_runtime_error)
+    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", _raise_runtime_error)
 
     rows = svc._collect_wsl_rows(scan_depth=2, distro="Ubuntu", wsl_path="/home/user")
 
@@ -138,7 +142,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         )
 
     profile = tmp_path / "profile.ps1"
-    monkeypatch.setattr(EnvInspectorService, "_powershell_profile_path", lambda _self, _target: profile)
+    monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     _before, _after, out_path, _requires_priv, _ = svc._update_powershell_file(
         target="powershell:current_user",
         key="A",
