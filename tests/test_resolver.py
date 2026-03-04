@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 

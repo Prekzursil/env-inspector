@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from dataclasses import asdict, dataclass, field
 

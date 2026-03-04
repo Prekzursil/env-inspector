@@ -1,11 +1,15 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
 
+def _record_flag(rec, name: str) -> bool:
+    return bool(getattr(rec, name, False))
+
+
 def _record_matches_filters(rec, *, context: str, only_secrets: bool) -> bool:
-    if only_secrets and not rec.is_secret:
+    if only_secrets and not _record_flag(rec, "is_secret"):
         return False
     if context and rec.context != context:
         return False
@@ -18,11 +22,11 @@ def _to_displayed_row(rec, *, show_secrets: bool, search_value: str, idx: int) -
         visible_value=build_visible_value(rec, show_secrets=show_secrets),
         search_value=search_value,
         source_label=rec.source_type,
-        secret_text="yes" if rec.is_secret else "no",
-        persistent_text="yes" if rec.is_persistent else "no",
-        mutable_text="yes" if rec.is_mutable else "no",
-        writable_text="yes" if rec.writable else "no",
-        requires_privilege_text="yes" if rec.requires_privilege else "no",
+        secret_text="yes" if _record_flag(rec, "is_secret") else "no",
+        persistent_text="yes" if _record_flag(rec, "is_persistent") else "no",
+        mutable_text="yes" if _record_flag(rec, "is_mutable") else "no",
+        writable_text="yes" if _record_flag(rec, "writable") else "no",
+        requires_privilege_text="yes" if _record_flag(rec, "requires_privilege") else "no",
         original_index=idx,
     )
 
@@ -71,9 +75,9 @@ def _sort_key(row: DisplayedRow, column: str):
         return str_map[column]
 
     bool_map = {
-        "secret": bool(rec.is_secret),
-        "persistent": bool(rec.is_persistent),
-        "mutable": bool(rec.is_mutable),
+        "secret": _record_flag(rec, "is_secret"),
+        "persistent": _record_flag(rec, "is_persistent"),
+        "mutable": _record_flag(rec, "is_mutable"),
     }
     if column in bool_map:
         return bool_map[column]

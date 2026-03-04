@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import argparse
 import json
@@ -150,3 +150,4 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2
     return handler(active_service, args)
+

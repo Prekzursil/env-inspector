@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import os
 import re
@@ -260,8 +260,8 @@ class WslProvider:
         if b"\x00" in data:
             try:
                 return data.decode("utf-16le", errors="ignore").replace("\x00", "")
-            except Exception:
-                pass
+            except UnicodeDecodeError:
+                return data.decode(errors="ignore")
         return data.decode(errors="ignore")
 
     def _run(self, args: list[str], input_text: str | None = None) -> str:
@@ -548,4 +548,5 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
+
 

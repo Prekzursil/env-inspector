@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 import json
 
 from env_inspector_core.cli import build_parser, run_cli

@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from pathlib import Path
 
@@ -168,7 +168,25 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     assert svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps"
 
 
-def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch):
+def _fake_windows_provider():
+    class _FakeWinProvider:
+        def __init__(self):
+            self.removed: list[tuple[str, str]] = []
+            self.sets: list[tuple[str, str, str]] = []
+
+        def list_scope(self, scope: str):
+            return {"KEEP": "1", "DROP": "2"}
+
+        def remove_scope_value(self, scope: str, key: str):
+            self.removed.append((scope, key))
+
+        def set_scope_value(self, scope: str, key: str, value: str):
+            self.sets.append((scope, key, value))
+
+    return _FakeWinProvider()
+
+
+def test_restore_helpers_cover_linux_wsl_and_powershell(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
     fake_home.mkdir(parents=True, exist_ok=True)
@@ -197,33 +215,20 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     with pytest.raises(RuntimeError, match="Unsupported WSL restore target"):
         svc._restore_wsl_target(target="wsl:Ubuntu:unknown", text="x")
 
-    fake_home = tmp_path / "home"
-    fake_home.mkdir(parents=True, exist_ok=True)
     profile = fake_home / "Documents" / "PowerShell" / "ps-profile.ps1"
-    monkeypatch.setattr(service_module.Path, "home", lambda: fake_home)
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     svc._restore_powershell_target(target="powershell:current_user", text="$env:A=\"1\"\n")
     assert profile.read_text(encoding="utf-8") == "$env:A=\"1\"\n"
+
+
+def test_restore_helpers_cover_registry_and_dispatch(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     svc.win_provider = None
     with pytest.raises(RuntimeError, match="provider unavailable"):
         svc._restore_windows_registry_target(target="windows:user", text="{}")
 
-    class _FakeWinProvider:
-        def __init__(self):
-            self.removed: list[tuple[str, str]] = []
-            self.sets: list[tuple[str, str, str]] = []
-
-        def list_scope(self, scope: str):
-            return {"KEEP": "1", "DROP": "2"}
-
-        def remove_scope_value(self, scope: str, key: str):
-            self.removed.append((scope, key))
-
-        def set_scope_value(self, scope: str, key: str, value: str):
-            self.sets.append((scope, key, value))
-
-    fake = _FakeWinProvider()
+    fake = _fake_windows_provider()
     svc.win_provider = fake
     svc._restore_windows_registry_target(target="windows:user", text="{\"KEEP\":\"1\",\"NEW\":\"3\"}")
     assert fake.removed and fake.removed[0][1] == "DROP"
@@ -233,6 +238,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     monkeypatch.setattr(svc, "_restore_linux_target", lambda **kwargs: calls.append("linux"))
     monkeypatch.setattr(svc, "_restore_powershell_target", lambda **kwargs: calls.append("powershell"))
     monkeypatch.setattr(svc, "_restore_windows_registry_target", lambda **kwargs: calls.append("windows"))
+
     svc._restore_target(target="linux:bashrc", text="x", scope_roots=[])
     svc._restore_target(target="powershell:current_user", text="x", scope_roots=[])
     svc._restore_target(target="windows:user", text="x", scope_roots=[])
@@ -240,7 +246,6 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
 
     with pytest.raises(RuntimeError, match="Unsupported restore target"):
         svc._restore_target(target="custom:target", text="x", scope_roots=[])
-
 
 def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")

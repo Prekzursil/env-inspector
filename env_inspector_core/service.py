@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import csv
 import difflib
@@ -9,7 +9,7 @@ import subprocess
 import uuid
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, cast
 
 from .constants import (
     DEFAULT_BACKUP_RETENTION,
@@ -726,7 +726,7 @@ class EnvInspectorService:
     def _audit_safe_result(result: OperationResult, *, redact: bool) -> OperationResult:
         if not redact:
             return result
-        return replace(result, diff_preview="[secret diff masked]")
+        return cast(OperationResult, replace(result, diff_preview="[secret diff masked]"))
 
     def preview_set(
         self,
@@ -931,6 +931,7 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
+
 
 
 

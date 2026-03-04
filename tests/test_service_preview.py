@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService
