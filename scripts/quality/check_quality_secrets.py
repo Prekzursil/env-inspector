@@ -1,12 +1,12 @@
+#!/usr/bin/env python3
 from __future__ import absolute_import
 
-#!/usr/bin/env python3
-from typing import Dict, List, Tuple
 import argparse
 import json
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Dict, List, Tuple
 
 try:
     from ._security_imports import safe_output_path_in_workspace
@@ -54,20 +54,6 @@ def _dedupe(items: List[str]) -> List[str]:
     return out
 
 
-def _apply_deepscan_policy(
-    required_secrets: List[str],
-    required_vars: List[str],
-    *,
-    policy_mode: str,
-) -> Tuple[List[str], List[str]]:
-    if policy_mode != "github_check_context":
-        return required_secrets, required_vars
-
-    filtered_secrets = [name for name in required_secrets if name != "DEEPSCAN_API_TOKEN"]
-    filtered_vars = [name for name in required_vars if name != "DEEPSCAN_OPEN_ISSUES_URL"]
-    return filtered_secrets, filtered_vars
-
-
 def _is_missing(name: str) -> bool:
     return not str(os.environ.get(name, "")).strip()
 
@@ -100,7 +86,6 @@ def _render_md(payload: dict) -> str:
         "",
         f"- Status: `{payload['status']}`",
         f"- Strict mode: `{payload.get('strict', False)}`",
-        f"- DeepScan policy mode: `{payload.get('deepscan_policy_mode', '')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
         "## Missing secrets",
@@ -123,15 +108,9 @@ def _render_md(payload: dict) -> str:
 
 def main() -> int:
     args = _parse_args()
-    deepscan_mode = str(os.environ.get("DEEPSCAN_POLICY_MODE", "provider_api")).strip().lower()
 
     required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))
-    required_secrets, required_vars = _apply_deepscan_policy(
-        required_secrets,
-        required_vars,
-        policy_mode=deepscan_mode,
-    )
 
     result = evaluate_env(required_secrets, required_vars)
     has_missing = bool(result["missing_secrets"] or result["missing_vars"])
@@ -142,7 +121,6 @@ def main() -> int:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "required_secrets": required_secrets,
         "required_vars": required_vars,
-        "deepscan_policy_mode": deepscan_mode,
         **result,
     }
 

@@ -6,7 +6,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from .constants import (
     SOURCE_DOTENV,
@@ -345,6 +345,20 @@ class WslProvider:
         return [line.strip() for line in text.splitlines() if line.strip()]
 
 
+class WslClient(Protocol):
+    def available(self) -> bool:
+        ...
+
+    def list_distros(self) -> List[str]:
+        ...
+
+    def read_file(self, distro: str, path: str) -> str:
+        ...
+
+    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+        ...
+
+
 def _normalize_powershell_assignment_value(raw_value: str) -> str:
     value = raw_value.strip()
     if value.endswith(";"):
@@ -533,7 +547,7 @@ def _append_wsl_records(
 
 
 def collect_wsl_records(
-    wsl: WslProvider,
+    wsl: WslClient,
     include_etc: bool = True,
     exclude_distros: set[str] | None = None,
 ) -> List[EnvRecord]:
@@ -574,7 +588,7 @@ def collect_wsl_records(
     return rows
 
 
-def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
+def collect_wsl_dotenv_records(wsl: WslClient, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
     if not wsl.available():
         return rows
@@ -599,7 +613,3 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
-
-
-
-
