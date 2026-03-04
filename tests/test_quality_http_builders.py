@@ -21,6 +21,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
         repo="env-inspector",
         token="token",
         branch="feature/zero",
+        limit=1,
         method="POST",
         data={},
     )
@@ -40,6 +41,7 @@ def test_codacy_request_json_rejects_unsafe_identifier():
             repo="env/inspector",
             token="token",
             branch="",
+            limit=1,
             method="POST",
             data={},
         )

@@ -16,7 +16,7 @@ if str(_HELPER_ROOT) not in sys.path:
 
 from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
 
-TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
+TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
 CODACY_API_HOST = "api.codacy.com"
 
 
@@ -39,6 +39,7 @@ def _request_json(
     repo: str,
     token: str,
     branch: str,
+    limit: int,
     method: str = "GET",
     data: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -64,7 +65,7 @@ def _request_json(
         path=f"/api/v3/analysis/organizations/{provider_slug}/{owner_slug}/repositories/{repo_slug}/issues/search",
         headers=headers,
         method=method,
-        query={"limit": "1"},
+        query={"limit": str(max(limit, 1))},
         data=payload_data,
     )
     if not isinstance(payload, dict):
@@ -72,32 +73,60 @@ def _request_json(
     return payload
 
 
-def _walk_nodes(payload: Any) -> list[Any]:
-    stack: list[Any] = [payload]
-    nodes: list[Any] = []
-    while stack:
-        node = stack.pop()
-        nodes.append(node)
-        if isinstance(node, dict):
-            stack.extend(node.values())
-        elif isinstance(node, list):
-            stack.extend(node)
-    return nodes
-
-
 def extract_total_open(payload: Any) -> int | None:
-    for node in _walk_nodes(payload):
-        if not isinstance(node, dict):
-            continue
-        for key, value in node.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
+    if not isinstance(payload, dict):
+        return None
+
+    pagination = payload.get("pagination")
+    if isinstance(pagination, dict):
+        for key in ("total", "totalItems", "count"):
+            value = pagination.get(key)
+            if isinstance(value, (int, float)):
                 return int(value)
+
+    for key in TOTAL_KEYS:
+        value = payload.get(key)
+        if isinstance(value, (int, float)):
+            return int(value)
+
     return None
 
 
 def _provider_candidates(preferred: str) -> list[str]:
     values = [preferred, "gh", "github"]
     return list(dict.fromkeys(item for item in values if item))
+
+
+def _format_issue_sample(issue: dict[str, Any]) -> str | None:
+    pattern = str(issue.get("patternId") or issue.get("pattern") or "").strip()
+    path = str(issue.get("filename") or issue.get("filePath") or issue.get("path") or "").strip()
+    message = str(issue.get("message") or issue.get("title") or "").strip()
+    if not (pattern or path or message):
+        return None
+
+    identity = pattern or "pattern:unknown"
+    location = path or "file:unknown"
+    if message:
+        return f"Sample issue: `{identity}` at `{location}` - {message}"
+    return f"Sample issue: `{identity}` at `{location}`"
+
+
+def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]:
+    data = payload.get("data")
+    if not isinstance(data, list):
+        return []
+
+    findings: list[str] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        sample = _format_issue_sample(item)
+        if not sample:
+            continue
+        findings.append(sample)
+        if len(findings) >= limit:
+            break
+    return findings
 
 
 def _query_open_issues(
@@ -120,6 +149,7 @@ def _query_open_issues(
                 repo=repo,
                 token=token,
                 branch=branch,
+                limit=1,
                 method="POST",
                 data={},
             )
@@ -128,6 +158,17 @@ def _query_open_issues(
                 findings.append("Codacy response did not include a parseable total issue count.")
             elif open_issues != 0:
                 findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
+                sample_payload = _request_json(
+                    provider=candidate,
+                    owner=owner,
+                    repo=repo,
+                    token=token,
+                    branch=branch,
+                    limit=20,
+                    method="POST",
+                    data={},
+                )
+                findings.extend(_sample_issue_findings(sample_payload))
             return open_issues, findings
         except urllib.error.HTTPError as exc:
             last_exc = exc

@@ -10,13 +10,10 @@ from scripts.quality import check_sentry_zero as sentry_mod
 
 
 def test_codacy_walk_nodes_and_extract_total_open():
-    payload = {"outer": [{"nested": {"open_issues": 7}}, {"other": "x"}]}
+    payload = {"pagination": {"total": 7}, "data": [{"patternId": "X"}]}
 
-    nodes = codacy_mod._walk_nodes(payload)
-
-    assert payload in nodes
     assert codacy_mod.extract_total_open(payload) == 7
-    assert codacy_mod.extract_total_open({"outer": [{"nested": "value"}]}) is None
+    assert codacy_mod.extract_total_open({"data": [{"nested": "value"}]}) is None
 
 
 def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monkeypatch, capsys):
