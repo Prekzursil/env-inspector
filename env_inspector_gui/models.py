@@ -23,10 +23,22 @@ def _coerce_items(payload: dict[str, object], key: str) -> list[str]:
 
 def _coerce_number(payload: dict[str, object], key: str, default: int) -> int:
     value = payload.get(key, default)
-    try:
-        return int(value or default)
-    except Exception:
-        return default
+
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return default
+        try:
+            return int(text)
+        except ValueError:
+            return default
+    return default
 
 
 @dataclass(frozen=True)

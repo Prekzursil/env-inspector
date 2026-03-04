@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable
 
 from env_inspector_core.models import EnvRecord
 
@@ -12,8 +13,30 @@ APP_NAME = "Env Inspector"
 MSG_SELECT_ROW_FIRST = "Select a row first."
 COPY_PROMPT_TITLE = "Confirm Sensitive Value"
 
+if TYPE_CHECKING:
+    from env_inspector_core.service import EnvInspectorService
+    from .models import DisplayedRow
+
 
 class EnvInspectorControllerActionsMixin:
+    service: "EnvInspectorService"
+    tk: Any
+    messagebox: Any
+    filedialog: Any
+    root_path: Path
+    context_var: Any
+    wsl_distro_var: Any
+    wsl_path_var: Any
+    scan_depth_var: Any
+    key_text: Any
+    value_text: Any
+    show_secrets: Any
+
+    _selected_row: Callable[[], "DisplayedRow | None"]
+    _set_status: Callable[[str], None]
+    _update_effective: Callable[[str], None]
+    refresh_data: Callable[[], None]
+
     def load_selected(self) -> None:
         row = self._selected_row()
         if not row:
@@ -173,3 +196,7 @@ class EnvInspectorControllerActionsMixin:
 
     def _confirm_hidden_secret(self, prompt: str) -> bool:
         return bool(self.messagebox.askyesno(COPY_PROMPT_TITLE, prompt))
+
+
+
+

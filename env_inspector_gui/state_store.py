@@ -28,7 +28,7 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
     try:
         payload = json.loads(cfg.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return PersistedUiState()
 
     if not isinstance(payload, dict):
@@ -36,7 +36,7 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
     try:
         state = PersistedUiState.from_dict(payload)
-    except Exception:
+    except (TypeError, ValueError):
         return PersistedUiState()
 
     if state.sort_column not in SUPPORTED_SORT_COLUMNS:
@@ -60,7 +60,7 @@ def sanitize_loaded_state(
     available_targets: list[str],
     fallback_root: Path,
 ) -> PersistedUiState:
-    clean = PersistedUiState(**state.to_dict())
+    clean = PersistedUiState.from_dict(state.to_dict())
     clean.root_path = str(_sanitize_root(clean.root_path, fallback_root))
     clean.context = _sanitize_context(clean.context, available_contexts)
     clean.selected_targets = _sanitize_targets(clean.selected_targets, available_targets)

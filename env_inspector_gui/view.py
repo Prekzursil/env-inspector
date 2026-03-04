@@ -11,32 +11,27 @@ class EnvInspectorView:
 
         self.tk = controller.tk
 
-        self.filter_entry = None
-        self.details_value_text = None
-        self.details_value_scroll_x = None
+        self.filter_entry: Any = None
+        self.details_value_text: Any = None
+        self.details_value_scroll_x: Any = None
         self.details_vars: dict[str, Any] = {}
 
-        self.context_combo = None
-        self.wsl_distro_combo = None
-        self.wsl_path_entry = None
-        self.wsl_depth_spinbox = None
-        self.wsl_scan_button = None
-
-        self.key_entry = None
-        self.value_entry = None
-
-        self.refresh_button = None
-        self.load_button = None
-        self.choose_targets_button = None
-        self.set_button = None
-        self.remove_button = None
-
-        self.tree = None
-        self.status = None
-        self.progress = None
-
-        self.detail_open_button = None
-
+        self.context_combo: Any = None
+        self.wsl_distro_combo: Any = None
+        self.wsl_path_entry: Any = None
+        self.wsl_depth_spinbox: Any = None
+        self.wsl_scan_button: Any = None
+        self.key_entry: Any = None
+        self.value_entry: Any = None
+        self.refresh_button: Any = None
+        self.load_button: Any = None
+        self.choose_targets_button: Any = None
+        self.set_button: Any = None
+        self.remove_button: Any = None
+        self.tree: Any = None
+        self.status: Any = None
+        self.progress: Any = None
+        self.detail_open_button: Any = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -289,3 +284,5 @@ class EnvInspectorView:
     def focus_filter(self) -> None:
         self.filter_entry.focus_set()
         self.filter_entry.selection_range(0, "end")
+
+

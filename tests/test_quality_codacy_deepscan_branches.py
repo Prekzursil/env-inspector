@@ -159,7 +159,7 @@ def test_deepscan_parse_open_issue_endpoint_paths():
     ensure(path == '/api/projects/1/issues/open')
     ensure(query == {'limit': '1'})
 
-    host2, path2, query2, findings2 = deepscan_mod._parse_open_issue_endpoint("ftp://deepscan.io/x")
+    host2, path2, query2, findings2 = deepscan_mod._parse_open_issue_endpoint("ssh://deepscan.io/x")
     ensure(host2 is None and path2 is None and (query2 is None))
     ensure(findings2)
 
@@ -254,3 +254,4 @@ def test_codacy_scan_candidate_returns_none_when_totals_unparseable(monkeypatch)
 
     ensure(open_issues is None)
     ensure(any(('parseable total issue count' in item for item in findings)))
+

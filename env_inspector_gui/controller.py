@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from env_inspector_core.models import EnvRecord
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
 from env_inspector_core.service import EnvInspectorService
 
@@ -71,11 +72,11 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     def _initialize_runtime_state(self, tk: Any, boot_state: PersistedUiState, fallback_root: Path) -> None:
         self.root_path = self._resolve_root_path(boot_state, fallback_root)
-        self.records_raw = []
-        self.displayed_rows = []
-        self.rows_by_item = {}
+        self.records_raw: list[EnvRecord] = []
+        self.displayed_rows: list[DisplayedRow] = []
+        self.rows_by_item: dict[str, DisplayedRow] = {}
         self.selected_targets = list(boot_state.selected_targets)
-        self.last_refresh_at = None
+        self.last_refresh_at: datetime | None = None
 
         self.filter_text = tk.StringVar(value=boot_state.filter_text)
         self.show_secrets = tk.BooleanVar(value=boot_state.show_secrets)
@@ -472,14 +473,14 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _safe_preview(self, action: str, key: str, value: str, targets: list[str]) -> list[dict[str, Any]] | None:
         try:
             return self._preview_operation(action, key, value, targets)
-        except Exception as exc:
+        except (RuntimeError, ValueError, OSError, PathPolicyError) as exc:
             self.messagebox.showerror(APP_NAME, f"Failed to compute preview: {exc}")
             return None
 
     def _safe_apply(self, action: str, key: str, value: str, targets: list[str]) -> dict[str, Any] | None:
         try:
             return self._apply_operation(action, key, value, targets)
-        except Exception as exc:
+        except (RuntimeError, ValueError, OSError, PathPolicyError) as exc:
             self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {exc}")
             return None
 
@@ -506,3 +507,5 @@ class EnvInspectorApp:
 
     def run(self) -> None:
         self._controller.run()
+
+

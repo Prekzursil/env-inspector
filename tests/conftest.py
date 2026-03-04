@@ -9,5 +9,6 @@ def ensure(condition: bool, message: object = "expectation failed") -> None:
     if not condition:
         raise AssertionError(message)
 
-builtins.ensure = ensure
+setattr(builtins, "ensure", ensure)
+
 

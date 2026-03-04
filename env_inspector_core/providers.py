@@ -6,6 +6,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Callable
 
 from .constants import (
@@ -25,10 +26,14 @@ from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environmen
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
 
+winreg: ModuleType | None
+
 try:
-    import winreg  # type: ignore[attr-defined]
+    import winreg as _winreg
 except ImportError:  # pragma: no cover - non-Windows
     winreg = None
+else:
+    winreg = _winreg
 
 
 SKIP_DIRS = {
@@ -131,25 +136,33 @@ class WindowsRegistryProvider:
             raise RuntimeError("Windows registry provider only available on Windows.")
 
     @staticmethod
+    def _winreg() -> ModuleType:
+        if winreg is None:
+            raise RuntimeError("Windows registry provider only available on Windows.")
+        return winreg
+
+    @staticmethod
     def _scope_to_key(scope: str) -> tuple[Any, str]:
+        reg = WindowsRegistryProvider._winreg()
         if scope == WindowsRegistryProvider.USER_SCOPE:
-            return winreg.HKEY_CURRENT_USER, r"Environment"
+            return reg.HKEY_CURRENT_USER, r"Environment"
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            return winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+            return reg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
         raise ValueError(f"Unsupported scope: {scope}")
 
     def list_scope(self, scope: str) -> dict[str, str]:
         root, path = self._scope_to_key(scope)
-        access = winreg.KEY_READ
+        reg = self._winreg()
+        access = reg.KEY_READ
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
+            access |= getattr(reg, "KEY_WOW64_64KEY", 0)
 
         values: dict[str, str] = {}
-        with winreg.OpenKey(root, path, 0, access) as regkey:
+        with reg.OpenKey(root, path, 0, access) as regkey:
             index = 0
             while True:
                 try:
-                    name, value, _ = winreg.EnumValue(regkey, index)
+                    name, value, _ = reg.EnumValue(regkey, index)
                 except OSError:
                     break
                 values[name] = value if isinstance(value, str) else str(value)
@@ -158,24 +171,25 @@ class WindowsRegistryProvider:
 
     def set_scope_value(self, scope: str, key: str, value: str) -> None:
         root, path = self._scope_to_key(scope)
-        access = winreg.KEY_SET_VALUE
+        reg = self._winreg()
+        access = reg.KEY_SET_VALUE
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
-        reg_type = winreg.REG_EXPAND_SZ if "%" in value else winreg.REG_SZ
-        with winreg.OpenKey(root, path, 0, access) as regkey:
-            winreg.SetValueEx(regkey, key, 0, reg_type, value)
+            access |= getattr(reg, "KEY_WOW64_64KEY", 0)
+        reg_type = reg.REG_EXPAND_SZ if "%" in value else reg.REG_SZ
+        with reg.OpenKey(root, path, 0, access) as regkey:
+            reg.SetValueEx(regkey, key, 0, reg_type, value)
 
     def remove_scope_value(self, scope: str, key: str) -> None:
         root, path = self._scope_to_key(scope)
-        access = winreg.KEY_SET_VALUE
+        reg = self._winreg()
+        access = reg.KEY_SET_VALUE
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
-        with winreg.OpenKey(root, path, 0, access) as regkey:
+            access |= getattr(reg, "KEY_WOW64_64KEY", 0)
+        with reg.OpenKey(root, path, 0, access) as regkey:
             try:
-                winreg.DeleteValue(regkey, key)
+                reg.DeleteValue(regkey, key)
             except FileNotFoundError:
                 pass
-
 
 def build_registry_records(provider: WindowsRegistryProvider) -> list[EnvRecord]:
     rows: list[EnvRecord] = []
@@ -584,4 +598,9 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
+
+
+
+
+
 

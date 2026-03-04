@@ -79,5 +79,6 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     provider._available_cache = None
 
     ensure(provider.available() is False)
-    ensure(calls)
+    ensure(bool(calls))
     ensure(calls[0][-2:] == ['-l', '-q'])
+
