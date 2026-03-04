@@ -29,24 +29,38 @@ def test_classify_scan_vulns_and_runtime_and_quota():
             exit_code=1,
             log_text="✗ [MEDIUM] Finding\nERROR Forbidden (SNYK-CLI-0000)",
         )
-        == "quota_exhausted"
+        == "quota_with_findings"
     )
 
 
 def test_decide_policy_paths():
-    quota_override = decide_policy(oss_outcome="quota_exhausted", code_outcome="vulns_found")
-    assert quota_override["decision"] == "pass"
-    assert quota_override["decision_reason"] == "quota_exhausted_override"
-    assert quota_override["findings_detected"] is True
+    quota_with_findings = decide_policy(
+        oss_outcome="quota_exhausted",
+        code_outcome="vulns_found",
+        project_url="https://app.snyk.io/org/example/project/abc",
+    )
+    assert quota_with_findings["decision"] == "fail"
+    assert quota_with_findings["decision_reason"] == "findings_detected_with_quota_exhaustion"
+    assert quota_with_findings["manual_retest_required"] is True
+    assert "Retest now" in quota_with_findings["manual_retest_instruction"]
+    assert quota_with_findings["project_url"] == "https://app.snyk.io/org/example/project/abc"
+
+    quota_only = decide_policy(oss_outcome="quota_exhausted", code_outcome="clean")
+    assert quota_only["decision"] == "fail"
+    assert quota_only["decision_reason"] == "quota_exhausted_manual_retest_required"
+    assert quota_only["manual_retest_required"] is True
 
     vuln_fail = decide_policy(oss_outcome="vulns_found", code_outcome="clean")
     assert vuln_fail["decision"] == "fail"
     assert vuln_fail["decision_reason"] == "vulnerabilities_detected"
+    assert vuln_fail["manual_retest_required"] is False
 
     runtime_fail = decide_policy(oss_outcome="runtime_error", code_outcome="clean")
     assert runtime_fail["decision"] == "fail"
-    assert runtime_fail["decision_reason"] == "runtime_error_without_quota"
+    assert runtime_fail["decision_reason"] == "inconclusive_scan_result_manual_retest_required"
+    assert runtime_fail["manual_retest_required"] is True
 
     clean_pass = decide_policy(oss_outcome="clean", code_outcome="skipped")
     assert clean_pass["decision"] == "pass"
     assert clean_pass["decision_reason"] == "clean_or_skipped"
+    assert clean_pass["manual_retest_required"] is False

@@ -17,6 +17,7 @@ jobs:
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       REPO_NAME: ${{ github.event.repository.name }}
+      SNYK_PROJECT_URL: ${{ vars.SNYK_PROJECT_URL || format('https://app.snyk.io/org/prekzursil1993/projects?search={0}', github.event.repository.name) }}
     steps:
       - uses: actions/checkout@v6
 
@@ -212,7 +213,11 @@ jobs:
               exit_code=code_exit_code,
               log_text=code_log,
           )
-          decision = decide_policy(oss_outcome=oss_outcome, code_outcome=code_outcome)
+          decision = decide_policy(
+              oss_outcome=oss_outcome,
+              code_outcome=code_outcome,
+              project_url=os.getenv('SNYK_PROJECT_URL', ''),
+          )
 
           payload = {
               'has_token': has_token,
@@ -228,12 +233,19 @@ jobs:
               'runtime_error_detected': decision['runtime_error_detected'],
               'decision': decision['decision'],
               'decision_reason': decision['decision_reason'],
+              'manual_retest_required': decision['manual_retest_required'],
+              'manual_retest_instruction': decision['manual_retest_instruction'],
+              'project_url': decision['project_url'],
           }
 
           out = Path('artifacts/snyk-oss-mode.json')
           out.parent.mkdir(parents=True, exist_ok=True)
           out.write_text(json.dumps(payload, indent=2) + '\n')
           print(json.dumps(payload, indent=2))
+
+          if payload['manual_retest_required']:
+              print('Snyk result is inconclusive or quota-limited. Manual action required:')
+              print(payload['manual_retest_instruction'])
 
           if payload['decision'] != 'pass':
               raise SystemExit(1)
@@ -249,3 +261,4 @@ jobs:
             artifacts/detected-targets.txt
             artifacts/snyk-oss.log
             artifacts/snyk-code.log
+

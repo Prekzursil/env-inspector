@@ -1,6 +1,8 @@
 name: Codacy Zero
 
 on:
+  push:
+    branches: [main, master]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -13,18 +15,17 @@ jobs:
     name: Codacy Zero
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+      CODACY_BRANCH: ${{ github.head_ref || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
-      - name: Assert Codacy PR status context is green
+      - name: Assert Codacy open issue count is zero
         run: |
-          python3 scripts/quality/check_required_checks.py \
-            --repo "${GITHUB_REPOSITORY}" \
-            --sha "${CHECK_SHA}" \
-            --required-context "Codacy Static Code Analysis" \
-            --timeout-seconds 1200 \
-            --poll-seconds 20 \
+          python3 scripts/quality/check_codacy_zero.py \
+            --provider gh \
+            --owner "${GITHUB_REPOSITORY_OWNER}" \
+            --repo "${{ github.event.repository.name }}" \
+            --branch "${CODACY_BRANCH}" \
             --out-json "codacy-zero/codacy.json" \
             --out-md "codacy-zero/codacy.md"
       - name: Upload Codacy artifacts
