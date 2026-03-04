@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import ensure
 from pathlib import Path
 from types import SimpleNamespace
 import urllib.error

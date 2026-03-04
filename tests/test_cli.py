@@ -1,3 +1,4 @@
+from tests.conftest import ensure
 import json
 from argparse import Namespace
 

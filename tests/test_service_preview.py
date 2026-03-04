@@ -1,3 +1,4 @@
+from tests.conftest import ensure
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService

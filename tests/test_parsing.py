@@ -1,3 +1,4 @@
+from tests.conftest import ensure
 from env_inspector_core import parsing
 from env_inspector_core.parsing import (
     parse_dotenv_text,

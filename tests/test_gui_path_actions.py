@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import ensure
 from pathlib import Path
 
 from env_inspector_gui.path_actions import is_openable_local_path, open_source_path

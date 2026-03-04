@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import ensure
 from pathlib import Path
 
 from env_inspector_gui.models import PersistedUiState

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import ensure
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.secret_policy import build_search_value, resolve_copy_payload, resolve_load_value
 
