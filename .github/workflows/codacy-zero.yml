@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+      CODACY_BRANCH: ${{ github.head_ref || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
       - name: Assert Codacy open issue count is zero
@@ -24,6 +25,7 @@ jobs:
             --provider gh \
             --owner "${GITHUB_REPOSITORY_OWNER}" \
             --repo "${{ github.event.repository.name }}" \
+            --branch "${CODACY_BRANCH}" \
             --out-json "codacy-zero/codacy.json" \
             --out-md "codacy-zero/codacy.md"
       - name: Upload Codacy artifacts

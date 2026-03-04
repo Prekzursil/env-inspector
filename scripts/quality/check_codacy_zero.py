@@ -97,18 +97,25 @@ def _provider_candidates(preferred: str) -> list[str]:
     return list(dict.fromkeys(item for item in values if item))
 
 
+def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = str(issue.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
 def _format_issue_sample(issue: dict[str, Any]) -> str | None:
-    pattern = str(issue.get("patternId") or issue.get("pattern") or "").strip()
-    path = str(issue.get("filename") or issue.get("filePath") or issue.get("path") or "").strip()
-    message = str(issue.get("message") or issue.get("title") or "").strip()
+    pattern = _first_text(issue, ("patternId", "pattern"))
+    path = _first_text(issue, ("filename", "filePath", "path"))
+    message = _first_text(issue, ("message", "title"))
     if not (pattern or path or message):
         return None
 
     identity = pattern or "pattern:unknown"
     location = path or "file:unknown"
-    if message:
-        return f"Sample issue: `{identity}` at `{location}` - {message}"
-    return f"Sample issue: `{identity}` at `{location}`"
+    suffix = f" - {message}" if message else ""
+    return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
 def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]:

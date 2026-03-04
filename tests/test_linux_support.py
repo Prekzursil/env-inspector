@@ -6,7 +6,7 @@ import pytest
 
 import env_inspector_core.service as service_module
 from env_inspector_core.models import EnvRecord
-from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
+from env_inspector_core.providers import collect_dotenv_records, collect_linux_records, discover_dotenv_files
 from env_inspector_core.service import EnvInspectorService
 
 
@@ -87,6 +87,22 @@ def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path, monkeyp
     rows = collect_dotenv_records(tmp_path, max_depth=2, context="linux")
     assert rows
     assert all(r.context == "linux" for r in rows)
+
+def test_discover_dotenv_files_rejects_out_of_workspace_root(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    outside_root = tmp_path.parent
+
+    files = discover_dotenv_files(outside_root, max_depth=2)
+
+    assert files == []
+
+
+def test_discover_dotenv_files_returns_empty_for_missing_root(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    files = discover_dotenv_files(tmp_path / "missing", max_depth=2)
+
+    assert files == []
 
 
 def test_service_available_targets_always_include_linux_targets_for_linux_context(tmp_path: Path):

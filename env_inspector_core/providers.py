@@ -22,6 +22,7 @@ from .constants import (
 )
 from .models import EnvRecord
 from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environment
+from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
 
 try:
@@ -83,13 +84,11 @@ def _iter_dotenv_candidates(root: Path, max_depth: int) -> list[Path]:
 
 
 def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
-    root = Path(root)
-    workspace_root = Path.cwd()
-    if not _is_workspace_scoped_path(root, workspace_root):
+    try:
+        safe_root = resolve_scan_root(root)
+    except PathPolicyError:
         return []
-    if not root.exists() or not root.is_dir():
-        return []
-    return sorted(_iter_dotenv_candidates(root, max_depth=max_depth))
+    return sorted(_iter_dotenv_candidates(safe_root, max_depth=max_depth))
 
 
 def collect_process_records(context: str = "windows") -> list[EnvRecord]:
@@ -355,24 +354,38 @@ def _normalize_powershell_assignment_value(raw_value: str) -> str:
     return value
 
 
-def _parse_powershell_assignment(line: str, regex: re.Pattern[str]) -> tuple[str, str] | None:
+def _is_valid_powershell_env_key(key: str) -> bool:
+    if not key:
+        return False
+    if not (key[0].isalpha() or key[0] == "_"):
+        return False
+    return all(char.isalnum() or char == "_" for char in key[1:])
+
+
+def _parse_powershell_assignment(line: str) -> tuple[str, str] | None:
     stripped = line.strip()
     if not stripped or stripped.startswith("#"):
         return None
-
-    match = regex.search(stripped)
-    if not match:
+    if not stripped.lower().startswith("$env:"):
         return None
-    key = match.group(1)
-    value = _normalize_powershell_assignment_value(match.group(2))
+
+    assignment = stripped[len("$env:") :]
+    if "=" not in assignment:
+        return None
+
+    key_part, value_part = assignment.split("=", 1)
+    key = key_part.strip()
+    if not _is_valid_powershell_env_key(key):
+        return None
+
+    value = _normalize_powershell_assignment_value(value_part)
     return key, value
 
 
 def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
-    regex = re.compile(r"\$env:([A-Za-z_]\w*)\s*=\s*(.+)$")
     for line in text.splitlines():
-        entry = _parse_powershell_assignment(line, regex)
+        entry = _parse_powershell_assignment(line)
         if entry:
             rows.append(entry)
     return rows
