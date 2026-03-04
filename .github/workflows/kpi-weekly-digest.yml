@@ -25,6 +25,48 @@ jobs:
             const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             const sinceIso = since.toISOString();
 
+            const titlePrefix = "Weekly KPI Digest - ";
+            const title = `${titlePrefix}${now.toISOString().slice(0, 10)}`;
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            const streamIssues = openIssues.filter(
+              issue => !issue.pull_request && (issue.title || "").startsWith(titlePrefix),
+            );
+            const sameDate = streamIssues.find(issue => issue.title === title);
+
+            async function closeStaleIssues(keeperNumber) {
+              for (const issue of streamIssues) {
+                if (issue.number === keeperNumber) {
+                  continue;
+                }
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  body: `Superseded by #${keeperNumber}. Closing stale weekly KPI digest issue.`,
+                });
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  state: "closed",
+                  state_reason: "completed",
+                });
+              }
+            }
+
+            if (sameDate) {
+              await closeStaleIssues(sameDate.number);
+              core.info(`Issue already exists for ${title}: #${sameDate.number}`);
+              return;
+            }
+
             const pulls = await github.paginate(github.rest.pulls.list, {
               owner,
               repo,
@@ -37,16 +79,14 @@ jobs:
             const mergedLast7d = pulls.filter(pr => pr.merged_at && new Date(pr.merged_at) >= since).length;
             const openedLast7d = pulls.filter(pr => new Date(pr.created_at) >= since).length;
 
-            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
-              owner,
-              repo,
-              state: "open",
-              per_page: 100,
-            });
+            const openAgentIssues = openIssues.filter(
+              issue =>
+                !issue.pull_request &&
+                (issue.labels || []).some(label =>
+                  ["agent:ready", "agent:in-progress", "agent:blocked"].includes(label.name),
+                ),
+            ).length;
 
-            const openAgentIssues = openIssues.filter(i => !i.pull_request && (i.labels || []).some(l => ["agent:ready", "agent:in-progress", "agent:blocked"].includes(l.name))).length;
-
-            const title = `Weekly KPI Digest - ${now.toISOString().slice(0, 10)}`;
             const body = [
               "## Summary",
               `- Window start: ${sinceIso}`,
@@ -69,10 +109,12 @@ jobs:
               "- Add blockers, regressions, and remediation actions.",
             ].join("\n");
 
-            await github.rest.issues.create({
+            const created = await github.rest.issues.create({
               owner,
               repo,
               title,
               body,
               labels: ["area:infra", "risk:low"],
             });
+
+            await closeStaleIssues(created.data.number);

@@ -19,7 +19,48 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const title = `Dependency/Release stewardship digest - ${new Date().toISOString().slice(0, 10)}`;
+            const titlePrefix = "Dependency/Release stewardship digest - ";
+            const title = `${titlePrefix}${new Date().toISOString().slice(0, 10)}`;
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            const streamIssues = openIssues.filter(
+              issue => !issue.pull_request && (issue.title || "").startsWith(titlePrefix),
+            );
+            const sameDate = streamIssues.find(issue => issue.title === title);
+
+            async function closeStaleIssues(keeperNumber) {
+              for (const issue of streamIssues) {
+                if (issue.number === keeperNumber) {
+                  continue;
+                }
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  body: `Superseded by #${keeperNumber}. Closing stale dependency/release stewardship digest.`,
+                });
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  state: "closed",
+                  state_reason: "completed",
+                });
+              }
+            }
+
+            if (sameDate) {
+              await closeStaleIssues(sameDate.number);
+              core.info(`Issue already exists for ${title}: #${sameDate.number}`);
+              return;
+            }
+
             const body = [
               "## Focus",
               "- dependency updates, release readiness, artifact verification",
@@ -32,10 +73,12 @@ jobs:
               "- Keep direct code mutation out of the digest workflow.",
             ].join("\n");
 
-            await github.rest.issues.create({
+            const created = await github.rest.issues.create({
               owner,
               repo,
               title,
               body,
               labels: ["area:docs", "risk:low"],
             });
+
+            await closeStaleIssues(created.data.number);
