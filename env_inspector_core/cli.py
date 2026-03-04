@@ -53,12 +53,18 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _emit_payload(payload: object) -> int:
     print(json.dumps(payload, ensure_ascii=True, indent=2))
-    if isinstance(payload, dict):
-        return 0 if payload.get("success", True) else 1
-    if isinstance(payload, list):
-        return 0 if all(item.get("success", False) for item in payload if isinstance(item, dict)) else 1
-    return 1
 
+    if isinstance(payload, dict):
+        return 0 if bool(payload.get("success", False)) else 1
+
+    if isinstance(payload, list):
+        items = [item for item in payload if isinstance(item, dict)]
+        if not items:
+            return 1
+        any_failures = any(not bool(item.get("success", False)) for item in items)
+        return 1 if any_failures else 0
+
+    return 1
 
 def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
     rows = service.list_records(
