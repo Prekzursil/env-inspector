@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from typing import List
 from email.message import Message
 import secrets
 import sys
@@ -300,6 +299,7 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEEPSCAN_API_TOKEN", _token())
     monkeypatch.setenv("DEEPSCAN_OPEN_ISSUES_URL", "https://deepscan.io/api/projects/1/issues/open")
+
     def _deepscan_args():
         return type("Args", (), {"token": "", "out_json": "o/deep.json", "out_md": "o/deep.md"})()
 
@@ -315,6 +315,7 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
 def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CODACY_API_TOKEN", _token())
+
     def _codacy_args():
         return type(
             "Args",
