@@ -13,6 +13,22 @@ def _require_equal(actual, expected, label: str) -> None:
         raise AssertionError(f"{label}: expected {expected!r}, got {actual!r}")
 
 
+def test_require_helpers_raise_on_failures():
+    try:
+        _require(False, "boom")
+    except AssertionError:
+        pass
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("_require did not raise")
+
+    try:
+        _require_equal("a", "b", "label")
+    except AssertionError:
+        pass
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("_require_equal did not raise")
+
+
 def test_detect_quota_exhausted_markers():
     log = "ERROR Forbidden (SNYK-CLI-0000)\nCode test limit reached\nStatus: 403 Forbidden"
     _require(detect_quota_exhausted(log) is True, "quota markers were not detected")

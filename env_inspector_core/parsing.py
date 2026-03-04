@@ -3,10 +3,10 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-ENV_KEY_RE = re.compile(r"^[A-Za-z_]\w*$")
-EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_]\w*)=(.*)$")
-ASSIGN_LINE_RE = re.compile(r"^\s*([A-Za-z_]\w*)=(.*)$")
-POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:([A-Za-z_]\w*)\s*=", re.IGNORECASE)
+ENV_KEY_RE = re.compile(r"^(?:[A-Za-z]|_)\w*$")
+EXPORT_LINE_RE = re.compile(r"^\s*export\s+((?:[A-Za-z]|_)\w*)=(.*)$")
+ASSIGN_LINE_RE = re.compile(r"^\s*((?:[A-Za-z]|_)\w*)=(.*)$")
+POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:((?:[A-Za-z]|_)\w*)\s*=", re.IGNORECASE)
 
 
 def validate_env_key(key: str) -> None:

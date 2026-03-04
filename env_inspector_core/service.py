@@ -514,7 +514,7 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        path = self._powershell_profile_path(target)
+        path = self._validated_powershell_restore_path(target)
         before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
         after = upsert_powershell_env(before, key, value or "") if action == "set" else remove_powershell_env(before, key)
         if apply_changes:
