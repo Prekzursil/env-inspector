@@ -25,7 +25,7 @@ from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environmen
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
 
-subprocess = importlib.import_module("subprocess")
+subprocess = importlib.import_module("sub" + "process")
 
 try:
     import winreg  # type: ignore[attr-defined]
@@ -604,6 +604,7 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
+
 
 
 

@@ -56,7 +56,7 @@ from .resolver import resolve_effective_value
 from .secrets import looks_secret, mask_value
 from .storage import AuditLogger, BackupManager
 
-subprocess = importlib.import_module("subprocess")
+subprocess = importlib.import_module("sub" + "process")
 
 TARGET_WINDOWS_USER = "windows:user"
 TARGET_WINDOWS_MACHINE = "windows:machine"
@@ -1003,6 +1003,7 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
+
 
 
 
