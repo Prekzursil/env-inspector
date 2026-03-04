@@ -14,7 +14,7 @@ def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> subproce
 def test_write_file_with_privilege_root_success():
     calls: list[list[str]] = []
 
-    def runner(cmd, **kwargs):
+    def runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         calls.append(cmd)
         return _proc(0)
 
@@ -33,7 +33,7 @@ def test_write_file_with_privilege_falls_back_to_sudo():
     calls: list[list[str]] = []
     inputs: list[bytes | None] = []
 
-    def runner(cmd, **kwargs):
+    def runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         calls.append(cmd)
         inputs.append(kwargs.get("input"))
         if "-u" in cmd and "root" in cmd:
@@ -52,7 +52,7 @@ def test_write_file_with_privilege_falls_back_to_sudo():
 
 
 def test_write_file_with_privilege_raises_when_root_and_sudo_fail():
-    def runner(cmd, **kwargs):
+    def runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         return _proc(1, stderr=b"fail")
 
     provider = WslProvider(runner=runner)
@@ -70,7 +70,7 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     fake_wsl = tmp_path / "wsl.exe"
     fake_wsl.write_text("", encoding="utf-8")
 
-    def runner(cmd, **kwargs):
+    def runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
         calls.append(cmd)
         return _proc(1, stderr=b"not working")
 
@@ -81,4 +81,5 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     ensure(provider.available() is False)
     ensure(bool(calls))
     ensure(calls[0][-2:] == ['-l', '-q'])
+
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from tests.conftest import ensure
+from typing import Literal
+
 import pytest
 
 import env_inspector_core.providers as providers
@@ -13,7 +15,7 @@ class _KeyContext:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> bool:
+    def __exit__(self, exc_type, exc, tb) -> Literal[False]:
         return False
 
 
@@ -66,13 +68,13 @@ def test_windows_registry_provider_machine_scope_paths(monkeypatch):
     provider = providers.WindowsRegistryProvider()
 
     rows = provider.list_scope(provider.MACHINE_SCOPE)
-    provider.set_scope_value(provider.MACHINE_SCOPE, "PATH", "%SystemRoot%\\Temp")
-    provider.remove_scope_value(provider.MACHINE_SCOPE, "PATH")
+    provider.set_scope_value(provider.MACHINE_SCOPE, "APP_HOME", "%ProgramFiles%\\EnvInspector")
+    provider.remove_scope_value(provider.MACHINE_SCOPE, "APP_HOME")
 
     ensure(rows == {"A": "1"})
     ensure(any((call[3] & fake.KEY_WOW64_64KEY for call in fake.open_calls)))
-    ensure(fake.set_calls == [("PATH", fake.REG_EXPAND_SZ, "%SystemRoot%\\Temp")])
-    ensure(fake.delete_calls == ["PATH"])
+    ensure(fake.set_calls == [("APP_HOME", fake.REG_EXPAND_SZ, "%ProgramFiles%\\EnvInspector")])
+    ensure(fake.delete_calls == ["APP_HOME"])
 
 
 def test_windows_registry_provider_remove_missing_value_is_ignored(monkeypatch):
@@ -86,4 +88,3 @@ def test_windows_registry_provider_remove_missing_value_is_ignored(monkeypatch):
     provider.remove_scope_value(provider.MACHINE_SCOPE, "MISSING")
 
     ensure(len(fake.open_calls) == 1)
-
