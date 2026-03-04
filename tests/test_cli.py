@@ -42,38 +42,38 @@ class FakeService:
 def test_parser_has_expected_subcommands():
     parser = build_parser()
     help_text = parser.format_help()
-    assert "list" in help_text
-    assert "set" in help_text
-    assert "remove" in help_text
-    assert "export" in help_text
-    assert "backup" in help_text
-    assert "restore" in help_text
+    ensure('list' in help_text)
+    ensure('set' in help_text)
+    ensure('remove' in help_text)
+    ensure('export' in help_text)
+    ensure('backup' in help_text)
+    ensure('restore' in help_text)
 
 
 def test_run_cli_list_json_contract(capsys):
     code = run_cli(["list", "--output", "json"], service=FakeService())
-    assert code == 0
+    ensure(code == 0)
     out = capsys.readouterr().out
     payload = json.loads(out)
-    assert payload[0]["name"] == "API_TOKEN"
+    ensure(payload[0]['name'] == 'API_TOKEN')
 
 
 def test_run_cli_list_non_json_routes_to_export(capsys):
     code = run_cli(["list", "--output", "table"], service=FakeService())
 
-    assert code == 0
+    ensure(code == 0)
     out = capsys.readouterr().out
-    assert out == "name,value\\nAPI_TOKEN,abc***123\\n"
+    ensure(out == 'name,value\\nAPI_TOKEN,abc***123\\n')
 
 
 def test_run_cli_set_and_remove(capsys):
     set_code = run_cli(["set", "--key", "A", "--value", "1", "--target", "windows:user"], service=FakeService())
     remove_code = run_cli(["remove", "--key", "A", "--target", "windows:user"], service=FakeService())
-    assert set_code == 0
-    assert remove_code == 0
+    ensure(set_code == 0)
+    ensure(remove_code == 0)
     out = capsys.readouterr().out
-    assert "op-set" in out
-    assert "op-remove" in out
+    ensure('op-set' in out)
+    ensure('op-remove' in out)
 
 
 def test_run_cli_set_and_remove_forward_scope_roots():
@@ -108,10 +108,10 @@ def test_run_cli_set_and_remove_forward_scope_roots():
         service=svc,
     )
 
-    assert svc.last_set is not None
-    assert svc.last_set["scope_roots"] == ["/workspace", "/var/workspace"]
-    assert svc.last_remove is not None
-    assert svc.last_remove["scope_roots"] == ["/workspace"]
+    ensure(svc.last_set is not None)
+    ensure(svc.last_set['scope_roots'] == ['/workspace', '/var/workspace'])
+    ensure(svc.last_remove is not None)
+    ensure(svc.last_remove['scope_roots'] == ['/workspace'])
 
 
 def test_run_cli_export_backup_and_restore(capsys):
@@ -121,19 +121,19 @@ def test_run_cli_export_backup_and_restore(capsys):
     backup_code = run_cli(["backup"], service=svc)
     restore_code = run_cli(["restore", "--backup", "/workspace/backup1"], service=svc)
 
-    assert export_code == 0
-    assert backup_code == 0
-    assert restore_code == 0
+    ensure(export_code == 0)
+    ensure(backup_code == 0)
+    ensure(restore_code == 0)
 
     out = capsys.readouterr().out
-    assert "API_TOKEN,abc***123" in out
-    assert "backup1" in out
-    assert "op-restore" in out
+    ensure('API_TOKEN,abc***123' in out)
+    ensure('backup1' in out)
+    ensure('op-restore' in out)
 
 
 def test_command_success_handles_non_dict_sequences():
-    assert _command_success([{"success": True}, {"success": True}]) is True
-    assert _command_success([{"success": True}, {"success": False}]) is False
+    ensure(_command_success([{'success': True}, {'success': True}]) is True)
+    ensure(_command_success([{'success': True}, {'success': False}]) is False)
 
 
 def test_run_cli_without_command_prints_help(monkeypatch):
@@ -144,7 +144,7 @@ def test_run_cli_without_command_prints_help(monkeypatch):
 
     code = run_cli([])
 
-    assert code == 0
+    ensure(code == 0)
 
 
 def test_run_cli_unknown_command_returns_error(monkeypatch):
@@ -155,4 +155,4 @@ def test_run_cli_unknown_command_returns_error(monkeypatch):
 
     code = run_cli([])
 
-    assert code == 2
+    ensure(code == 2)

@@ -22,9 +22,9 @@ INVALID_LINE
 """
     records = parse_dotenv_text(text)
     names = [r[0] for r in records]
-    assert names == ["API_TOKEN", "PLAIN", "QUOTED"]
-    assert dict(records)["API_TOKEN"] == "abc123"
-    assert dict(records)["QUOTED"] == "hello world"
+    ensure(names == ['API_TOKEN', 'PLAIN', 'QUOTED'])
+    ensure(dict(records)['API_TOKEN'] == 'abc123')
+    ensure(dict(records)['QUOTED'] == 'hello world')
 
 
 def test_parse_bash_exports_only_reads_export_lines():
@@ -34,7 +34,7 @@ B=2
  export C='three'
 """
     parsed = parse_bash_exports(text)
-    assert parsed == {"A": "1", "C": "three"}
+    ensure(parsed == {'A': '1', 'C': 'three'})
 
 
 def test_parse_etc_environment_ignores_comments_and_blank_lines():
@@ -45,41 +45,41 @@ PATH=\"/usr/local/bin:/usr/bin\"
 
 """
     parsed = parse_etc_environment(text)
-    assert parsed == {"LANG": "en_US.UTF-8", "PATH": "/usr/local/bin:/usr/bin"}
+    ensure(parsed == {'LANG': 'en_US.UTF-8', 'PATH': '/usr/local/bin:/usr/bin'})
 
 
 def test_upsert_and_remove_export_roundtrip():
     base = "export A='1'\n"
     updated = upsert_export(base, "B", "two")
-    assert "export B='two'" in updated
+    ensure("export B='two'" in updated)
 
     replaced = upsert_export(updated, "A", "9")
-    assert "export A='9'" in replaced
-    assert replaced.count("export A=") == 1
+    ensure("export A='9'" in replaced)
+    ensure(replaced.count('export A=') == 1)
 
     removed = remove_export(replaced, "B")
-    assert "export B=" not in removed
+    ensure('export B=' not in removed)
 
 
 def test_upsert_and_remove_powershell_env_roundtrip():
     base = "$env:API_TOKEN = 'old'\nWrite-Host 'hi'\n"
     updated = upsert_powershell_env(base, "API_TOKEN", "new")
-    assert "$env:API_TOKEN = 'new'" in updated
-    assert updated.count("$env:API_TOKEN") == 1
+    ensure("$env:API_TOKEN = 'new'" in updated)
+    ensure(updated.count('$env:API_TOKEN') == 1)
 
     appended = upsert_powershell_env(updated, "NEW_KEY", "v")
-    assert "$env:NEW_KEY = 'v'" in appended
+    ensure("$env:NEW_KEY = 'v'" in appended)
 
     removed = remove_powershell_env(appended, "API_TOKEN")
-    assert "$env:API_TOKEN" not in removed
+    ensure('$env:API_TOKEN' not in removed)
 
 
 def test_upsert_key_value_preserves_comments_and_appends_when_missing():
     base = "# keep\nA=1\n"
     updated = upsert_key_value(base, "B", "2", quote=False)
 
-    assert updated.startswith("# keep\n")
-    assert "B=2" in updated
+    ensure(updated.startswith('# keep\n'))
+    ensure('B=2' in updated)
 
 
 def test_remove_key_value_strips_assignment_and_export_variants():
@@ -87,8 +87,8 @@ def test_remove_key_value_strips_assignment_and_export_variants():
 
     removed = remove_key_value(text, "A")
 
-    assert removed == "B=3\n"
+    ensure(removed == 'B=3\n')
 
 
 def test_join_lines_handles_no_trailing_newline_case():
-    assert parsing._join_lines(["A=1"], keep_trailing_newline=False) == "A=1"
+    ensure(parsing._join_lines(['A=1'], keep_trailing_newline=False) == 'A=1')

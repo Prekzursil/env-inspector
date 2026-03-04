@@ -24,10 +24,10 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
         data={},
     )
 
-    assert payload == {"total": 0}
-    assert captured["host"] == "app.codacy.com"
-    assert captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search"
-    assert captured["query"] == {"limit": "1"}
+    ensure(payload == {'total': 0})
+    ensure(captured['host'] == 'app.codacy.com')
+    ensure(captured['path'] == '/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search')
+    ensure(captured['query'] == {'limit': '1'})
 
 
 def test_codacy_request_json_overview_omits_limit_and_includes_branch(monkeypatch):
@@ -50,10 +50,10 @@ def test_codacy_request_json_overview_omits_limit_and_includes_branch(monkeypatc
         data={},
     )
 
-    assert codacy_mod.extract_total_open(payload) == 0
-    assert captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/overview"
-    assert captured["query"] == {}
-    assert captured["data"]["branchName"] == "fix/true-zero-provider-parity-v2"
+    ensure(codacy_mod.extract_total_open(payload) == 0)
+    ensure(captured['path'] == '/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/overview')
+    ensure(captured['query'] == {})
+    ensure(captured['data']['branchName'] == 'fix/true-zero-provider-parity-v2')
 
 
 def test_codacy_request_json_rejects_unsafe_identifier():
@@ -83,10 +83,10 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
         token="token",
     )
 
-    assert payload == {"open_issues": 0}
-    assert captured["host"] == "deepscan.io"
-    assert captured["path"] == "/api/projects/123/issues/open"
-    assert captured["query"] == {"limit": "1"}
+    ensure(payload == {'open_issues': 0})
+    ensure(captured['host'] == 'deepscan.io')
+    ensure(captured['path'] == '/api/projects/123/issues/open')
+    ensure(captured['query'] == {'limit': '1'})
 
 
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
@@ -99,8 +99,8 @@ def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     monkeypatch.setattr(sentry_mod, "request_json_https", _fake_request_json_https)
     issues, headers = sentry_mod._request_project_issues("my-org", "my-project", "token")
 
-    assert issues == []
-    assert headers["x-hits"] == "0"
-    assert captured["host"] == "sentry.io"
-    assert captured["path"] == "/api/0/projects/my-org/my-project/issues/"
-    assert captured["query"] == {"query": "is:unresolved", "limit": "1"}
+    ensure(issues == [])
+    ensure(headers['x-hits'] == '0')
+    ensure(captured['host'] == 'sentry.io')
+    ensure(captured['path'] == '/api/0/projects/my-org/my-project/issues/')
+    ensure(captured['query'] == {'query': 'is:unresolved', 'limit': '1'})
