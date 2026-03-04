@@ -19,6 +19,11 @@ class _Var:
     def set(self, value) -> None:
         self._value = value
 
+def test_var_get_set_roundtrip():
+    var = _Var("initial")
+    ensure(var.get() == "initial")
+    var.set("updated")
+    ensure(var.get() == "updated")
 
 class _TkVars:
     StringVar = _Var
@@ -124,3 +129,4 @@ def test_load_ui_state_handles_from_dict_type_error(tmp_path: Path, monkeypatch)
 
     ensure(isinstance(loaded, PersistedUiState))
     ensure(loaded.sort_column == "name")
+
