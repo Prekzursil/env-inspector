@@ -114,9 +114,9 @@ def _request_payload_with_retry(
         time.sleep(wait_seconds)
         wait_seconds = _next_retry_wait(wait_seconds)
 
-    if last_error is not None:
-        raise last_error
-    raise RuntimeError(f"Failed to query GitHub endpoint: {endpoint}")
+    if last_error is None:
+        raise RuntimeError(f"Failed to query GitHub endpoint: {endpoint}")
+    raise RuntimeError(f"Failed to query GitHub endpoint: {endpoint}") from last_error
 
 
 def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
@@ -365,3 +365,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
