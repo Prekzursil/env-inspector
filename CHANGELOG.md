@@ -9,6 +9,16 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- No changes yet.
+
+### Changed
+
+- No changes yet.
+
+## [2.0.0] - 2026-03-04
+
+### Added
+
 - **Phase 3: KPI Instrumentation**
   - Weekly KPI digest workflow (`.github/workflows/kpi-weekly-digest.yml`) tracking lead time, cycle time, rework rate, queue failure rate, and evidence completeness.
   - Branch protection policy documentation (`.github/BRANCH_PROTECTION.md`) with human approval requirements and status checks.
