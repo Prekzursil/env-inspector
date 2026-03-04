@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
-ASSIGN_LINE_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
-POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE)
+_ENV_KEY_PATTERN = r"(?:[^\W\d])\w*"
+ENV_KEY_RE = re.compile(rf"^{_ENV_KEY_PATTERN}$")
+EXPORT_LINE_RE = re.compile(rf"^\s*export\s+({_ENV_KEY_PATTERN})=(.*)$")
+ASSIGN_LINE_RE = re.compile(rf"^\s*({_ENV_KEY_PATTERN})=(.*)$")
+POWERSHELL_ENV_RE = re.compile(rf"^\s*\$env:({_ENV_KEY_PATTERN})\s*=", re.IGNORECASE)
 
 
 def validate_env_key(key: str) -> None:
@@ -193,3 +194,4 @@ def remove_powershell_env(content: str, key: str) -> str:
     lines = content.splitlines()
     out = [line for line in lines if not _matches_powershell_key(line, key)]
     return _render_remove(out, content.endswith("\n"))
+

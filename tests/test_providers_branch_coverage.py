@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 from pathlib import Path
-from typing import List
+from typing import Any, List, cast
 import unittest
 
 import pytest
@@ -13,6 +13,9 @@ from env_inspector_core.path_policy import PathPolicyError
 
 def _case() -> unittest.TestCase:
     return unittest.TestCase()
+
+def _as_wsl_provider(value: Any) -> Any:
+    return cast(Any, value)
 
 
 def test_is_workspace_scoped_path_checks_exact_and_descendant(tmp_path: Path):
@@ -94,7 +97,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
             }
             return mapping.get(path, "")
 
-    rows = providers.collect_wsl_records(_FakeWsl(), include_etc=True)
+    rows = providers.collect_wsl_records(_as_wsl_provider(_FakeWsl()), include_etc=True)
 
     case = _case()
     case.assertTrue(any(r.source_type == SOURCE_WSL_BASHRC and r.name == "API_TOKEN" for r in rows))
@@ -112,7 +115,7 @@ def test_collect_wsl_records_respects_excluded_distros():
         def read_file(self, distro: str, path: str) -> str:
             return ""
 
-    rows = providers.collect_wsl_records(_FakeWsl(), include_etc=False, exclude_distros={"ubuntu"})
+    rows = providers.collect_wsl_records(_as_wsl_provider(_FakeWsl()), include_etc=False, exclude_distros={"ubuntu"})
 
     _case().assertTrue(all(r.source_id != "Ubuntu" for r in rows))
 
@@ -122,9 +125,9 @@ def test_collect_wsl_helpers_return_empty_when_wsl_unavailable():
         def available(self) -> bool:
             return False
 
-    _case().assertEqual(providers.collect_wsl_records(_FakeWsl()), [])
+    _case().assertEqual(providers.collect_wsl_records(_as_wsl_provider(_FakeWsl())), [])
     _case().assertEqual(
-        providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2),
+        providers.collect_wsl_dotenv_records(_as_wsl_provider(_FakeWsl()), "Ubuntu", "/workspace", 2),
         [],
     )
 
@@ -140,7 +143,7 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
         def read_file(self, distro: str, path: str) -> str:
             return "A=1\n"
 
-    rows = providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2)
+    rows = providers.collect_wsl_dotenv_records(_as_wsl_provider(_FakeWsl()), "Ubuntu", "/workspace", 2)
 
     case = _case()
     case.assertEqual(len(rows), 1)

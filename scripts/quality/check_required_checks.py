@@ -7,8 +7,9 @@ import os
 import re
 import sys
 import time
+import urllib.error
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from ._security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
@@ -17,6 +18,7 @@ except ImportError:  # pragma: no cover - direct script execution
 
 GITHUB_API_HOST = "api.github.com"
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
+_TRANSIENT_HTTP_CODES = {429, 500, 502, 503, 504}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -58,36 +60,76 @@ def _github_headers(token: str) -> Dict[str, str]:
     }
 
 
+def _is_transient_http_error(exc: urllib.error.HTTPError) -> bool:
+    return int(exc.code) in _TRANSIENT_HTTP_CODES
+
+
+def _request_payload_with_retry(
+    *,
+    owner: str,
+    repo: str,
+    sha: str,
+    token: str,
+    endpoint: str,
+    query: Optional[Dict[str, str]] = None,
+    attempts: int = 5,
+) -> Dict[str, Any]:
+    wait_seconds = 1
+    last_error: Optional[Exception] = None
+
+    for attempt in range(1, max(attempts, 1) + 1):
+        try:
+            payload, _headers = request_json_https(
+                host=GITHUB_API_HOST,
+                path=f"/repos/{owner}/{repo}/commits/{sha}/{endpoint}",
+                headers={
+                    **_github_headers(token),
+                },
+                query=query,
+                method="GET",
+            )
+            if not isinstance(payload, dict):
+                raise RuntimeError(f"Unexpected GitHub {endpoint} response payload.")
+            return payload
+        except urllib.error.HTTPError as exc:
+            last_error = exc
+            if not _is_transient_http_error(exc) or attempt >= attempts:
+                raise
+        except urllib.error.URLError as exc:
+            last_error = exc
+            if attempt >= attempts:
+                raise
+
+        time.sleep(wait_seconds)
+        wait_seconds = min(wait_seconds * 2, 10)
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError(f"Failed to query GitHub endpoint: {endpoint}")
+
+
 def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
-    payload, _headers = request_json_https(
-        host=GITHUB_API_HOST,
-        path=f"/repos/{owner}/{repo}/commits/{sha}/check-runs",
-        headers={
-            **_github_headers(token),
-        },
+    return _request_payload_with_retry(
+        owner=owner,
+        repo=repo,
+        sha=sha,
+        token=token,
+        endpoint="check-runs",
         query={"per_page": "100"},
-        method="GET",
     )
-    if not isinstance(payload, dict):
-        raise RuntimeError("Unexpected GitHub check-runs response payload.")
-    return payload
 
 
 def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
-    payload, _headers = request_json_https(
-        host=GITHUB_API_HOST,
-        path=f"/repos/{owner}/{repo}/commits/{sha}/status",
-        headers={
-            **_github_headers(token),
-        },
-        method="GET",
+    return _request_payload_with_retry(
+        owner=owner,
+        repo=repo,
+        sha=sha,
+        token=token,
+        endpoint="status",
     )
-    if not isinstance(payload, dict):
-        raise RuntimeError("Unexpected GitHub status response payload.")
-    return payload
 
 
-def _check_run_context(run: Dict[str, Any]) -> Tuple[str, Dict[str, str]] | None:
+def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
     name = str(run.get("name") or "").strip()
     if not name:
         return None
@@ -98,7 +140,7 @@ def _check_run_context(run: Dict[str, Any]) -> Tuple[str, Dict[str, str]] | None
     }
 
 
-def _status_context(status: Dict[str, Any]) -> Tuple[str, Dict[str, str]] | None:
+def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
     name = str(status.get("context") or "").strip()
     if not name:
         return None
@@ -128,7 +170,7 @@ def _collect_contexts(check_runs_payload: Dict[str, Any], status_payload: Dict[s
     return contexts
 
 
-def _check_run_failure(context: str, observed: Dict[str, str]) -> str | None:
+def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
     state = observed.get("state")
     if state != "completed":
         return f"{context}: status={state}"
@@ -139,7 +181,7 @@ def _check_run_failure(context: str, observed: Dict[str, str]) -> str | None:
     return None
 
 
-def _status_failure(context: str, observed: Dict[str, str]) -> str | None:
+def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
     conclusion = observed.get("conclusion")
     if conclusion != "success":
         return f"{context}: state={conclusion}"
@@ -167,7 +209,7 @@ def _evaluate(required: List[str], contexts: Dict[str, Dict[str, str]]) -> Tuple
     return status, missing, failed
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     lines = [
         "# Quality Zero Gate - Required Contexts",
         "",
@@ -255,7 +297,7 @@ def _collect_until_settled(
     poll_seconds: int,
 ) -> Dict[str, Any]:
     deadline = time.time() + max(timeout_seconds, 1)
-    final_payload: Dict[str, Any] | None = None
+    final_payload: Optional[Dict[str, Any]] = None
 
     while time.time() <= deadline:
         check_runs = _api_get_check_runs(owner=owner_slug, repo=repo_slug, sha=sha, token=token)

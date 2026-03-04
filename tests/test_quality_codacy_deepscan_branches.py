@@ -4,6 +4,7 @@ from email.message import Message
 import secrets
 import sys
 import unittest
+from typing import NoReturn
 import urllib.error
 
 import pytest
@@ -22,6 +23,10 @@ def _token() -> str:
 
 def _http_error(code: int) -> urllib.error.HTTPError:
     return urllib.error.HTTPError(url="https://api.example", code=code, msg="err", hdrs=Message(), fp=None)
+
+
+def _raise_for_test(exc: Exception) -> NoReturn:
+    raise exc
 
 
 def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
@@ -149,7 +154,7 @@ def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
 
 
 def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
-    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(_http_error(404)))
+    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: _raise_for_test(_http_error(404)))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
@@ -163,7 +168,7 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
     case.assertEqual(findings, [])
     case.assertIsInstance(error, urllib.error.HTTPError)
 
-    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(_http_error(500)))
+    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: _raise_for_test(_http_error(500)))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
@@ -177,7 +182,7 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
     case.assertIn("HTTP 500", findings[0])
     case.assertIsInstance(error, urllib.error.HTTPError)
 
-    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: (_ for _ in ()).throw(ValueError("bad")))
+    monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: _raise_for_test(ValueError("bad")))
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
         provider="gh",
         owner="Prekzursil",
@@ -250,7 +255,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
-        lambda **_kwargs: (_ for _ in ()).throw(urllib.error.URLError("network")),
+        lambda **_kwargs: _raise_for_test(urllib.error.URLError("network")),
     )
     open_issues = deepscan_mod._fetch_open_issues(
         host="deepscan.io",
@@ -337,3 +342,4 @@ def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
     rc = codacy_mod.main()
 
     _case().assertEqual(rc, 0)
+
