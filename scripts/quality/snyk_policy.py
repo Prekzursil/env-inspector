@@ -1,6 +1,7 @@
-from __future__ import annotations, absolute_import, division
+#!/usr/bin/env python3
 
 import re
+from typing import Dict, Tuple
 
 SnykOutcome = str
 
@@ -33,7 +34,7 @@ def detect_findings(log_text: str) -> bool:
     return False
 
 
-def classify_scan(*, executed: bool, exit_code: int | None, log_text: str) -> SnykOutcome:
+def classify_scan(*, executed: bool, exit_code: int = 0, log_text: str) -> SnykOutcome:
     if not executed:
         return "skipped"
 
@@ -51,7 +52,7 @@ def classify_scan(*, executed: bool, exit_code: int | None, log_text: str) -> Sn
     return "runtime_error"
 
 
-def _decision_flags(oss_outcome: SnykOutcome, code_outcome: SnykOutcome) -> tuple[bool, bool, bool]:
+def _decision_flags(oss_outcome: SnykOutcome, code_outcome: SnykOutcome) -> Tuple[bool, bool, bool]:
     outcomes = {oss_outcome, code_outcome}
     quota_detected = bool(outcomes & {"quota_exhausted", "quota_with_findings"})
     findings_detected = bool(outcomes & {"vulns_found", "quota_with_findings"})
@@ -64,7 +65,7 @@ def _decision_tuple(
     quota_detected: bool,
     findings_detected: bool,
     runtime_error_detected: bool,
-) -> tuple[str, str, bool]:
+) -> Tuple[str, str, bool]:
     if findings_detected and quota_detected:
         return "fail", "findings_detected_with_quota_exhaustion", True
     if findings_detected:
@@ -88,7 +89,7 @@ def decide_policy(
     oss_outcome: SnykOutcome,
     code_outcome: SnykOutcome,
     project_url: str = "",
-) -> dict[str, object]:
+) -> Dict[str, object]:
     quota_detected, findings_detected, runtime_error_detected = _decision_flags(oss_outcome, code_outcome)
     decision, decision_reason, manual_retest_required = _decision_tuple(
         quota_detected=quota_detected,

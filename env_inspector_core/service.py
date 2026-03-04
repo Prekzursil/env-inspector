@@ -593,6 +593,84 @@ class EnvInspectorService:
             return
         raise RuntimeError(f"Unsupported target: {target}")
 
+    @staticmethod
+    def _masked_secret_value(secret_operation: bool, value: str | None) -> str | None:
+        if not secret_operation or value is None:
+            return None
+        return mask_value(value)
+
+    def _execute_target_operation(
+        self,
+        *,
+        action: str,
+        key: str,
+        value: str | None,
+        target: str,
+        preview_only: bool,
+        scope_roots: list[Path],
+        secret_operation: bool,
+    ) -> OperationResult:
+        operation_id = f"{action}-{uuid.uuid4().hex[:10]}"
+        backup_path: str | None = None
+        diff_preview = ""
+        masked_value = self._masked_secret_value(secret_operation, value)
+
+        try:
+            self._validate_target_for_operation(target, scope_roots=scope_roots)
+            before, after, _, _, _ = self._plan_target_operation(
+                target=target,
+                key=key,
+                value=value,
+                action=action,
+                apply_changes=False,
+                scope_roots=scope_roots,
+            )
+            diff_preview = self._diff(before, after, target)
+
+            if preview_only:
+                return OperationResult(
+                    operation_id=operation_id,
+                    target=target,
+                    action=action,
+                    success=True,
+                    backup_path=None,
+                    diff_preview=diff_preview,
+                    error_message=None,
+                    value_masked=masked_value,
+                )
+
+            backup = self.backup_mgr.backup_text(target, before)
+            backup_path = str(backup)
+            self._plan_target_operation(
+                target=target,
+                key=key,
+                value=value,
+                action=action,
+                apply_changes=True,
+                scope_roots=scope_roots,
+            )
+            return OperationResult(
+                operation_id=operation_id,
+                target=target,
+                action=action,
+                success=True,
+                backup_path=backup_path,
+                diff_preview=diff_preview,
+                error_message=None,
+                value_masked=masked_value,
+            )
+        except Exception as exc:
+            return OperationResult(
+                operation_id=operation_id,
+                target=target,
+                action=action,
+                success=False,
+                backup_path=backup_path,
+                diff_preview=diff_preview,
+                error_message=str(exc),
+                value_masked=masked_value,
+            )
+
     def _apply(
         self,
         action: str,
@@ -606,76 +684,22 @@ class EnvInspectorService:
         validate_env_key(key)
         if action == "set":
             validate_env_value(value or "")
+
         secret_operation = looks_secret(key, value or "")
         resolved_scope_roots = self._effective_scope_roots(scope_roots)
-
         results: list[OperationResult] = []
         for target in targets:
-            operation_id = f"{action}-{uuid.uuid4().hex[:10]}"
-            backup_path: str | None = None
-            diff_preview = ""
-            try:
-                self._validate_target_for_operation(target, scope_roots=resolved_scope_roots)
-                before, after, _, _, _ = self._plan_target_operation(
-                    target=target,
-                    key=key,
-                    value=value,
-                    action=action,
-                    apply_changes=False,
-                    scope_roots=resolved_scope_roots,
-                )
-                diff_preview = self._diff(before, after, target)
-
-                if preview_only:
-                    result = OperationResult(
-                        operation_id=operation_id,
-                        target=target,
-                        action=action,
-                        success=True,
-                        backup_path=None,
-                        diff_preview=diff_preview,
-                        error_message=None,
-                        value_masked=mask_value(value or "") if secret_operation and value is not None else None,
-                    )
-                else:
-                    backup = self.backup_mgr.backup_text(target, before)
-                    backup_path = str(backup)
-
-                    self._plan_target_operation(
-                        target=target,
-                        key=key,
-                        value=value,
-                        action=action,
-                        apply_changes=True,
-                        scope_roots=resolved_scope_roots,
-                    )
-
-                    result = OperationResult(
-                        operation_id=operation_id,
-                        target=target,
-                        action=action,
-                        success=True,
-                        backup_path=backup_path,
-                        diff_preview=diff_preview,
-                        error_message=None,
-                        value_masked=mask_value(value or "") if secret_operation and value is not None else None,
-                    )
-
-            except Exception as exc:
-                result = OperationResult(
-                    operation_id=operation_id,
-                    target=target,
-                    action=action,
-                    success=False,
-                    backup_path=backup_path,
-                    diff_preview=diff_preview,
-                    error_message=str(exc),
-                    value_masked=mask_value(value or "") if secret_operation and value is not None else None,
-                )
-
+            result = self._execute_target_operation(
+                action=action,
+                key=key,
+                value=value,
+                target=target,
+                preview_only=preview_only,
+                scope_roots=resolved_scope_roots,
+                secret_operation=secret_operation,
+            )
             self.audit.log(self._audit_safe_result(result, redact=secret_operation))
             results.append(result)
-
         return results
 
     @staticmethod

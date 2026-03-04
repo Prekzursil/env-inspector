@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
 
 import argparse
 import json
@@ -7,6 +6,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
@@ -44,9 +44,9 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _dedupe(items: list[str]) -> list[str]:
-    seen: set[str] = set()
-    out: list[str] = []
+def _dedupe(items: List[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
     for item in items:
         key = str(item or "").strip()
         if not key or key in seen:
@@ -57,11 +57,11 @@ def _dedupe(items: list[str]) -> list[str]:
 
 
 def _apply_deepscan_policy(
-    required_secrets: list[str],
-    required_vars: list[str],
+    required_secrets: List[str],
+    required_vars: List[str],
     *,
     policy_mode: str,
-) -> tuple[list[str], list[str]]:
+) -> Tuple[List[str], List[str]]:
     if policy_mode != "github_check_context":
         return required_secrets, required_vars
 
@@ -74,9 +74,9 @@ def _is_missing(name: str) -> bool:
     return not str(os.environ.get(name, "")).strip()
 
 
-def _partition_required(names: list[str]) -> tuple[list[str], list[str]]:
-    missing: list[str] = []
-    present: list[str] = []
+def _partition_required(names: List[str]) -> Tuple[List[str], List[str]]:
+    missing: List[str] = []
+    present: List[str] = []
     for name in names:
         if _is_missing(name):
             missing.append(name)
@@ -85,7 +85,7 @@ def _partition_required(names: list[str]) -> tuple[list[str], list[str]]:
     return missing, present
 
 
-def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
+def evaluate_env(required_secrets: List[str], required_vars: List[str]) -> Dict[str, List[str]]:
     missing_secrets, present_secrets = _partition_required(required_secrets)
     missing_vars, present_vars = _partition_required(required_vars)
     return {
@@ -96,7 +96,7 @@ def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[
     }
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, object]) -> str:
     lines = [
         "# Quality Secrets Preflight",
         "",

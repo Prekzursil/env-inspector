@@ -10,17 +10,21 @@ GITHUB_TOKEN_RE = re.compile(r"^(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-
 BASE64ISH_RE = re.compile(r"^[A-Za-z0-9+/=_\-.]{32,}$")
 
 
+def _looks_path_like(value: str) -> bool:
+    return value.startswith(("/", "./", "../")) or "://" in value or "\\" in value or ":" in value
+
+
+def _looks_high_entropy_value(value: str) -> bool:
+    return len(value) >= 48 and BASE64ISH_RE.match(value) is not None and not _looks_path_like(value)
+
+
 def looks_secret(name: str, value: str) -> bool:
-    if SECRET_NAME_RE.search(name):
-        return True
-    v = value.strip()
-    if GITHUB_TOKEN_RE.match(v):
-        return True
-    if len(v) >= 48 and BASE64ISH_RE.match(v):
-        if v.startswith(("/", "./", "../")) or "://" in v or "\\" in v or ":" in v:
-            return False
-        return True
-    return False
+    stripped_value = value.strip()
+    return (
+        SECRET_NAME_RE.search(name) is not None
+        or GITHUB_TOKEN_RE.match(stripped_value) is not None
+        or _looks_high_entropy_value(stripped_value)
+    )
 
 
 def mask_value(value: str, reveal: bool = False) -> str:

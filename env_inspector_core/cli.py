@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Callable, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -51,6 +51,101 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _print_json(payload: Any) -> None:
+    print(json.dumps(payload, ensure_ascii=True, indent=2))
+
+
+def _command_success(payload: Any) -> bool:
+    if isinstance(payload, dict):
+        return bool(payload.get("success", True))
+    return all(bool(item.get("success", False)) for item in payload)
+
+
+def _handle_list(args: argparse.Namespace, service: EnvInspectorService) -> int:
+    rows = service.list_records(
+        root=args.root,
+        context=args.context,
+        source=args.source,
+        wsl_path=args.wsl_path,
+        distro=args.distro,
+        scan_depth=args.scan_depth,
+        include_raw_secrets=args.include_raw_secrets,
+    )
+    if args.output == "json":
+        _print_json(rows)
+        return 0
+
+    export_text = service.export_records(
+        output=args.output,
+        include_raw_secrets=args.include_raw_secrets,
+        root=args.root,
+        context=args.context,
+        source=args.source,
+        wsl_path=args.wsl_path,
+        distro=args.distro,
+        scan_depth=args.scan_depth,
+    )
+    print(export_text, end="")
+    return 0
+
+
+def _handle_set(args: argparse.Namespace, service: EnvInspectorService) -> int:
+    payload = (
+        service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
+        if args.preview_only
+        else service.set_key(
+            key=args.key,
+            value=args.value,
+            targets=args.target,
+            scope_roots=args.root,
+        )
+    )
+    _print_json(payload)
+    return 0 if _command_success(payload) else 1
+
+
+def _handle_remove(args: argparse.Namespace, service: EnvInspectorService) -> int:
+    payload = (
+        service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root)
+        if args.preview_only
+        else service.remove_key(
+            key=args.key,
+            targets=args.target,
+            scope_roots=args.root,
+        )
+    )
+    _print_json(payload)
+    return 0 if _command_success(payload) else 1
+
+
+def _handle_export(args: argparse.Namespace, service: EnvInspectorService) -> int:
+    print(
+        service.export_records(
+            output=args.output,
+            include_raw_secrets=args.include_raw_secrets,
+            root=args.root,
+            context=args.context,
+            source=args.source,
+            wsl_path=args.wsl_path,
+            distro=args.distro,
+            scan_depth=args.scan_depth,
+        ),
+        end="",
+    )
+    return 0
+
+
+def _handle_backup(args: argparse.Namespace, service: EnvInspectorService) -> int:
+    _print_json(service.list_backups(target=args.target))
+    return 0
+
+
+def _handle_restore(args: argparse.Namespace, service: EnvInspectorService) -> int:
+    payload = service.restore_backup(backup=args.backup)
+    _print_json(payload)
+    return 0 if payload.get("success") else 1
+
+
 def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -60,77 +155,16 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
 
     service = service or EnvInspectorService()
 
-    if args.command == "list":
-        rows = service.list_records(
-            root=args.root,
-            context=args.context,
-            source=args.source,
-            wsl_path=args.wsl_path,
-            distro=args.distro,
-            scan_depth=args.scan_depth,
-            include_raw_secrets=args.include_raw_secrets,
-        )
-        if args.output == "json":
-            print(json.dumps(rows, ensure_ascii=True, indent=2))
-        elif args.output == "csv":
-            print(service.export_records(output="csv", include_raw_secrets=args.include_raw_secrets, root=args.root, context=args.context, source=args.source, wsl_path=args.wsl_path, distro=args.distro, scan_depth=args.scan_depth), end="")
-        else:
-            print(service.export_records(output="table", include_raw_secrets=args.include_raw_secrets, root=args.root, context=args.context, source=args.source, wsl_path=args.wsl_path, distro=args.distro, scan_depth=args.scan_depth), end="")
-        return 0
-
-    if args.command == "set":
-        payload = (
-            service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
-            if args.preview_only
-            else service.set_key(
-                key=args.key,
-                value=args.value,
-                targets=args.target,
-                scope_roots=args.root,
-            )
-        )
-        print(json.dumps(payload, ensure_ascii=True, indent=2))
-        success = payload.get("success", True) if isinstance(payload, dict) else all(x.get("success", False) for x in payload)
-        return 0 if success else 1
-
-    if args.command == "remove":
-        payload = (
-            service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root)
-            if args.preview_only
-            else service.remove_key(
-                key=args.key,
-                targets=args.target,
-                scope_roots=args.root,
-            )
-        )
-        print(json.dumps(payload, ensure_ascii=True, indent=2))
-        success = payload.get("success", True) if isinstance(payload, dict) else all(x.get("success", False) for x in payload)
-        return 0 if success else 1
-
-    if args.command == "export":
-        print(
-            service.export_records(
-                output=args.output,
-                include_raw_secrets=args.include_raw_secrets,
-                root=args.root,
-                context=args.context,
-                source=args.source,
-                wsl_path=args.wsl_path,
-                distro=args.distro,
-                scan_depth=args.scan_depth,
-            ),
-            end="",
-        )
-        return 0
-
-    if args.command == "backup":
-        print(json.dumps(service.list_backups(target=args.target), ensure_ascii=True, indent=2))
-        return 0
-
-    if args.command == "restore":
-        payload = service.restore_backup(backup=args.backup)
-        print(json.dumps(payload, ensure_ascii=True, indent=2))
-        return 0 if payload.get("success") else 1
-
-    print(f"Unknown command: {args.command}", file=sys.stderr)
-    return 2
+    handlers: dict[str, Callable[[argparse.Namespace, EnvInspectorService], int]] = {
+        "list": _handle_list,
+        "set": _handle_set,
+        "remove": _handle_remove,
+        "export": _handle_export,
+        "backup": _handle_backup,
+        "restore": _handle_restore,
+    }
+    handler = handlers.get(args.command)
+    if handler is None:
+        print(f"Unknown command: {args.command}", file=sys.stderr)
+        return 2
+    return handler(args, service)
