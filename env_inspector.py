@@ -28,13 +28,19 @@ def _legacy_print_secrets(root: str | Path) -> int:
         return 2
 
     svc = EnvInspectorService()
-    original_cwd = Path.cwd()
-    os.chdir(safe_root)
-    try:
-        # Read records from the validated root without forwarding raw CLI path input.
-        rows = svc.list_records(include_raw_secrets=True)
-    finally:
-        os.chdir(original_cwd)
+    rows = svc.list_records(include_raw_secrets=True)
+
+    safe_root_text = str(safe_root)
+
+    def _in_scan_root(row: dict[str, object]) -> bool:
+        if row.get("source_type") != "dotenv":
+            return True
+        source_id = str(row.get("source_id") or "")
+        candidate = Path(source_id).resolve(strict=False)
+        candidate_text = str(candidate)
+        return candidate_text == safe_root_text or candidate_text.startswith(safe_root_text + os.sep)
+
+    rows = [row for row in rows if _in_scan_root(row)]
     for row in rows:
         if row.get("is_secret"):
             print(f"{row.get('source_type')}:{row.get('source_id')}\t{row.get('name')}")
