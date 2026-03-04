@@ -269,7 +269,7 @@ class WslProvider:
             return ""
         if b"\x00" in data:
             try:
-                return data.decode("utf-16le", errors="ignore").replace("\x00", "")
+                return data.decode("utf-16le").replace("\x00", "")
             except UnicodeDecodeError:
                 return data.decode(errors="ignore")
         return data.decode(errors="ignore")
@@ -599,5 +599,7 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
+
+
 
 

@@ -3,7 +3,9 @@ from env_inspector_core.parsing import (
     parse_bash_exports,
     parse_etc_environment,
     upsert_export,
+    upsert_key_value,
     remove_export,
+    remove_key_value,
     remove_powershell_env,
     upsert_powershell_env,
 )
@@ -58,6 +60,17 @@ def test_upsert_and_remove_export_roundtrip():
     assert "export B=" not in removed
 
 
+def test_remove_key_value_handles_assign_export_and_comments():
+    base = "# keep me\n\nA=1\n export A='2'\nB=3\n"
+
+    removed = remove_key_value(base, "A")
+
+    assert "A=1" not in removed
+    assert "export A='2'" not in removed
+    assert "# keep me" in removed
+    assert "B=3" in removed
+
+
 def test_upsert_and_remove_powershell_env_roundtrip():
     base = "$env:API_TOKEN = 'old'\nWrite-Host 'hi'\n"
     updated = upsert_powershell_env(base, "API_TOKEN", "new")
@@ -67,5 +80,16 @@ def test_upsert_and_remove_powershell_env_roundtrip():
     appended = upsert_powershell_env(updated, "NEW_KEY", "v")
     assert "$env:NEW_KEY = 'v'" in appended
 
-    removed = remove_powershell_env(appended, "API_TOKEN")
+    removed = remove_powershell_env(appended, "api_token")
     assert "$env:API_TOKEN" not in removed
+
+
+
+def test_upsert_key_value_ignores_blank_and_comment_lines_when_matching():
+    base = "# keep\n\nA=1\n"
+
+    updated = upsert_key_value(base, "NEW_KEY", "v", quote=False)
+
+    assert "# keep" in updated
+    assert "A=1" in updated
+    assert "NEW_KEY=v" in updated

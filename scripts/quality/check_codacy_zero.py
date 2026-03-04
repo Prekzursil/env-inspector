@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - direct script execution
 
 TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
 CODACY_API_HOST = "api.codacy.com"
+CODACY_REQUEST_EXCEPTIONS = (urllib.error.URLError, ValueError, TypeError, RuntimeError)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -147,6 +148,59 @@ def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]
     return findings
 
 
+def _fetch_open_issues_for_provider(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[bool, int | None, list[str], Exception | None]:
+    findings: list[str] = []
+    open_issues: int | None = None
+
+    try:
+        payload = _request_json(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            branch=branch,
+            limit=1,
+            method="POST",
+            data={},
+        )
+        open_issues = extract_total_open(payload)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False, None, [], exc
+        return True, None, [f"Codacy API request failed: HTTP {exc.code}"], exc
+    except CODACY_REQUEST_EXCEPTIONS as exc:  # pragma: no cover - network/runtime surface
+        return True, None, [f"Codacy API request failed: {exc}"], exc
+
+    if open_issues is None:
+        findings.append("Codacy response did not include a parseable total issue count.")
+        return True, open_issues, findings, None
+
+    if open_issues == 0:
+        return True, open_issues, findings, None
+
+    findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
+    sample_payload = _request_json(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        branch=branch,
+        limit=20,
+        method="POST",
+        data={},
+    )
+    findings.extend(_sample_issue_findings(sample_payload))
+    return True, open_issues, findings, None
+
+
+
 def _query_open_issues(
     *,
     provider: str,
@@ -155,56 +209,27 @@ def _query_open_issues(
     token: str,
     branch: str,
 ) -> tuple[int | None, list[str]]:
-    findings: list[str] = []
-    open_issues: int | None = None
     last_exc: Exception | None = None
 
     for candidate in _provider_candidates(provider):
-        try:
-            payload = _request_json(
-                provider=candidate,
-                owner=owner,
-                repo=repo,
-                token=token,
-                branch=branch,
-                limit=1,
-                method="POST",
-                data={},
-            )
-            open_issues = extract_total_open(payload)
-            if open_issues is None:
-                findings.append("Codacy response did not include a parseable total issue count.")
-            elif open_issues != 0:
-                findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
-                sample_payload = _request_json(
-                    provider=candidate,
-                    owner=owner,
-                    repo=repo,
-                    token=token,
-                    branch=branch,
-                    limit=20,
-                    method="POST",
-                    data={},
-                )
-                findings.extend(_sample_issue_findings(sample_payload))
+        handled, open_issues, findings, error = _fetch_open_issues_for_provider(
+            provider=candidate,
+            owner=owner,
+            repo=repo,
+            token=token,
+            branch=branch,
+        )
+        if handled:
             return open_issues, findings
-        except urllib.error.HTTPError as exc:
-            last_exc = exc
-            if exc.code == 404:
-                continue
-            findings.append(f"Codacy API request failed: HTTP {exc.code}")
-            return open_issues, findings
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            last_exc = exc
-            findings.append(f"Codacy API request failed: {exc}")
-            return open_issues, findings
+        last_exc = error
 
-    findings.append(
+    findings = [
         f"Codacy API endpoint was not found for provider(s): {', '.join(_provider_candidates(provider))}."
-    )
+    ]
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")
-    return open_issues, findings
+    return None, findings
+
 
 
 def _render_md(payload: dict) -> str:
@@ -276,3 +301,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

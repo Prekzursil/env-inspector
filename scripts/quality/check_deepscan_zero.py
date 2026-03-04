@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+import urllib.error
 from datetime import datetime, timezone
 from typing import Any
 
@@ -34,8 +35,7 @@ def extract_total_open(payload: Any) -> int | None:
                 if isinstance(value, (int, float)):
                     return int(value)
             stack.extend(node.values())
-            continue
-        if isinstance(node, list):
+        elif isinstance(node, list):
             stack.extend(node)
     return None
 
@@ -48,7 +48,7 @@ def _request_json(*, host: str, path: str, query: dict[str, str], token: str) ->
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
-            "User-Agent": "env-inspector-deepscan-zero-gate",
+            "User-Agent": "reframe-deepscan-zero-gate",
         },
         method="GET",
     )
@@ -57,29 +57,14 @@ def _request_json(*, host: str, path: str, query: dict[str, str], token: str) ->
     return payload
 
 
-def _read_runtime_inputs(args: argparse.Namespace) -> tuple[str, str, list[str]]:
-    token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
-    open_issues_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
-    findings: list[str] = []
-    if not token:
-        findings.append("DEEPSCAN_API_TOKEN is missing.")
-    if not open_issues_url:
-        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
-    return token, open_issues_url, findings
+def _resolve_deepscan_endpoint(open_issues_url: str) -> tuple[str, str, dict[str, str]]:
+    return split_validated_https_url(
+        open_issues_url,
+        allowed_host_suffixes={"deepscan.io"},
+    )
 
 
-def _parse_open_issues_url(open_issues_url: str, findings: list[str]) -> tuple[str, str, dict[str, str]] | None:
-    try:
-        return split_validated_https_url(
-            open_issues_url,
-            allowed_host_suffixes={"deepscan.io"},
-        )
-    except ValueError as exc:
-        findings.append(str(exc))
-        return None
-
-
-def _resolve_open_issue_count(
+def _fetch_open_issues(
     *,
     host: str,
     path: str,
@@ -89,7 +74,7 @@ def _resolve_open_issue_count(
 ) -> int | None:
     try:
         payload = _request_json(host=host, path=path, query=query, token=token)
-    except Exception as exc:  # pragma: no cover - network/runtime surface
+    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError, TypeError) as exc:  # pragma: no cover - network/runtime surface
         findings.append(f"DeepScan API request failed: {exc}")
         return None
 
@@ -123,15 +108,20 @@ def _render_md(payload: dict) -> str:
 
 def main() -> int:
     args = _parse_args()
-    token, open_issues_url, findings = _read_runtime_inputs(args)
+    token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
+    open_issues_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
 
+    findings: list[str] = []
     open_issues: int | None = None
-    parsed_url: tuple[str, str, dict[str, str]] | None = None
+
+    if not token:
+        findings.append("DEEPSCAN_API_TOKEN is missing.")
+    if not open_issues_url:
+        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
+
     if not findings:
-        parsed_url = _parse_open_issues_url(open_issues_url, findings)
-    if parsed_url is not None and not findings:
-        host, path, query = parsed_url
-        open_issues = _resolve_open_issue_count(host=host, path=path, query=query, token=token, findings=findings)
+        host, path, query = _resolve_deepscan_endpoint(open_issues_url)
+        open_issues = _fetch_open_issues(host=host, path=path, query=query, token=token, findings=findings)
 
     status = "pass" if not findings else "fail"
     payload = {

@@ -6,6 +6,7 @@ import base64
 import json
 import os
 import sys
+import urllib.error
 from datetime import datetime, timezone
 from typing import Any
 
@@ -142,7 +143,7 @@ def _evaluate_sonar(
             branch=branch,
             pull_request=pull_request,
         )
-    except Exception as exc:  # pragma: no cover - network/runtime surface
+    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError, TypeError) as exc:  # pragma: no cover - network/runtime surface
         return open_issues, quality_gate, open_hotspots, quality_gate_warning, [f"Sonar API request failed: {exc}"]
 
     if open_issues != 0:

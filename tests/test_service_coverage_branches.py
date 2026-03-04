@@ -262,3 +262,75 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
             text="A=1\n",
             scope_roots=[allowed],
         )
+
+
+def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    class _FakeProvider:
+        USER_SCOPE = "User"
+        MACHINE_SCOPE = "Machine"
+
+        def list_scope(self, scope: str):
+            return {"A": "1"}
+
+        def set_scope_value(self, scope: str, key: str, value: str):
+            return None
+
+        def remove_scope_value(self, scope: str, key: str):
+            return None
+
+    svc.win_provider = _FakeProvider()  # type: ignore[assignment]
+
+    _before_user, _after_user, _path_user, user_requires_priv, _ = svc._registry_write(
+        "windows:user",
+        "A",
+        "2",
+        "set",
+        apply_changes=False,
+    )
+    _before_machine, _after_machine, _path_machine, machine_requires_priv, _ = svc._registry_write(
+        "windows:machine",
+        "A",
+        "2",
+        "set",
+        apply_changes=False,
+    )
+
+    assert user_requires_priv is False
+    assert machine_requires_priv is True
+
+    svc._registry_write(
+        "windows:user",
+        "B",
+        "9",
+        "set",
+        apply_changes=True,
+    )
+    svc._registry_write(
+        "windows:machine",
+        "A",
+        None,
+        "remove",
+        apply_changes=True,
+    )
+
+
+def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    current = tmp_path / "current.ps1"
+    all_users = tmp_path / "all.ps1"
+    monkeypatch.setattr(EnvInspectorService, "get_powershell_profile_paths", staticmethod(lambda: [current, all_users]))
+
+    assert svc._powershell_profile_path("powershell:current_user") == current
+    assert svc._powershell_profile_path("powershell:all_users") == all_users
+
+
+def test_validate_wsl_dotenv_path_rejects_empty_and_wrong_filename(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
+        svc._validate_wsl_dotenv_path("")
+
+    with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
+        svc._validate_wsl_dotenv_path("/home/user/not-env.txt")

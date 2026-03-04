@@ -8,7 +8,7 @@ import os
 import subprocess
 import uuid
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, List, Sequence, Tuple
 
 from .constants import (
     DEFAULT_BACKUP_RETENTION,
@@ -109,7 +109,7 @@ class EnvInspectorService:
             return False
 
     @classmethod
-    def _validate_path_in_roots(cls, path: Path, roots: list[Path] | tuple[Path, ...], *, label: str) -> Path:
+    def _validate_path_in_roots(cls, path: Path, roots: Sequence[Path], *, label: str) -> Path:
         resolved_path = path.resolve(strict=False)
         resolved_roots = [root.resolve(strict=False) for root in roots]
         for root in resolved_roots:
@@ -128,7 +128,7 @@ class EnvInspectorService:
         self,
         *,
         candidate_path: Path,
-        allowed_roots: list[Path] | tuple[Path, ...],
+        allowed_roots: Sequence[Path],
         text: str,
         label: str,
     ) -> Path:
@@ -136,7 +136,7 @@ class EnvInspectorService:
         self._write_text_file(safe_path, text, ensure_parent=True)
         return safe_path
 
-    def _powershell_target_path_and_roots(self, target: str) -> tuple[Path, list[Path], bool]:
+    def _powershell_target_path_and_roots(self, target: str) -> Tuple[Path, List[Path], bool]:
         if target == TARGET_POWERSHELL_CURRENT_USER:
             profile = self._powershell_profile_path(TARGET_POWERSHELL_CURRENT_USER).resolve(strict=False)
             return profile, [Path.home().resolve(strict=False)], False
@@ -607,7 +607,8 @@ class EnvInspectorService:
             return
         raise RuntimeError(f"Unsupported target: {target}")
 
-    def _masked_value(self, *, secret_operation: bool, value: str | None) -> str | None:
+    @staticmethod
+    def _masked_value(*, secret_operation: bool, value: str | None) -> str | None:
         if not secret_operation or value is None:
             return None
         return mask_value(value)
@@ -634,6 +635,57 @@ class EnvInspectorService:
             error_message=error_message,
             value_masked=value_masked,
         )
+    @staticmethod
+    def _operation_error_types() -> Tuple[type[BaseException], ...]:
+        return (
+            RuntimeError,
+            ValueError,
+            TypeError,
+            OSError,
+            PermissionError,
+            subprocess.SubprocessError,
+        )
+
+    def _preview_target_diff(
+        self,
+        *,
+        target: str,
+        key: str,
+        value: str | None,
+        action: str,
+        resolved_scope_roots: Sequence[Path],
+    ) -> tuple[str, str]:
+        self._validate_target_for_operation(target, scope_roots=list(resolved_scope_roots))
+        before, after, _, _, _ = self._plan_target_operation(
+            target=target,
+            key=key,
+            value=value,
+            action=action,
+            apply_changes=False,
+            scope_roots=list(resolved_scope_roots),
+        )
+        return before, self._diff(before, after, target)
+
+    def _apply_target_operation(
+        self,
+        *,
+        target: str,
+        key: str,
+        value: str | None,
+        action: str,
+        before: str,
+        resolved_scope_roots: Sequence[Path],
+    ) -> str:
+        backup_path = str(self.backup_mgr.backup_text(target, before))
+        self._plan_target_operation(
+            target=target,
+            key=key,
+            value=value,
+            action=action,
+            apply_changes=True,
+            scope_roots=list(resolved_scope_roots),
+        )
+        return backup_path
 
     def _execute_target_operation(
         self,
@@ -643,7 +695,7 @@ class EnvInspectorService:
         value: str | None,
         target: str,
         preview_only: bool,
-        resolved_scope_roots: list[Path],
+        resolved_scope_roots: Sequence[Path],
         secret_operation: bool,
     ) -> OperationResult:
         operation_id = f"{action}-{uuid.uuid4().hex[:10]}"
@@ -652,49 +704,33 @@ class EnvInspectorService:
         value_masked = self._masked_value(secret_operation=secret_operation, value=value)
 
         try:
-            self._validate_target_for_operation(target, scope_roots=resolved_scope_roots)
-            before, after, _, _, _ = self._plan_target_operation(
+            before, diff_preview = self._preview_target_diff(
                 target=target,
                 key=key,
                 value=value,
                 action=action,
-                apply_changes=False,
-                scope_roots=resolved_scope_roots,
+                resolved_scope_roots=resolved_scope_roots,
             )
-            diff_preview = self._diff(before, after, target)
-
-            if preview_only:
-                return self._make_operation_result(
-                    operation_id=operation_id,
+            if not preview_only:
+                backup_path = self._apply_target_operation(
                     target=target,
+                    key=key,
+                    value=value,
                     action=action,
-                    success=True,
-                    backup_path=None,
-                    diff_preview=diff_preview,
-                    error_message=None,
-                    value_masked=value_masked,
+                    before=before,
+                    resolved_scope_roots=resolved_scope_roots,
                 )
-
-            backup_path = str(self.backup_mgr.backup_text(target, before))
-            self._plan_target_operation(
-                target=target,
-                key=key,
-                value=value,
-                action=action,
-                apply_changes=True,
-                scope_roots=resolved_scope_roots,
-            )
             return self._make_operation_result(
                 operation_id=operation_id,
                 target=target,
                 action=action,
                 success=True,
-                backup_path=backup_path,
+                backup_path=(None if preview_only else backup_path),
                 diff_preview=diff_preview,
                 error_message=None,
                 value_masked=value_masked,
             )
-        except Exception as exc:
+        except self._operation_error_types() as exc:
             return self._make_operation_result(
                 operation_id=operation_id,
                 target=target,
@@ -950,4 +986,7 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
+
+
+
 
