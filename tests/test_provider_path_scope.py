@@ -14,7 +14,7 @@ def test_discover_dotenv_files_rejects_outside_workspace_root(tmp_path: Path, mo
 
     monkeypatch.chdir(workspace)
 
-    assert discover_dotenv_files(outside, max_depth=2) == []
+    ensure(discover_dotenv_files(outside, max_depth=2) == [])
 
 
 def test_discover_dotenv_files_accepts_workspace_root(tmp_path: Path, monkeypatch):
@@ -29,5 +29,5 @@ def test_discover_dotenv_files_accepts_workspace_root(tmp_path: Path, monkeypatc
 
     rows = discover_dotenv_files(workspace, max_depth=2)
 
-    assert workspace / ".env" in rows
-    assert nested / ".env.local" in rows
+    ensure(workspace / '.env' in rows)
+    ensure(nested / '.env.local' in rows)
