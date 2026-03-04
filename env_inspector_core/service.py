@@ -57,7 +57,25 @@ from .resolver import resolve_effective_value
 from .secrets import looks_secret, mask_value
 from .storage import AuditLogger, BackupManager
 
-
+TARGET_WINDOWS_USER = "windows:user"
+TARGET_WINDOWS_MACHINE = "windows:machine"
+TARGET_LINUX_BASHRC = "linux:bashrc"
+TARGET_LINUX_ETC_ENV = "linux:etc_environment"
+TARGET_POWERSHELL_CURRENT = "powershell:current_user"
+TARGET_POWERSHELL_ALL = "powershell:all_users"
+POWERSHELL_PREFIX = "powershell:"
+DOTENV_PREFIX = "dotenv:"
+WSL_DOTENV_PREFIX = "wsl_dotenv:"
+WSL_PREFIX = "wsl:"
+WSL_DOTENV_PATH_ERROR = "Unsupported WSL dotenv target path"
+SUPPORTED_DIRECT_TARGETS = {
+    TARGET_WINDOWS_USER,
+    TARGET_WINDOWS_MACHINE,
+    TARGET_LINUX_BASHRC,
+    TARGET_LINUX_ETC_ENV,
+    TARGET_POWERSHELL_CURRENT,
+    TARGET_POWERSHELL_ALL,
+}
 class EnvInspectorService:
     _LINUX_ETC_ENV_PATH = "/etc/environment"
 
@@ -127,10 +145,10 @@ class EnvInspectorService:
         return safe_path
 
     def _validated_powershell_restore_path(self, target: str) -> Path:
-        if target not in {"powershell:current_user", "powershell:all_users"}:
+        if target not in {TARGET_POWERSHELL_CURRENT, TARGET_POWERSHELL_ALL}:
             raise RuntimeError(f"Unsupported PowerShell target: {target}")
         profile = self._powershell_profile_path(target).resolve(strict=False)
-        if target == "powershell:current_user":
+        if target == TARGET_POWERSHELL_CURRENT:
             allowed_root = Path.home().resolve(strict=False)
         else:
             allowed_root = Path(r"C:\\Program Files").resolve(strict=False)
@@ -305,22 +323,22 @@ class EnvInspectorService:
             if mapped_target:
                 targets.add(mapped_target)
         if self.win_provider is not None:
-            targets.add("windows:user")
-            targets.add("windows:machine")
+            targets.add(TARGET_WINDOWS_USER)
+            targets.add(TARGET_WINDOWS_MACHINE)
         if context == "linux":
-            targets.add("linux:bashrc")
-            targets.add("linux:etc_environment")
+            targets.add(TARGET_LINUX_BASHRC)
+            targets.add(TARGET_LINUX_ETC_ENV)
         return sorted(targets)
 
     @staticmethod
     def _powershell_target_for_path(source_path: str) -> str:
-        return "powershell:all_users" if "Program Files" in source_path else "powershell:current_user"
+        return TARGET_POWERSHELL_ALL if "Program Files" in source_path else TARGET_POWERSHELL_CURRENT
 
     @classmethod
     def _record_target(cls, record: EnvRecord) -> str | None:
         static_targets = {
-            SOURCE_LINUX_BASHRC: "linux:bashrc",
-            SOURCE_LINUX_ETC_ENV: "linux:etc_environment",
+            SOURCE_LINUX_BASHRC: TARGET_LINUX_BASHRC,
+            SOURCE_LINUX_ETC_ENV: TARGET_LINUX_ETC_ENV,
         }
         dynamic_targets = {
             SOURCE_DOTENV: lambda rec: f"dotenv:{rec.source_path}",
@@ -347,7 +365,7 @@ class EnvInspectorService:
     ) -> tuple[str, str, str | None, bool, str | None]:
         if self.win_provider is None:
             raise RuntimeError("Windows registry provider unavailable.")
-        scope = WindowsRegistryProvider.USER_SCOPE if target == "windows:user" else WindowsRegistryProvider.MACHINE_SCOPE
+        scope = WindowsRegistryProvider.USER_SCOPE if target == TARGET_WINDOWS_USER else WindowsRegistryProvider.MACHINE_SCOPE
         current = self.win_provider.list_scope(scope)
         before = json.dumps(current, indent=2, sort_keys=True)
         if action == "set" and value is not None:
@@ -359,14 +377,14 @@ class EnvInspectorService:
                 self.win_provider.remove_scope_value(scope, key)
             current.pop(key, None)
         after = json.dumps(current, indent=2, sort_keys=True)
-        requires_priv = target == "windows:machine"
+        requires_priv = target == TARGET_WINDOWS_MACHINE
         return before, after, None, requires_priv, None
 
     def _powershell_profile_path(self, target: str) -> Path:
         current, all_users = self.get_powershell_profile_paths()
-        if target == "powershell:current_user":
+        if target == TARGET_POWERSHELL_CURRENT:
             return current
-        if target == "powershell:all_users":
+        if target == TARGET_POWERSHELL_ALL:
             return all_users
         raise RuntimeError(f"Unsupported PowerShell target: {target}")
 
@@ -410,7 +428,7 @@ class EnvInspectorService:
         action: str,
         apply_changes: bool,
     ) -> tuple[str, str, str | None, bool, str | None]:
-        if target == "linux:bashrc":
+        if target == TARGET_LINUX_BASHRC:
             bashrc_path = Path.home() / ".bashrc"
             before = bashrc_path.read_text(encoding="utf-8", errors="ignore") if bashrc_path.exists() else ""
             after = self._mutate_shell_content(before, key=key, value=value, action=action, style="export")
@@ -419,7 +437,7 @@ class EnvInspectorService:
                 bashrc_path.write_text(after, encoding="utf-8")
             return before, after, str(bashrc_path), False, None
 
-        if target == "linux:etc_environment":
+        if target == TARGET_LINUX_ETC_ENV:
             etc_path = self._linux_etc_environment_path()
             before = etc_path.read_text(encoding="utf-8", errors="ignore") if etc_path.exists() else ""
             after = self._mutate_shell_content(before, key=key, value=value, action=action, style="key_value")
@@ -440,12 +458,12 @@ class EnvInspectorService:
     def _validate_wsl_dotenv_path(raw: str) -> str:
         candidate = (raw or "").strip()
         if not candidate or "\x00" in candidate:
-            raise RuntimeError("Unsupported WSL dotenv target path")
+            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
         path = PurePosixPath(candidate)
         if ".." in path.parts or not str(path).startswith("/"):
-            raise RuntimeError("Unsupported WSL dotenv target path")
+            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
         if path.name != ".env" and not path.name.startswith(".env."):
-            raise RuntimeError("Unsupported WSL dotenv target path")
+            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
         return str(path)
 
     def _parse_wsl_dotenv_target(self, target: str) -> tuple[str, str]:
@@ -457,11 +475,11 @@ class EnvInspectorService:
         return self._validate_wsl_distro_name(distro), self._validate_wsl_dotenv_path(path)
 
     def _resolve_wsl_target(self, target: str) -> tuple[str, str, str, bool]:
-        if target.startswith("wsl_dotenv:"):
+        if target.startswith(WSL_DOTENV_PREFIX):
             distro, path = self._parse_wsl_dotenv_target(target)
             return distro, path, "key_value", False
 
-        if not target.startswith("wsl:"):
+        if not target.startswith(WSL_PREFIX):
             raise RuntimeError(f"Unsupported WSL target: {target}")
 
         parts = target.split(":", 2)
@@ -523,7 +541,7 @@ class EnvInspectorService:
         apply_changes: bool,
         scope_roots: list[Path],
     ) -> tuple[str, str, str | None, bool, str | None]:
-        if target.startswith("dotenv:"):
+        if target.startswith(DOTENV_PREFIX):
             return self._update_dotenv_file(
                 target=target,
                 key=key,
@@ -540,7 +558,7 @@ class EnvInspectorService:
                 action=action,
                 apply_changes=apply_changes,
             )
-        if target.startswith("wsl"):
+        if target.startswith(WSL_PREFIX):
             return self._update_wsl_file(
                 target=target,
                 key=key,
@@ -548,7 +566,7 @@ class EnvInspectorService:
                 action=action,
                 apply_changes=apply_changes,
             )
-        if target.startswith("powershell:"):
+        if target.startswith(POWERSHELL_PREFIX):
             return self._update_powershell_file(
                 target=target,
                 key=key,
@@ -568,30 +586,71 @@ class EnvInspectorService:
         apply_changes: bool,
         scope_roots: list[Path],
     ) -> tuple[str, str, str | None, bool, str | None]:
-        if target in {"windows:user", "windows:machine"}:
+        if target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
             return self._registry_write(target, key, value, action, apply_changes=apply_changes)
         return self._file_update(target, key, value, action, apply_changes=apply_changes, scope_roots=scope_roots)
 
     def _validate_target_for_operation(self, target: str, *, scope_roots: list[Path]) -> None:
-        if target in {
-            "windows:user",
-            "windows:machine",
-            "linux:bashrc",
-            "linux:etc_environment",
-            "powershell:current_user",
-            "powershell:all_users",
-        }:
+        if target in SUPPORTED_DIRECT_TARGETS:
             return
-        if target.startswith("dotenv:"):
+        if target.startswith(DOTENV_PREFIX):
             parse_scoped_dotenv_target(target, roots=scope_roots)
             return
-        if target.startswith("wsl_dotenv:"):
+        if target.startswith(WSL_DOTENV_PREFIX):
             self._parse_wsl_dotenv_target(target)
             return
-        if target.startswith("wsl:"):
+        if target.startswith(WSL_PREFIX):
             self._resolve_wsl_target(target)
             return
         raise RuntimeError(f"Unsupported target: {target}")
+
+    def _masked_value_for_operation(self, *, value: str | None, secret_operation: bool) -> str | None:
+        if not secret_operation or value is None:
+            return None
+        return mask_value(value)
+
+    def _build_operation_result(
+        self,
+        *,
+        operation_id: str,
+        target: str,
+        action: str,
+        success: bool,
+        backup_path: str | None,
+        diff_preview: str,
+        error_message: str | None,
+        value_masked: str | None,
+    ) -> OperationResult:
+        return OperationResult(
+            operation_id=operation_id,
+            target=target,
+            action=action,
+            success=success,
+            backup_path=backup_path,
+            diff_preview=diff_preview,
+            error_message=error_message,
+            value_masked=value_masked,
+        )
+
+    def _preview_target_operation(
+        self,
+        *,
+        target: str,
+        key: str,
+        value: str | None,
+        action: str,
+        scope_roots: list[Path],
+    ) -> tuple[str, str]:
+        self._validate_target_for_operation(target, scope_roots=scope_roots)
+        before, after, _, _, _ = self._plan_target_operation(
+            target=target,
+            key=key,
+            value=value,
+            action=action,
+            apply_changes=False,
+            scope_roots=scope_roots,
+        )
+        return before, self._diff(before, after, target)
 
     def _apply(
         self,
@@ -606,7 +665,9 @@ class EnvInspectorService:
         validate_env_key(key)
         if action == "set":
             validate_env_value(value or "")
+
         secret_operation = looks_secret(key, value or "")
+        masked_value = self._masked_value_for_operation(value=value, secret_operation=secret_operation)
         resolved_scope_roots = self._effective_scope_roots(scope_roots)
 
         results: list[OperationResult] = []
@@ -615,32 +676,16 @@ class EnvInspectorService:
             backup_path: str | None = None
             diff_preview = ""
             try:
-                self._validate_target_for_operation(target, scope_roots=resolved_scope_roots)
-                before, after, _, _, _ = self._plan_target_operation(
+                before, diff_preview = self._preview_target_operation(
                     target=target,
                     key=key,
                     value=value,
                     action=action,
-                    apply_changes=False,
                     scope_roots=resolved_scope_roots,
                 )
-                diff_preview = self._diff(before, after, target)
-
-                if preview_only:
-                    result = OperationResult(
-                        operation_id=operation_id,
-                        target=target,
-                        action=action,
-                        success=True,
-                        backup_path=None,
-                        diff_preview=diff_preview,
-                        error_message=None,
-                        value_masked=mask_value(value or "") if secret_operation and value is not None else None,
-                    )
-                else:
+                if not preview_only:
                     backup = self.backup_mgr.backup_text(target, before)
                     backup_path = str(backup)
-
                     self._plan_target_operation(
                         target=target,
                         key=key,
@@ -650,19 +695,18 @@ class EnvInspectorService:
                         scope_roots=resolved_scope_roots,
                     )
 
-                    result = OperationResult(
-                        operation_id=operation_id,
-                        target=target,
-                        action=action,
-                        success=True,
-                        backup_path=backup_path,
-                        diff_preview=diff_preview,
-                        error_message=None,
-                        value_masked=mask_value(value or "") if secret_operation and value is not None else None,
-                    )
-
+                result = self._build_operation_result(
+                    operation_id=operation_id,
+                    target=target,
+                    action=action,
+                    success=True,
+                    backup_path=(None if preview_only else backup_path),
+                    diff_preview=diff_preview,
+                    error_message=None,
+                    value_masked=masked_value,
+                )
             except Exception as exc:
-                result = OperationResult(
+                result = self._build_operation_result(
                     operation_id=operation_id,
                     target=target,
                     action=action,
@@ -670,7 +714,7 @@ class EnvInspectorService:
                     backup_path=backup_path,
                     diff_preview=diff_preview,
                     error_message=str(exc),
-                    value_masked=mask_value(value or "") if secret_operation and value is not None else None,
+                    value_masked=masked_value,
                 )
 
             self.audit.log(self._audit_safe_result(result, redact=secret_operation))
@@ -682,8 +726,7 @@ class EnvInspectorService:
     def _audit_safe_result(result: OperationResult, *, redact: bool) -> OperationResult:
         if not redact:
             return result
-        redacted_diff = "[secret diff masked]"
-        return replace(result, diff_preview=redacted_diff)
+        return replace(result, diff_preview="[secret diff masked]")
 
     def preview_set(
         self,
@@ -783,26 +826,26 @@ class EnvInspectorService:
         )
 
     def _restore_linux_target(self, *, target: str, text: str) -> None:
-        if target == "linux:bashrc":
+        if target == TARGET_LINUX_BASHRC:
             path_out = Path.home() / ".bashrc"
             path_out.parent.mkdir(parents=True, exist_ok=True)
             path_out.write_text(text, encoding="utf-8")
             return
-        if target == "linux:etc_environment":
+        if target == TARGET_LINUX_ETC_ENV:
             self._write_linux_etc_environment_with_privilege(text)
             return
         raise RuntimeError(f"Unsupported Linux restore target: {target}")
 
     def _restore_wsl_target(self, *, target: str, text: str) -> None:
-        if target.startswith("wsl_dotenv:"):
+        if target.startswith(WSL_DOTENV_PREFIX):
             distro, pth = self._parse_wsl_dotenv_target(target)
             self.wsl.write_file(distro, pth, text)
             return
-        if target.startswith("wsl:") and target.endswith(":bashrc"):
+        if target.startswith(WSL_PREFIX) and target.endswith(":bashrc"):
             distro = self._validate_wsl_distro_name(target.split(":", 2)[1])
             self.wsl.write_file(distro, "~/.bashrc", text)
             return
-        if target.startswith("wsl:") and target.endswith(":etc_environment"):
+        if target.startswith(WSL_PREFIX) and target.endswith(":etc_environment"):
             distro = self._validate_wsl_distro_name(target.split(":", 2)[1])
             self.wsl.write_file_with_privilege(distro, self._LINUX_ETC_ENV_PATH, text)
             return
@@ -810,7 +853,7 @@ class EnvInspectorService:
 
     def _restore_powershell_target(self, *, target: str, text: str) -> None:
         profile = self._validated_powershell_restore_path(target)
-        if target == "powershell:current_user":
+        if target == TARGET_POWERSHELL_CURRENT:
             allowed_roots = [Path.home().resolve(strict=False)]
         else:
             allowed_roots = [Path(r"C:\Program Files").resolve(strict=False)]
@@ -821,28 +864,28 @@ class EnvInspectorService:
         if self.win_provider is None:
             raise RuntimeError("Windows provider unavailable for registry restore")
         data = json.loads(text)
-        scope = WindowsRegistryProvider.USER_SCOPE if target == "windows:user" else WindowsRegistryProvider.MACHINE_SCOPE
+        scope = WindowsRegistryProvider.USER_SCOPE if target == TARGET_WINDOWS_USER else WindowsRegistryProvider.MACHINE_SCOPE
         current = self.win_provider.list_scope(scope)
-        for key in list(current.keys()):
+        for key in current:
             if key not in data:
                 self.win_provider.remove_scope_value(scope, key)
         for key, value in data.items():
             self.win_provider.set_scope_value(scope, key, str(value))
 
     def _restore_target(self, *, target: str, text: str, scope_roots: list[Path]) -> None:
-        if target.startswith("dotenv:"):
+        if target.startswith(DOTENV_PREFIX):
             self._restore_dotenv_target(target=target, text=text, scope_roots=scope_roots)
             return
-        if target in {"linux:bashrc", "linux:etc_environment"}:
+        if target in {TARGET_LINUX_BASHRC, TARGET_LINUX_ETC_ENV}:
             self._restore_linux_target(target=target, text=text)
             return
-        if target.startswith("wsl"):
+        if target.startswith(WSL_DOTENV_PREFIX) or target.startswith(WSL_PREFIX):
             self._restore_wsl_target(target=target, text=text)
             return
-        if target in {"powershell:current_user", "powershell:all_users"}:
+        if target in {TARGET_POWERSHELL_CURRENT, TARGET_POWERSHELL_ALL}:
             self._restore_powershell_target(target=target, text=text)
             return
-        if target in {"windows:user", "windows:machine"}:
+        if target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
             self._restore_windows_registry_target(target=target, text=text)
             return
         raise RuntimeError(f"Unsupported restore target: {target}")
@@ -888,4 +931,10 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
+
+
+
+
+
+
 

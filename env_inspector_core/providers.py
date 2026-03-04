@@ -338,7 +338,7 @@ class WslProvider:
 def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
     # Handles common patterns: $env:KEY = "value" or 'value'
-    regex = re.compile(r"\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$")
+    regex = re.compile(r"\$env:([A-Za-z_]\w*)\s*=\s*(.+)$")
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
@@ -548,3 +548,4 @@ def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, ma
                 )
             )
     return rows
+

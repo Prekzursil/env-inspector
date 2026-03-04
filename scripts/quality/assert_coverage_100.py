@@ -32,9 +32,9 @@ class CoverageStats:
 
 
 _PAIR_RE = re.compile(r"^(?P<name>[^=]+)=(?P<path>.+)$")
-_XML_LINES_VALID_RE = re.compile(r'lines-valid="([0-9]+(?:\\.[0-9]+)?)"')
-_XML_LINES_COVERED_RE = re.compile(r'lines-covered="([0-9]+(?:\\.[0-9]+)?)"')
-_XML_LINE_HITS_RE = re.compile(r"<line\\b[^>]*\\bhits=\"([0-9]+(?:\\.[0-9]+)?)\"")
+_XML_LINES_VALID_RE = re.compile(r'lines-valid="(\d+(?:\.\d+)?)"')
+_XML_LINES_COVERED_RE = re.compile(r'lines-covered="(\d+(?:\.\d+)?)"')
+_XML_LINE_HITS_RE = re.compile(r"<line\b[^>]*\bhits=\"(\d+(?:\.\d+)?)\"")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -200,5 +200,6 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 
 

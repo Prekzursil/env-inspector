@@ -18,6 +18,11 @@ from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
 
 
+
+def _raise_boom(*_args, **_kwargs):
+    raise RuntimeError("boom")
+
+
 def _record(source_type: str, source_path: str, *, context: str = "linux", source_id: str = "Ubuntu") -> EnvRecord:
     return EnvRecord(
         source_type=source_type,
@@ -64,8 +69,8 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
 def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
-    monkeypatch.setattr(service_module, "collect_wsl_records", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
-    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(service_module, "collect_wsl_records", _raise_boom)
+    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", _raise_boom)
 
     rows = svc._collect_wsl_rows(scan_depth=2, distro="Ubuntu", wsl_path="/home/user")
 
@@ -258,3 +263,4 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
             text="A=1\n",
             scope_roots=[allowed],
         )
+

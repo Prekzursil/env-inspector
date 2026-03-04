@@ -20,15 +20,21 @@ from env_inspector_gui import EnvInspectorApp
 CLI_COMMANDS = {"list", "set", "remove", "export", "backup", "restore"}
 
 
+def _validated_legacy_scan_root(root: str | Path) -> Path:
+    safe_root = resolve_scan_root(root)
+    # Re-validate adjacent to the listing sink for static-analysis clarity.
+    return resolve_scan_root(safe_root)
+
+
 def _legacy_print_secrets(root: str | Path) -> int:
     try:
-        safe_root = resolve_scan_root(root)
+        safe_root = _validated_legacy_scan_root(root)
     except PathPolicyError as exc:
         print(f"Invalid --root: {exc}", file=sys.stderr)
         return 2
 
     svc = EnvInspectorService()
-    rows = svc.list_records(root=safe_root, include_raw_secrets=True)
+    rows = svc.list_records(root=str(safe_root), include_raw_secrets=True)
     for row in rows:
         if row.get("is_secret"):
             print(f"{row.get('source_type')}:{row.get('source_id')}\t{row.get('name')}")

@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import re
 
-ENV_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-EXPORT_LINE_RE = re.compile(r"^\s*export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
-ASSIGN_LINE_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
-POWERSHELL_ENV_RE = re.compile(r"^\s*\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=", re.IGNORECASE)
+_ENV_KEY_PATTERN = r"[A-Za-z_]\w*"
+ENV_KEY_RE = re.compile(rf"^{_ENV_KEY_PATTERN}$")
+EXPORT_LINE_RE = re.compile(rf"^\s*export\s+({_ENV_KEY_PATTERN})=(.*)$")
+ASSIGN_LINE_RE = re.compile(rf"^\s*({_ENV_KEY_PATTERN})=(.*)$")
+POWERSHELL_ENV_RE = re.compile(rf"^\s*\$env:({_ENV_KEY_PATTERN})\s*=", re.IGNORECASE)
 
 
 def validate_env_key(key: str) -> None:
@@ -29,6 +30,20 @@ def strip_outer_quotes(value: str) -> str:
 
 def shell_single_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+def _append_with_spacing(out: list[str], line_out: str) -> None:
+    if out and out[-1].strip():
+        out.append("")
+    out.append(line_out)
+
+
+def _match_key_assignment(stripped: str, key: str) -> bool:
+    assign_match = ASSIGN_LINE_RE.match(stripped)
+    if assign_match and assign_match.group(1) == key:
+        return True
+    export_match = EXPORT_LINE_RE.match(stripped)
+    return bool(export_match and export_match.group(1) == key)
 
 
 def parse_dotenv_text(text: str) -> list[tuple[str, str]]:
@@ -94,9 +109,7 @@ def upsert_export(content: str, key: str, value: str) -> str:
         out.append(line)
 
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(export_line)
+        _append_with_spacing(out, export_line)
 
     text = "\n".join(out)
     if had_trailing_newline or out:
@@ -122,6 +135,20 @@ def remove_export(content: str, key: str) -> str:
     return text
 
 
+def _upsert_assignment_line(line: str, *, key: str, line_out: str, replaced: bool) -> tuple[str | None, bool]:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return line, replaced
+
+    match = ASSIGN_LINE_RE.match(stripped)
+    if not match or match.group(1) != key:
+        return line, replaced
+
+    if replaced:
+        return None, replaced
+    return line_out, True
+
+
 def upsert_key_value(content: str, key: str, value: str, *, quote: bool = False) -> str:
     validate_env_key(key)
     validate_env_value(value)
@@ -133,22 +160,13 @@ def upsert_key_value(content: str, key: str, value: str, *, quote: bool = False)
     out: list[str] = []
     replaced = False
     for line in lines:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            out.append(line)
+        next_line, replaced = _upsert_assignment_line(line, key=key, line_out=line_out, replaced=replaced)
+        if next_line is None:
             continue
-        match = ASSIGN_LINE_RE.match(stripped)
-        if match and match.group(1) == key:
-            if not replaced:
-                out.append(line_out)
-                replaced = True
-            continue
-        out.append(line)
+        out.append(next_line)
 
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line_out)
+        _append_with_spacing(out, line_out)
 
     text = "\n".join(out)
     if had_trailing_newline or out:
@@ -160,16 +178,12 @@ def remove_key_value(content: str, key: str) -> str:
     validate_env_key(key)
     lines = content.splitlines()
     had_trailing_newline = content.endswith("\n")
+
     out: list[str] = []
     for line in lines:
         stripped = line.strip()
-        match = ASSIGN_LINE_RE.match(stripped)
-        if match and match.group(1) == key:
+        if _match_key_assignment(stripped, key):
             continue
-        if EXPORT_LINE_RE.match(stripped):
-            m2 = EXPORT_LINE_RE.match(stripped)
-            if m2 and m2.group(1) == key:
-                continue
         out.append(line)
 
     text = "\n".join(out)
@@ -199,9 +213,7 @@ def upsert_powershell_env(content: str, key: str, value: str) -> str:
         out.append(line)
 
     if not replaced:
-        if out and out[-1].strip():
-            out.append("")
-        out.append(line_out)
+        _append_with_spacing(out, line_out)
 
     text = "\n".join(out)
     if had_trailing_newline or out:

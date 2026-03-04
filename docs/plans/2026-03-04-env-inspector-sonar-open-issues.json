@@ -1,0 +1,296 @@
+[
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/cli.py",
+    "line": 54,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 5,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\w' instead of '[A-Za-z0-9_]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 6,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\w' instead of '[A-Za-z0-9_]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 7,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\w' instead of '[A-Za-z0-9_]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 8,
+    "rule": "python:S5869",
+    "severity": "MAJOR",
+    "message": "Remove duplicates in this character class."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 8,
+    "rule": "python:S5869",
+    "severity": "MAJOR",
+    "message": "Remove duplicates in this character class."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 8,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\w' instead of '[A-Za-z0-9_]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/parsing.py",
+    "line": 125,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/providers.py",
+    "line": 341,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\w' instead of '[A-Za-z0-9_]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/secrets.py",
+    "line": 6,
+    "rule": "python:S5843",
+    "severity": "MAJOR",
+    "message": "Simplify this regular expression to reduce its complexity from 21 to the 20 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/secrets.py",
+    "line": 9,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\w' instead of '[A-Za-z0-9_]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 62,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"/etc/environment\" 3 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 130,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"powershell:current_user\" 7 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 130,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"powershell:all_users\" 5 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 308,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"windows:user\" 6 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 309,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"windows:machine\" 5 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 311,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"linux:bashrc\" 6 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 312,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"linux:etc_environment\" 6 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 443,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"Unsupported WSL dotenv target path\" 3 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 452,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"wsl_dotenv:\" 4 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 526,
+    "rule": "python:S1192",
+    "severity": "CRITICAL",
+    "message": "Define a constant instead of duplicating this literal \"dotenv:\" 3 times."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 596,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 686,
+    "rule": "python:S5886",
+    "severity": "MAJOR",
+    "message": "Return a value of type \"OperationResult\" instead of \"DataclassInstance\" or update function \"_audit_safe_result\" type hint."
+  },
+  {
+    "component": "Prekzursil_env-inspector:env_inspector_core/service.py",
+    "line": 826,
+    "rule": "python:S7504",
+    "severity": "MINOR",
+    "message": "Remove this unnecessary `list()` call on an already iterable object."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py",
+    "line": 35,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py",
+    "line": 35,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py",
+    "line": 36,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py",
+    "line": 36,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py",
+    "line": 37,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py",
+    "line": 37,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/check_codacy_zero.py",
+    "line": 110,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/check_deepscan_zero.py",
+    "line": 29,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/check_deepscan_zero.py",
+    "line": 82,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/check_sonar_zero.py",
+    "line": 75,
+    "rule": "python:S3776",
+    "severity": "CRITICAL",
+    "message": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/snyk_policy.py",
+    "line": 15,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:scripts/quality/snyk_policy.py",
+    "line": 16,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  },
+  {
+    "component": "Prekzursil_env-inspector:tests/test_security_helpers.py",
+    "line": 88,
+    "rule": "python:S1186",
+    "severity": "CRITICAL",
+    "message": "Add a nested comment explaining why this method is empty, or complete the implementation."
+  },
+  {
+    "component": "Prekzursil_env-inspector:tests/test_security_helpers.py",
+    "line": 91,
+    "rule": "python:S1186",
+    "severity": "CRITICAL",
+    "message": "Add a nested comment explaining why this method is empty, or complete the implementation."
+  },
+  {
+    "component": "Prekzursil_env-inspector:tests/test_security_helpers.py",
+    "line": 97,
+    "rule": "python:S1186",
+    "severity": "CRITICAL",
+    "message": "Add a nested comment explaining why this method is empty, or complete the implementation."
+  },
+  {
+    "component": "Prekzursil_env-inspector:tests/test_service_coverage_branches.py",
+    "line": 67,
+    "rule": "python:S7500",
+    "severity": "MINOR",
+    "message": "Replace this comprehension with passing the iterable to the collection constructor call"
+  },
+  {
+    "component": "Prekzursil_env-inspector:tests/test_service_coverage_branches.py",
+    "line": 68,
+    "rule": "python:S7500",
+    "severity": "MINOR",
+    "message": "Replace this comprehension with passing the iterable to the collection constructor call"
+  },
+  {
+    "component": "Prekzursil_env-inspector:tests/test_workflow_pinning.py",
+    "line": 16,
+    "rule": "python:S6353",
+    "severity": "MINOR",
+    "message": "Use concise character class syntax '\\d' instead of '[0-9]'."
+  }
+]

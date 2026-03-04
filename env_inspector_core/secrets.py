@@ -2,24 +2,42 @@ from __future__ import annotations
 
 import re
 
-SECRET_NAME_RE = re.compile(
-    r"(^|[_-])(token|secret|password|passwd|api[_-]?key|private[_-]?key|client[_-]?secret|pat|auth)([_-]|$)",
-    re.IGNORECASE,
+_SECRET_MARKERS = (
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "api_key",
+    "private_key",
+    "client_secret",
+    "pat",
+    "auth",
 )
-GITHUB_TOKEN_RE = re.compile(r"^(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})$")
-BASE64ISH_RE = re.compile(r"^[A-Za-z0-9+/=_\-.]{32,}$")
+GITHUB_TOKEN_RE = re.compile(r"^(gh[pousr]_\w{20,}|github_pat_\w{20,})$")
+BASE64ISH_RE = re.compile(r"^[\w+/=.-]{32,}$")
+
+
+def _name_suggests_secret(name: str) -> bool:
+    normalized = (name or "").strip().lower().replace("-", "_")
+    if not normalized:
+        return False
+    padded = f"_{normalized}_"
+    return any(f"_{marker}_" in padded for marker in _SECRET_MARKERS)
 
 
 def looks_secret(name: str, value: str) -> bool:
-    if SECRET_NAME_RE.search(name):
+    if _name_suggests_secret(name):
         return True
-    v = value.strip()
-    if GITHUB_TOKEN_RE.match(v):
+
+    candidate = value.strip()
+    if GITHUB_TOKEN_RE.match(candidate):
         return True
-    if len(v) >= 48 and BASE64ISH_RE.match(v):
-        if v.startswith(("/", "./", "../")) or "://" in v or "\\" in v or ":" in v:
+
+    if len(candidate) >= 48 and BASE64ISH_RE.match(candidate):
+        if candidate.startswith(("/", "./", "../")) or "://" in candidate or "\\" in candidate or ":" in candidate:
             return False
         return True
+
     return False
 
 

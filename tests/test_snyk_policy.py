@@ -20,33 +20,50 @@ def test_classify_scan_skipped_and_clean():
     assert classify_scan(executed=True, exit_code=0, log_text="No issues found.") == "clean"
 
 
-def test_classify_scan_vulns_and_runtime_and_quota():
+def test_classify_scan_vulns_runtime_and_quota_combinations():
     assert classify_scan(executed=True, exit_code=1, log_text="✗ [MEDIUM] Finding") == "vulns_found"
     assert classify_scan(executed=True, exit_code=1, log_text="unexpected transport reset") == "runtime_error"
+    assert classify_scan(executed=True, exit_code=1, log_text="ERROR Forbidden (SNYK-CLI-0000)") == "quota_exhausted"
     assert (
         classify_scan(
             executed=True,
             exit_code=1,
             log_text="✗ [MEDIUM] Finding\nERROR Forbidden (SNYK-CLI-0000)",
         )
-        == "quota_exhausted"
+        == "quota_with_findings"
     )
 
 
-def test_decide_policy_paths():
-    quota_override = decide_policy(oss_outcome="quota_exhausted", code_outcome="vulns_found")
-    assert quota_override["decision"] == "pass"
-    assert quota_override["decision_reason"] == "quota_exhausted_override"
-    assert quota_override["findings_detected"] is True
+def test_decide_policy_fail_closed_and_manual_retest_paths():
+    project_url = "https://app.snyk.io/org/example/project/123"
 
-    vuln_fail = decide_policy(oss_outcome="vulns_found", code_outcome="clean")
-    assert vuln_fail["decision"] == "fail"
-    assert vuln_fail["decision_reason"] == "vulnerabilities_detected"
+    findings_and_quota = decide_policy(
+        oss_outcome="quota_with_findings",
+        code_outcome="clean",
+        project_url=project_url,
+    )
+    assert findings_and_quota["decision"] == "fail"
+    assert findings_and_quota["decision_reason"] == "findings_detected_with_quota_exhaustion"
+    assert findings_and_quota["manual_retest_required"] is True
+    assert findings_and_quota["project_url"] == project_url
+    assert "Retest now" in findings_and_quota["manual_retest_instruction"]
 
-    runtime_fail = decide_policy(oss_outcome="runtime_error", code_outcome="clean")
-    assert runtime_fail["decision"] == "fail"
-    assert runtime_fail["decision_reason"] == "runtime_error_without_quota"
+    quota_only = decide_policy(oss_outcome="quota_exhausted", code_outcome="clean", project_url=project_url)
+    assert quota_only["decision"] == "fail"
+    assert quota_only["decision_reason"] == "quota_exhausted_manual_retest_required"
+    assert quota_only["manual_retest_required"] is True
 
-    clean_pass = decide_policy(oss_outcome="clean", code_outcome="skipped")
+    runtime_only = decide_policy(oss_outcome="runtime_error", code_outcome="skipped", project_url=project_url)
+    assert runtime_only["decision"] == "fail"
+    assert runtime_only["decision_reason"] == "inconclusive_scan_result_manual_retest_required"
+    assert runtime_only["manual_retest_required"] is True
+
+    findings_only = decide_policy(oss_outcome="vulns_found", code_outcome="clean", project_url=project_url)
+    assert findings_only["decision"] == "fail"
+    assert findings_only["decision_reason"] == "vulnerabilities_detected"
+    assert findings_only["manual_retest_required"] is False
+
+    clean_pass = decide_policy(oss_outcome="clean", code_outcome="skipped", project_url=project_url)
     assert clean_pass["decision"] == "pass"
     assert clean_pass["decision_reason"] == "clean_or_skipped"
+    assert clean_pass["manual_retest_required"] is False

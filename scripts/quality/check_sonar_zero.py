@@ -52,6 +52,46 @@ def _request_json(url: str, auth_header: str) -> dict[str, Any]:
         return json.loads(resp.read().decode("utf-8"))
 
 
+def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
+    query = {
+        "componentKeys": project_key,
+        "resolved": "false",
+        "ps": "1",
+    }
+    if branch:
+        query["branch"] = branch
+    if pull_request:
+        query["pullRequest"] = pull_request
+    return query
+
+
+def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
+    query = {"projectKey": project_key}
+    if branch:
+        query["branch"] = branch
+    if pull_request:
+        query["pullRequest"] = pull_request
+    return query
+
+
+def _fetch_sonar_status(
+    *,
+    api_base: str,
+    auth_header: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+) -> tuple[int, str]:
+    issues_url = f"{api_base}/api/issues/search?{urllib.parse.urlencode(_build_issue_query(project_key, branch=branch, pull_request=pull_request))}"
+    issues_payload = _request_json(issues_url, auth_header)
+    open_issues = int((issues_payload.get("paging") or {}).get("total") or 0)
+
+    gate_url = f"{api_base}/api/qualitygates/project_status?{urllib.parse.urlencode(_build_quality_gate_query(project_key, branch=branch, pull_request=pull_request))}"
+    gate_payload = _request_json(gate_url, auth_header)
+    quality_gate = str((gate_payload.get("projectStatus") or {}).get("status") or "UNKNOWN")
+    return open_issues, quality_gate
+
+
 def _render_md(payload: dict) -> str:
     lines = [
         "# Sonar Zero Gate",
@@ -85,45 +125,23 @@ def main() -> int:
 
     if not token:
         findings.append("SONAR_TOKEN is missing.")
-        status = "fail"
     else:
-        auth = _auth_header(token)
         try:
-            issues_query = {
-                "componentKeys": args.project_key,
-                "resolved": "false",
-                "ps": "1",
-            }
-            if args.branch:
-                issues_query["branch"] = args.branch
-            if args.pull_request:
-                issues_query["pullRequest"] = args.pull_request
-
-            issues_url = f"{api_base}/api/issues/search?{urllib.parse.urlencode(issues_query)}"
-            issues_payload = _request_json(issues_url, auth)
-            paging = issues_payload.get("paging") or {}
-            open_issues = int(paging.get("total") or 0)
-
-            gate_query = {"projectKey": args.project_key}
-            if args.branch:
-                gate_query["branch"] = args.branch
-            if args.pull_request:
-                gate_query["pullRequest"] = args.pull_request
-            gate_url = f"{api_base}/api/qualitygates/project_status?{urllib.parse.urlencode(gate_query)}"
-            gate_payload = _request_json(gate_url, auth)
-            project_status = (gate_payload.get("projectStatus") or {})
-            quality_gate = str(project_status.get("status") or "UNKNOWN")
-
+            open_issues, quality_gate = _fetch_sonar_status(
+                api_base=api_base,
+                auth_header=_auth_header(token),
+                project_key=args.project_key,
+                branch=args.branch,
+                pull_request=args.pull_request,
+            )
             if open_issues != 0:
                 findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
             if quality_gate != "OK":
                 findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
-
-            status = "pass" if not findings else "fail"
         except Exception as exc:  # pragma: no cover - network/runtime surface
-            status = "fail"
             findings.append(f"Sonar API request failed: {exc}")
 
+    status = "pass" if not findings else "fail"
     payload = {
         "status": status,
         "project_key": args.project_key,

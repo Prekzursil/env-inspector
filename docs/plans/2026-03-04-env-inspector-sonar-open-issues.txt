@@ -1,0 +1,47 @@
+
+component                                                        line rule         severity message
+---------                                                        ---- ----         -------- -------
+Prekzursil_env-inspector:env_inspector_core/cli.py                 54 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 27 to the 15 allowed.
+Prekzursil_env-inspector:env_inspector_core/parsing.py              5 python:S6353 MINOR    Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
+Prekzursil_env-inspector:env_inspector_core/parsing.py              6 python:S6353 MINOR    Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
+Prekzursil_env-inspector:env_inspector_core/parsing.py              7 python:S6353 MINOR    Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
+Prekzursil_env-inspector:env_inspector_core/parsing.py              8 python:S5869 MAJOR    Remove duplicates in this character class.
+Prekzursil_env-inspector:env_inspector_core/parsing.py              8 python:S5869 MAJOR    Remove duplicates in this character class.
+Prekzursil_env-inspector:env_inspector_core/parsing.py              8 python:S6353 MINOR    Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
+Prekzursil_env-inspector:env_inspector_core/parsing.py            125 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.
+Prekzursil_env-inspector:env_inspector_core/providers.py          341 python:S6353 MINOR    Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
+Prekzursil_env-inspector:env_inspector_core/secrets.py              6 python:S5843 MAJOR    Simplify this regular expression to reduce its complexity from 21 to the 20 allowed.
+Prekzursil_env-inspector:env_inspector_core/secrets.py              9 python:S6353 MINOR    Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
+Prekzursil_env-inspector:env_inspector_core/service.py             62 python:S1192 CRITICAL Define a constant instead of duplicating this literal "/etc/environment" 3 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            130 python:S1192 CRITICAL Define a constant instead of duplicating this literal "powershell:current_user" 7 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            130 python:S1192 CRITICAL Define a constant instead of duplicating this literal "powershell:all_users" 5 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            308 python:S1192 CRITICAL Define a constant instead of duplicating this literal "windows:user" 6 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            309 python:S1192 CRITICAL Define a constant instead of duplicating this literal "windows:machine" 5 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            311 python:S1192 CRITICAL Define a constant instead of duplicating this literal "linux:bashrc" 6 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            312 python:S1192 CRITICAL Define a constant instead of duplicating this literal "linux:etc_environment" 6 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            443 python:S1192 CRITICAL Define a constant instead of duplicating this literal "Unsupported WSL dotenv target path" 3 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            452 python:S1192 CRITICAL Define a constant instead of duplicating this literal "wsl_dotenv:" 4 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            526 python:S1192 CRITICAL Define a constant instead of duplicating this literal "dotenv:" 3 times.
+Prekzursil_env-inspector:env_inspector_core/service.py            596 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.
+Prekzursil_env-inspector:env_inspector_core/service.py            686 python:S5886 MAJOR    Return a value of type "OperationResult" instead of "DataclassInstance" or update function "_audit_safe_result" type hint.
+Prekzursil_env-inspector:env_inspector_core/service.py            826 python:S7504 MINOR    Remove this unnecessary `list()` call on an already iterable object.
+Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py    35 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py    35 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py    36 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py    36 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py    37 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/assert_coverage_100.py    37 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/check_codacy_zero.py     110 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 28 to the 15 allowed.
+Prekzursil_env-inspector:scripts/quality/check_deepscan_zero.py    29 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.
+Prekzursil_env-inspector:scripts/quality/check_deepscan_zero.py    82 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
+Prekzursil_env-inspector:scripts/quality/check_sonar_zero.py       75 python:S3776 CRITICAL Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.
+Prekzursil_env-inspector:scripts/quality/snyk_policy.py            15 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:scripts/quality/snyk_policy.py            16 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+Prekzursil_env-inspector:tests/test_security_helpers.py            88 python:S1186 CRITICAL Add a nested comment explaining why this method is empty, or complete the implementation.
+Prekzursil_env-inspector:tests/test_security_helpers.py            91 python:S1186 CRITICAL Add a nested comment explaining why this method is empty, or complete the implementation.
+Prekzursil_env-inspector:tests/test_security_helpers.py            97 python:S1186 CRITICAL Add a nested comment explaining why this method is empty, or complete the implementation.
+Prekzursil_env-inspector:tests/test_service_coverage_branches.py   67 python:S7500 MINOR    Replace this comprehension with passing the iterable to the collection constructor call
+Prekzursil_env-inspector:tests/test_service_coverage_branches.py   68 python:S7500 MINOR    Replace this comprehension with passing the iterable to the collection constructor call
+Prekzursil_env-inspector:tests/test_workflow_pinning.py            16 python:S6353 MINOR    Use concise character class syntax '\d' instead of '[0-9]'.
+
+

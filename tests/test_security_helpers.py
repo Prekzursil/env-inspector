@@ -86,16 +86,17 @@ def test_request_json_https_http_error(monkeypatch):
 
     class _Connection:
         def __init__(self, host: str, timeout: int):
-            pass
+            self.host = host
+            self.timeout = timeout
 
         def request(self, method, path, body=None, headers=None):
-            pass
+            self.request_args = (method, path, body, headers)
 
         def getresponse(self):
             return _Response()
 
         def close(self):
-            pass
+            self.closed = True
 
     monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
 
@@ -106,6 +107,7 @@ def test_request_json_https_http_error(monkeypatch):
             headers={"Accept": "application/json"},
         )
     assert exc_info.value.code == 403
+
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
