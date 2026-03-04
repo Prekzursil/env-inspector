@@ -95,7 +95,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
             return mapping.get(path, "")
 
         def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-            return []
+            return getattr(self, "_dotenv_paths", [])
 
     rows = providers.collect_wsl_records(_FakeWsl(), include_etc=True)
 
@@ -116,7 +116,7 @@ def test_collect_wsl_records_respects_excluded_distros():
             return ""
 
         def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-            return []
+            return getattr(self, "_dotenv_paths", [])
 
     rows = providers.collect_wsl_records(_FakeWsl(), include_etc=False, exclude_distros={"ubuntu"})
 
@@ -135,7 +135,7 @@ def test_collect_wsl_helpers_return_empty_when_wsl_unavailable():
             return ""
 
         def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-            return []
+            return getattr(self, "_dotenv_paths", [])
 
     _case().assertEqual(providers.collect_wsl_records(_FakeWsl()), [])
     _case().assertEqual(
@@ -164,3 +164,5 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
     case.assertEqual(len(rows), 1)
     case.assertEqual(rows[0].name, "A")
     case.assertEqual(rows[0].value, "1")
+
+

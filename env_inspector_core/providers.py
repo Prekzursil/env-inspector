@@ -6,7 +6,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .constants import (
     SOURCE_DOTENV,
@@ -345,18 +345,20 @@ class WslProvider:
         return [line.strip() for line in text.splitlines() if line.strip()]
 
 
-class WslClient(Protocol):
+class WslClient:
+    """Lightweight WSL client interface used by collection helpers."""
+
     def available(self) -> bool:
-        ...
+        raise NotImplementedError
 
     def list_distros(self) -> List[str]:
-        ...
+        raise NotImplementedError
 
     def read_file(self, distro: str, path: str) -> str:
-        ...
+        raise NotImplementedError
 
     def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-        ...
+        raise NotImplementedError
 
 
 def _normalize_powershell_assignment_value(raw_value: str) -> str:
@@ -613,3 +615,4 @@ def collect_wsl_dotenv_records(wsl: WslClient, distro: str, root_path: str, max_
                 )
             )
     return rows
+
