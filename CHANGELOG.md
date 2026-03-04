@@ -17,7 +17,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [2.0.0] - 2026-03-04
 
-### Added
+### Added (2.0.0)
 
 - **Phase 3: KPI Instrumentation**
   - Weekly KPI digest workflow (`.github/workflows/kpi-weekly-digest.yml`) tracking lead time, cycle time, rework rate, queue failure rate, and evidence completeness.
@@ -32,7 +32,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - PR validation workflow (`.github/workflows/ci.yml`) running compile + pytest on Ubuntu and Windows (Python 3.12).
 - Details panel actions: Copy Name, Copy Value, Copy Name=Value, Copy Source Path, Open Source.
 
-### Changed
+### Changed (2.0.0)
 
 - Context switch now performs a full refresh with busy indicator and temporary action disable/enable cycle.
 - Table columns are sortable and sort state persists across refreshes and app restarts.
