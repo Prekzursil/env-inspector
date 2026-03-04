@@ -95,7 +95,6 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> Non
         scan_depth=args.scan_depth,
     )
     print(rendered, end="")
-    return
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
