@@ -6,7 +6,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Optional, Tuple
 
 from .constants import (
     SOURCE_DOTENV,
@@ -362,7 +362,7 @@ def _is_valid_powershell_env_key(key: str) -> bool:
     return all(char.isalnum() or char == "_" for char in key[1:])
 
 
-def _parse_powershell_assignment(line: str) -> tuple[str, str] | None:
+def _parse_powershell_assignment(line: str) -> Optional[Tuple[str, str]]:
     stripped = line.strip()
     if not stripped or stripped.startswith("#"):
         return None

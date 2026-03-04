@@ -284,3 +284,34 @@ def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
 
     assert open_issues is None
     assert findings and "parseable total issue count" in findings[0]
+
+
+
+def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
+    import unittest
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CODACY_API_TOKEN", "tok")
+    monkeypatch.setattr(
+        codacy_mod,
+        "_parse_args",
+        lambda: type(
+            "Args",
+            (),
+            {
+                "provider": "gh",
+                "owner": "Prekzursil",
+                "repo": "env-inspector",
+                "branch": "main",
+                "token": "",
+                "out_json": "o/codacy.json",
+                "out_md": "o/codacy.md",
+            },
+        )(),
+    )
+    monkeypatch.setattr(codacy_mod, "_query_open_issues", lambda **_kwargs: (0, []))
+
+    rc = codacy_mod.main()
+
+    case = unittest.TestCase()
+    case.assertEqual(rc, 0)

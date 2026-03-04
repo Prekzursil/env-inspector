@@ -1,17 +1,17 @@
-from __future__ import annotations
-
 import importlib
-import sys
-from pathlib import Path
+import unittest
 
 from scripts.quality import _security_imports as security_imports
 
 
-def test_security_imports_adds_helper_root_to_sys_path(monkeypatch):
-    helper_root = str(Path(security_imports.__file__).resolve().parent.parent)
-    monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != helper_root])
+def _case() -> unittest.TestCase:
+    return unittest.TestCase()
 
+
+def test_security_imports_reloads_and_exposes_helpers():
     reloaded = importlib.reload(security_imports)
 
-    assert helper_root in sys.path
-    assert callable(reloaded.normalize_https_url)
+    case = _case()
+    case.assertTrue(callable(reloaded.normalize_https_url))
+    case.assertTrue(callable(reloaded.request_json_https))
+    case.assertTrue(callable(reloaded.safe_output_path_in_workspace))

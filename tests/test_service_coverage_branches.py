@@ -334,3 +334,18 @@ def test_validate_wsl_dotenv_path_rejects_empty_and_wrong_filename(tmp_path: Pat
 
     with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
         svc._validate_wsl_dotenv_path("/home/user/not-env.txt")
+
+
+
+def test_list_backups_uses_target_filter_when_provided(tmp_path: Path):
+    import unittest
+
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    backup_path = svc.backup_mgr.backup_text("linux:bashrc", "A=1\n")
+
+    all_backups = svc.list_backups()
+    scoped_backups = svc.list_backups(target="linux:bashrc")
+
+    case = unittest.TestCase()
+    case.assertIn(str(backup_path), all_backups)
+    case.assertIn(str(backup_path), scoped_backups)

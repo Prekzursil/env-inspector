@@ -71,7 +71,7 @@ def _request_json(
     return payload
 
 
-def _extract_numeric_total(payload: dict[str, Any], keys: tuple[str, ...]) -> int | None:
+def _extract_numeric_total(payload: dict, keys: tuple) -> int | None:
     for key in keys:
         value = payload.get(key)
         if isinstance(value, (int, float)):
@@ -117,7 +117,7 @@ def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
     return ""
 
 
-def _format_issue_sample(issue: dict[str, Any]) -> str | None:
+def _format_issue_sample(issue: dict) -> str | None:
     pattern = _first_text(issue, ("patternId", "pattern"))
     path = _first_text(issue, ("filename", "filePath", "path"))
     message = _first_text(issue, ("message", "title"))
@@ -130,12 +130,12 @@ def _format_issue_sample(issue: dict[str, Any]) -> str | None:
     return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
-def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> list[str]:
+def _sample_issue_findings(payload: dict, limit: int = 5) -> list[str]:
     data = payload.get("data")
     if not isinstance(data, list):
         return []
 
-    findings: list[str] = []
+    findings: list = []
     for item in data:
         if not isinstance(item, dict):
             continue

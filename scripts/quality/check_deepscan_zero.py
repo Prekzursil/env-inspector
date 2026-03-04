@@ -68,7 +68,7 @@ def _fetch_open_issues(
     *,
     host: str,
     path: str,
-    query: dict[str, str],
+    query: dict,
     token: str,
     findings: list[str],
 ) -> int | None:

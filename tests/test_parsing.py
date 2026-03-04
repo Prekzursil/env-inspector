@@ -9,6 +9,11 @@ from env_inspector_core.parsing import (
     remove_powershell_env,
     upsert_powershell_env,
 )
+import unittest
+
+
+def _case() -> unittest.TestCase:
+    return unittest.TestCase()
 
 
 def test_parse_dotenv_text_supports_export_comments_and_quotes():
@@ -16,14 +21,15 @@ def test_parse_dotenv_text_supports_export_comments_and_quotes():
 # comment
 export API_TOKEN='abc123'
 PLAIN=value
-QUOTED=\"hello world\"
+QUOTED="hello world"
 INVALID_LINE
 """
     records = parse_dotenv_text(text)
     names = [r[0] for r in records]
-    assert names == ["API_TOKEN", "PLAIN", "QUOTED"]
-    assert dict(records)["API_TOKEN"] == "abc123"
-    assert dict(records)["QUOTED"] == "hello world"
+    case = _case()
+    case.assertEqual(names, ["API_TOKEN", "PLAIN", "QUOTED"])
+    case.assertEqual(dict(records)["API_TOKEN"], "abc123")
+    case.assertEqual(dict(records)["QUOTED"], "hello world")
 
 
 def test_parse_bash_exports_only_reads_export_lines():
@@ -33,31 +39,32 @@ B=2
  export C='three'
 """
     parsed = parse_bash_exports(text)
-    assert parsed == {"A": "1", "C": "three"}
+    _case().assertEqual(parsed, {"A": "1", "C": "three"})
 
 
 def test_parse_etc_environment_ignores_comments_and_blank_lines():
     text = """
 # header
 LANG=en_US.UTF-8
-PATH=\"/usr/local/bin:/usr/bin\"
+PATH="/usr/local/bin:/usr/bin"
 
 """
     parsed = parse_etc_environment(text)
-    assert parsed == {"LANG": "en_US.UTF-8", "PATH": "/usr/local/bin:/usr/bin"}
+    _case().assertEqual(parsed, {"LANG": "en_US.UTF-8", "PATH": "/usr/local/bin:/usr/bin"})
 
 
 def test_upsert_and_remove_export_roundtrip():
     base = "export A='1'\n"
     updated = upsert_export(base, "B", "two")
-    assert "export B='two'" in updated
+    case = _case()
+    case.assertIn("export B='two'", updated)
 
     replaced = upsert_export(updated, "A", "9")
-    assert "export A='9'" in replaced
-    assert replaced.count("export A=") == 1
+    case.assertIn("export A='9'", replaced)
+    case.assertEqual(replaced.count("export A="), 1)
 
     removed = remove_export(replaced, "B")
-    assert "export B=" not in removed
+    case.assertNotIn("export B=", removed)
 
 
 def test_remove_key_value_handles_assign_export_and_comments():
@@ -65,24 +72,25 @@ def test_remove_key_value_handles_assign_export_and_comments():
 
     removed = remove_key_value(base, "A")
 
-    assert "A=1" not in removed
-    assert "export A='2'" not in removed
-    assert "# keep me" in removed
-    assert "B=3" in removed
+    case = _case()
+    case.assertNotIn("A=1", removed)
+    case.assertNotIn("export A='2'", removed)
+    case.assertIn("# keep me", removed)
+    case.assertIn("B=3", removed)
 
 
 def test_upsert_and_remove_powershell_env_roundtrip():
     base = "$env:API_TOKEN = 'old'\nWrite-Host 'hi'\n"
     updated = upsert_powershell_env(base, "API_TOKEN", "new")
-    assert "$env:API_TOKEN = 'new'" in updated
-    assert updated.count("$env:API_TOKEN") == 1
+    case = _case()
+    case.assertIn("$env:API_TOKEN = 'new'", updated)
+    case.assertEqual(updated.count("$env:API_TOKEN"), 1)
 
     appended = upsert_powershell_env(updated, "NEW_KEY", "v")
-    assert "$env:NEW_KEY = 'v'" in appended
+    case.assertIn("$env:NEW_KEY = 'v'", appended)
 
     removed = remove_powershell_env(appended, "api_token")
-    assert "$env:API_TOKEN" not in removed
-
+    case.assertNotIn("$env:API_TOKEN", removed)
 
 
 def test_upsert_key_value_ignores_blank_and_comment_lines_when_matching():
@@ -90,6 +98,7 @@ def test_upsert_key_value_ignores_blank_and_comment_lines_when_matching():
 
     updated = upsert_key_value(base, "NEW_KEY", "v", quote=False)
 
-    assert "# keep" in updated
-    assert "A=1" in updated
-    assert "NEW_KEY=v" in updated
+    case = _case()
+    case.assertIn("# keep", updated)
+    case.assertIn("A=1", updated)
+    case.assertIn("NEW_KEY=v", updated)

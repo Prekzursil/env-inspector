@@ -1,5 +1,3 @@
-from __future__ import annotations, absolute_import, division
-
 import argparse
 import json
 import sys

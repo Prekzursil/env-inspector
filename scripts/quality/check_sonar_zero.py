@@ -67,7 +67,7 @@ def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> d
     return query
 
 
-def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: str) -> dict[str, str]:
+def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: str) -> dict:
     query = {"projectKey": project_key}
     if branch:
         query["branch"] = branch
@@ -126,7 +126,7 @@ def _evaluate_sonar(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int | None, str | None, int | None, str | None, list[str]]:
+) -> tuple:
     findings: list[str] = []
     open_issues: int | None = None
     quality_gate: str | None = None
