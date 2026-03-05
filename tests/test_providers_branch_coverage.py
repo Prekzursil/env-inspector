@@ -15,6 +15,7 @@ def _case() -> unittest.TestCase:
     return unittest.TestCase()
 
 
+
 def test_is_workspace_scoped_path_checks_exact_and_descendant(tmp_path: Path):
     root = tmp_path.joinpath("workspace")
     root.mkdir()
