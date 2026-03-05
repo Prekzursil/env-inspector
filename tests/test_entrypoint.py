@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import unittest
 
 import env_inspector
+
+
+def _case() -> unittest.TestCase:
+    return unittest.TestCase()
 
 
 def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, capsys):
@@ -25,9 +30,10 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
 
     code = env_inspector.main()
 
-    assert code == 2
+    case = _case()
+    case.assertEqual(code, 2)
     err = capsys.readouterr().err
-    assert "Invalid --root" in err
+    case.assertIn("Invalid --root", err)
 
 
 def test_legacy_print_secrets_revalidates_root_before_list_records(tmp_path: Path, monkeypatch, capsys):
@@ -46,9 +52,10 @@ def test_legacy_print_secrets_revalidates_root_before_list_records(tmp_path: Pat
 
     code = env_inspector._legacy_print_secrets(str(workspace))
 
-    assert code == 2
+    case = _case()
+    case.assertEqual(code, 2)
     err = capsys.readouterr().err
-    assert "Invalid --root" in err
+    case.assertIn("Invalid --root", err)
 
 
 def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, monkeypatch, capsys):
@@ -57,7 +64,7 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
 
     monkeypatch.chdir(workspace)
 
-    captured: dict[str, object] = {}
+    captured = {}
 
     class _Service:
         def list_records(self, **kwargs):
@@ -68,11 +75,12 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
 
     code = env_inspector._legacy_print_secrets(str(workspace))
 
-    assert code == 0
-    assert captured["include_raw_secrets"] is True
-    assert Path(captured["root"]) == workspace.resolve()
+    case = _case()
+    case.assertEqual(code, 0)
+    case.assertTrue(captured["include_raw_secrets"] is True)
+    case.assertEqual(Path(str(captured["root"])), workspace.resolve())
     out = capsys.readouterr().out
-    assert "API_TOKEN" in out
+    case.assertIn("API_TOKEN", out)
 
 
 def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, monkeypatch, capsys):
@@ -90,6 +98,7 @@ def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, m
 
     code = env_inspector._legacy_print_secrets(str(nested))
 
-    assert code == 2
+    case = _case()
+    case.assertEqual(code, 2)
     err = capsys.readouterr().err
-    assert "Legacy --print-secrets only supports the current working directory." in err
+    case.assertIn("Legacy --print-secrets only supports the current working directory.", err)
