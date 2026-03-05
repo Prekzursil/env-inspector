@@ -320,12 +320,11 @@ class WslProvider:
         quoted_path = shlex.quote(path)
 
         # 1) Try direct root user execution.
-        direct_root_failed = False
         try:
             self._run(["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
             return
         except RuntimeError:
-            direct_root_failed = True
+            pass
 
         # 2) Fallback to sudo.
         try:
@@ -334,7 +333,7 @@ class WslProvider:
         except Exception as exc:
             raise RuntimeError(
                 "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
-            ) from exc if direct_root_failed else exc
+            ) from exc
 
     def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
         quoted_root = shlex.quote(root_path)
