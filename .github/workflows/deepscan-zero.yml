@@ -22,13 +22,14 @@ jobs:
       statuses: read
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
       - name: Assert DeepScan vendor check is green
         run: |
           python3 scripts/quality/check_required_checks.py \
             --repo "${GITHUB_REPOSITORY}" \
-            --sha "${{ github.sha }}" \
+            --sha "${CHECK_SHA}" \
             --required-context "DeepScan" \
             --timeout-seconds 1200 \
             --poll-seconds 20 \
