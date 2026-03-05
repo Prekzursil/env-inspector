@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
 from pathlib import Path
 
@@ -64,8 +64,12 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
 def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
-    monkeypatch.setattr(service_module, "collect_wsl_records", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
-    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    def _raise_runtime_error(*_args, **_kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(service_module, "collect_wsl_records", _raise_runtime_error)
+    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", _raise_runtime_error)
 
     rows = svc._collect_wsl_rows(scan_depth=2, distro="Ubuntu", wsl_path="/home/user")
 
@@ -138,7 +142,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         )
 
     profile = tmp_path / "profile.ps1"
-    monkeypatch.setattr(EnvInspectorService, "_powershell_profile_path", lambda _self, _target: profile)
+    monkeypatch.setattr(EnvInspectorService, "_powershell_target_path_and_roots", lambda _self, _target: (profile, [tmp_path], False))
     _before, _after, out_path, _requires_priv, _ = svc._update_powershell_file(
         target="powershell:current_user",
         key="A",
@@ -192,7 +196,10 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     with pytest.raises(RuntimeError, match="Unsupported WSL restore target"):
         svc._restore_wsl_target(target="wsl:Ubuntu:unknown", text="x")
 
-    profile = tmp_path / "ps-profile.ps1"
+    fake_home = tmp_path / "home"
+    fake_home.mkdir(parents=True, exist_ok=True)
+    profile = fake_home / "Documents" / "PowerShell" / "ps-profile.ps1"
+    monkeypatch.setattr(service_module.Path, "home", lambda: fake_home)
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     svc._restore_powershell_target(target="powershell:current_user", text="$env:A=\"1\"\n")
     assert profile.read_text(encoding="utf-8") == "$env:A=\"1\"\n"
@@ -255,3 +262,128 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
             text="A=1\n",
             scope_roots=[allowed],
         )
+
+
+def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    import types
+
+    fake_provider = types.SimpleNamespace(
+        USER_SCOPE="User",
+        MACHINE_SCOPE="Machine",
+        list_scope=lambda _scope: {"A": "1"},
+        set_scope_value=lambda _scope, _key, _value: None,
+        remove_scope_value=lambda _scope, _key: None,
+    )
+
+    svc.win_provider = fake_provider  # type: ignore[assignment]
+
+
+    _before_user, _after_user, _path_user, user_requires_priv, _ = svc._registry_write(
+        "windows:user",
+        "A",
+        "2",
+        "set",
+        apply_changes=False,
+    )
+    _before_machine, _after_machine, _path_machine, machine_requires_priv, _ = svc._registry_write(
+        "windows:machine",
+        "A",
+        "2",
+        "set",
+        apply_changes=False,
+    )
+
+    import unittest
+
+    case = unittest.TestCase()
+    case.assertFalse(user_requires_priv)
+    case.assertTrue(machine_requires_priv)
+
+    svc._registry_write(
+        "windows:user",
+        "B",
+        "9",
+        "set",
+        apply_changes=True,
+    )
+    svc._registry_write(
+        "windows:machine",
+        "A",
+        None,
+        "remove",
+        apply_changes=True,
+    )
+
+
+def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, monkeypatch):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    current = tmp_path / "current.ps1"
+    all_users = tmp_path / "all.ps1"
+    monkeypatch.setattr(EnvInspectorService, "get_powershell_profile_paths", staticmethod(lambda: [current, all_users]))
+
+    import unittest
+
+    case = unittest.TestCase()
+    case.assertEqual(svc._powershell_profile_path("powershell:current_user"), current)
+    case.assertEqual(svc._powershell_profile_path("powershell:all_users"), all_users)
+
+
+def test_validate_wsl_dotenv_path_rejects_empty_and_wrong_filename(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
+        svc._validate_wsl_dotenv_path("")
+
+    with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
+        svc._validate_wsl_dotenv_path("/home/user/not-env.txt")
+
+
+
+def test_list_backups_uses_target_filter_when_provided(tmp_path: Path):
+    import unittest
+
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    backup_path = svc.backup_mgr.backup_text("linux:bashrc", "A=1\n")
+
+    all_backups = svc.list_backups()
+    scoped_backups = svc.list_backups(target="linux:bashrc")
+
+    case = unittest.TestCase()
+    case.assertIn(str(backup_path), all_backups)
+    case.assertIn(str(backup_path), scoped_backups)
+
+
+
+def test_list_records_raw_builds_env_records_from_payload(tmp_path: Path, monkeypatch):
+    import unittest
+
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    sample_payload = [
+        {
+            "source_type": "dotenv",
+            "source_id": "dotenv",
+            "source_path": str(tmp_path / ".env"),
+            "context": "windows",
+            "name": "A",
+            "value": "1",
+            "is_secret": False,
+            "is_persistent": True,
+            "is_mutable": True,
+            "precedence_rank": 10,
+            "writable": True,
+            "requires_privilege": False,
+            "last_error": None,
+        }
+    ]
+    monkeypatch.setattr(svc, "list_records", lambda **_kwargs: sample_payload)
+
+    rows = svc.list_records_raw()
+
+    case = unittest.TestCase()
+    case.assertEqual(len(rows), 1)
+    case.assertEqual(rows[0].name, "A")
+    case.assertEqual(rows[0].value, "1")
+
+
