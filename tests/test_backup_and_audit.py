@@ -94,12 +94,13 @@ def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
 
 def test_audit_logger_writes_masked_values(tmp_path: Path):
     logger = AuditLogger(tmp_path)
+    backup_path = tmp_path / "audit-backup.json"
     result = OperationResult(
         operation_id="op-1",
         target="windows:user:API_TOKEN",
         action="set",
         success=True,
-        backup_path="/tmp/x",
+        backup_path=str(backup_path),
         diff_preview="--- before\n+++ after",
         error_message=None,
         value_masked="abc********xyz",
@@ -152,5 +153,4 @@ def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch
 
     assert result["success"] is False
     assert "outside approved roots" in (result["error_message"] or "")
-
 
