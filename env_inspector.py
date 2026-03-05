@@ -30,10 +30,17 @@ def _revalidate_legacy_scan_root(root: Path) -> Path:
     return candidate
 
 
+def _resolve_legacy_print_secrets_root(root: str | Path) -> Path:
+    requested = _revalidate_legacy_scan_root(resolve_scan_root(root))
+    workspace_root = resolve_scan_root(Path.cwd())
+    if requested != workspace_root:
+        raise PathPolicyError("Legacy --print-secrets only supports the current working directory.")
+    return workspace_root
+
+
 def _legacy_print_secrets(root: str | Path) -> int:
     try:
-        safe_root = resolve_scan_root(root)
-        safe_root = _revalidate_legacy_scan_root(safe_root)
+        safe_root = _resolve_legacy_print_secrets_root(root)
     except PathPolicyError as exc:
         print(f"Invalid --root: {exc}", file=sys.stderr)
         return 2
@@ -42,7 +49,7 @@ def _legacy_print_secrets(root: str | Path) -> int:
     rows = svc.list_records(root=safe_root, include_raw_secrets=True)
     for row in rows:
         if row.get("is_secret"):
-            print(f"{row.get('source_type')}:{row.get('source_id')}	{row.get('name')}")
+            print(f"{row.get('source_type')}:{row.get('source_id')}\t{row.get('name')}")
     return 0
 
 
@@ -76,4 +83,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

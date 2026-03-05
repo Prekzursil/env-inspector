@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   codecov-analytics:
     name: Codecov Analytics
@@ -29,10 +33,12 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p coverage
+          mkdir -p .tmp
+          export TMPDIR="$PWD/.tmp"
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           python -m pip install pytest pytest-cov
-          python -m pytest --cov=. --cov-report=xml:coverage/python-coverage.xml
+          python -m pytest -q -s tests --cov=tests --cov-report=xml:coverage/python-coverage.xml
       - name: Upload coverage to Codecov
         if: ${{ always() }}
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5

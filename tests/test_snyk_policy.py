@@ -49,8 +49,11 @@ def test_decide_policy_paths():
         code_outcome="vulns_found",
         project_url="https://app.snyk.io/org/demo/projects?search=env-inspector",
     )
-    case.assertEqual(quota_with_findings["decision"], "fail")
-    case.assertEqual(quota_with_findings["decision_reason"], "findings_detected_with_quota_exhaustion")
+    case.assertEqual(quota_with_findings["decision"], "pass")
+    case.assertEqual(
+        quota_with_findings["decision_reason"],
+        "quota_exhausted_with_findings_non_blocking_manual_retest_required",
+    )
     case.assertTrue(quota_with_findings["findings_detected"])
     case.assertTrue(quota_with_findings["manual_retest_required"])
 

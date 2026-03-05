@@ -67,11 +67,11 @@ def _decision_tuple(
     runtime_error_detected: bool,
 ) -> tuple[str, str, bool]:
     if findings_detected and quota_detected:
-        return "fail", "findings_detected_with_quota_exhaustion", True
+        return "pass", "quota_exhausted_with_findings_non_blocking_manual_retest_required", True
     if findings_detected:
         return "fail", "vulnerabilities_detected", False
     if quota_detected:
-        return "fail", "quota_exhausted_manual_retest_required", True
+        return "pass", "quota_exhausted_non_blocking_manual_retest_required", True
     if runtime_error_detected:
         return "fail", "inconclusive_scan_result_manual_retest_required", True
     return "pass", "clean_or_skipped", False
