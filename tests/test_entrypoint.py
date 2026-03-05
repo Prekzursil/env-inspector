@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, division
 
 from pathlib import Path
 import unittest
@@ -66,10 +66,12 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
 
     captured = {}
 
+    def _list_records(**kwargs):
+        captured.update(kwargs)
+        return [{"is_secret": True, "source_type": "dotenv", "source_id": ".env", "name": "API_TOKEN"}]
+
     class _Service:
-        def list_records(self, **kwargs):
-            captured.update(kwargs)
-            return [{"is_secret": True, "source_type": "dotenv", "source_id": ".env", "name": "API_TOKEN"}]
+        list_records = staticmethod(_list_records)
 
     monkeypatch.setattr(env_inspector, "EnvInspectorService", _Service)
 
