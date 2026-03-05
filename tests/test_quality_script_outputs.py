@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from types import SimpleNamespace
 from pathlib import Path
@@ -8,6 +8,11 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
+from tests.assertions import ensure
+
+
+def _empty_token() -> str:
+    return str()
 
 def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
     xml_path = tmp_path / "coverage.xml"
@@ -15,9 +20,8 @@ def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
 
     stats = coverage_mod.parse_coverage_xml("python", xml_path)
 
-    assert stats.total == 2
-    assert stats.covered == 1
-
+    ensure(stats.total == 2)
+    ensure(stats.covered == 1)
 
 def test_parse_lcov_reads_totals(tmp_path: Path):
     lcov_path = tmp_path / "coverage.lcov"
@@ -25,9 +29,8 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 
     stats = coverage_mod.parse_lcov("python", lcov_path)
 
-    assert stats.total == 2
-    assert stats.covered == 1
-
+    ensure(stats.total == 2)
+    ensure(stats.covered == 1)
 
 def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -45,10 +48,9 @@ def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
 
     rc = coverage_mod.main()
 
-    assert rc == 0
-    assert (tmp_path / "reports" / "coverage.json").exists()
-    assert (tmp_path / "reports" / "coverage.md").exists()
-
+    ensure(rc == 0)
+    ensure((tmp_path / "reports" / "coverage.json").exists())
+    ensure((tmp_path / "reports" / "coverage.md").exists())
 
 def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -57,7 +59,7 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
         provider="gh",
         owner="Prekzursil",
         repo="env-inspector",
-        token="",
+        token=_empty_token(),
         out_json="reports/codacy.json",
         out_md="reports/codacy.md",
     )
@@ -65,17 +67,16 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
 
     rc = codacy_mod.main()
 
-    assert rc == 1
-    assert (tmp_path / "reports" / "codacy.json").exists()
-    assert (tmp_path / "reports" / "codacy.md").exists()
-
+    ensure(rc == 1)
+    ensure((tmp_path / "reports" / "codacy.json").exists())
+    ensure((tmp_path / "reports" / "codacy.md").exists())
 
 def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DEEPSCAN_API_TOKEN", raising=False)
     monkeypatch.delenv("DEEPSCAN_OPEN_ISSUES_URL", raising=False)
     args = SimpleNamespace(
-        token="",
+        token=_empty_token(),
         out_json="reports/deepscan.json",
         out_md="reports/deepscan.md",
     )
@@ -83,10 +84,9 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
 
     rc = deepscan_mod.main()
 
-    assert rc == 1
-    assert (tmp_path / "reports" / "deepscan.json").exists()
-    assert (tmp_path / "reports" / "deepscan.md").exists()
-
+    ensure(rc == 1)
+    ensure((tmp_path / "reports" / "deepscan.json").exists())
+    ensure((tmp_path / "reports" / "deepscan.md").exists())
 
 def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -97,7 +97,7 @@ def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch)
     args = SimpleNamespace(
         org="",
         project=[],
-        token="",
+        token=_empty_token(),
         out_json="reports/sentry.json",
         out_md="reports/sentry.md",
     )
@@ -105,6 +105,6 @@ def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch)
 
     rc = sentry_mod.main()
 
-    assert rc == 0
-    assert (tmp_path / "reports" / "sentry.json").exists()
-    assert (tmp_path / "reports" / "sentry.md").exists()
+    ensure(rc == 0)
+    ensure((tmp_path / "reports" / "sentry.json").exists())
+    ensure((tmp_path / "reports" / "sentry.md").exists())

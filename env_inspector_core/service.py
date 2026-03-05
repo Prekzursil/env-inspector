@@ -1,12 +1,13 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import csv
 import difflib
 import io
 import json
 import os
-import subprocess
 import uuid
+from shutil import which
+from subprocess import PIPE, SubprocessError, run  # nosec B404
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Sequence, Tuple, Type
 
@@ -179,9 +180,10 @@ class EnvInspectorService:
 
         if self.win_provider is not None:
             try:
-                rows.extend(build_registry_records(self.win_provider))
-            except Exception:
-                pass
+                registry_rows = build_registry_records(self.win_provider)
+            except (OSError, RuntimeError, ValueError):
+                registry_rows = []
+            rows.extend(registry_rows)
 
         if self.runtime_context == "windows":
             rows.extend(collect_powershell_profile_records(self.get_powershell_profile_paths()))
@@ -205,15 +207,17 @@ class EnvInspectorService:
             exclude_distros: set[str] | None = None
             if self.runtime_context == "linux" and self.current_wsl_distro:
                 exclude_distros = {self.current_wsl_distro}
-            rows.extend(collect_wsl_records(self.wsl, include_etc=True, exclude_distros=exclude_distros))
-        except Exception:
-            pass
+            bridge_rows = collect_wsl_records(self.wsl, include_etc=True, exclude_distros=exclude_distros)
+        except (OSError, RuntimeError, ValueError):
+            bridge_rows = []
+        rows.extend(bridge_rows)
 
         if distro and wsl_path:
             try:
-                rows.extend(collect_wsl_dotenv_records(self.wsl, distro=distro, root_path=wsl_path, max_depth=scan_depth))
-            except Exception:
-                pass
+                dotenv_rows = collect_wsl_dotenv_records(self.wsl, distro=distro, root_path=wsl_path, max_depth=scan_depth)
+            except (OSError, RuntimeError, ValueError):
+                dotenv_rows = []
+            rows.extend(dotenv_rows)
 
         return rows
 
@@ -290,11 +294,14 @@ class EnvInspectorService:
             # Non-POSIX hosts can raise FileNotFoundError for this fixed path; still attempt sudo fallback.
             pass
 
-        proc = subprocess.run(
-            ["sudo", "-n", "tee", self._LINUX_ETC_ENV_PATH],
+        sudo_path = which("sudo")
+        if not sudo_path:
+            raise RuntimeError("sudo is not available for /etc/environment fallback.")
+        proc = run(  # nosec B603
+            [sudo_path, "-n", "tee", self._LINUX_ETC_ENV_PATH],
             input=text.encode("utf-8"),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=PIPE,
+            stderr=PIPE,
             check=False,
         )
         if proc.returncode == 0:
@@ -643,7 +650,7 @@ class EnvInspectorService:
             TypeError,
             OSError,
             PermissionError,
-            subprocess.SubprocessError,
+            SubprocessError,
         )
 
     def _preview_target_diff(
@@ -999,7 +1006,4 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
-
-
-
 

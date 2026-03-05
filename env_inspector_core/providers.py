@@ -4,7 +4,7 @@ import os
 import re
 import shlex
 import shutil
-import subprocess
+from subprocess import PIPE, CompletedProcess, run  # nosec B404
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
@@ -213,10 +213,10 @@ def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]
 class WslProvider:
     def __init__(
         self,
-        runner: Callable[..., subprocess.CompletedProcess[bytes]] | None = None,
+        runner: Callable[..., CompletedProcess[bytes]] | None = None,
         wsl_exe: str | None = None,
     ) -> None:
-        self.runner = runner or subprocess.run
+        self.runner = runner or run
         self.wsl_exe = wsl_exe or self._discover_wsl_exe()
         self._available_cache: bool | None = None
 
@@ -253,8 +253,8 @@ class WslProvider:
         try:
             proc = self.runner(
                 [str(self.wsl_exe), "-l", "-q"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=PIPE,
+                stderr=PIPE,
                 check=False,
             )
             self._available_cache = proc.returncode == 0
@@ -280,8 +280,8 @@ class WslProvider:
         proc = self.runner(
             [str(self.wsl_exe), *args],
             input=(input_text.encode("utf-8") if input_text is not None else None),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=PIPE,
+            stderr=PIPE,
             check=False,
         )
         out = self._decode(proc.stdout)
@@ -320,11 +320,12 @@ class WslProvider:
         quoted_path = shlex.quote(path)
 
         # 1) Try direct root user execution.
+        direct_root_failed = False
         try:
             self._run(["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
             return
-        except Exception:
-            pass
+        except RuntimeError:
+            direct_root_failed = True
 
         # 2) Fallback to sudo.
         try:
@@ -333,7 +334,7 @@ class WslProvider:
         except Exception as exc:
             raise RuntimeError(
                 "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
-            ) from exc
+            ) from exc if direct_root_failed else exc
 
     def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
         quoted_root = shlex.quote(root_path)

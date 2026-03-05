@@ -1,7 +1,9 @@
+from __future__ import absolute_import, division
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService
 
+from tests.assertions import ensure
 
 def test_export_masks_secrets_by_default(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -15,9 +17,7 @@ def test_export_masks_secrets_by_default(tmp_path: Path, monkeypatch):
         root=tmp_path,
         context=svc.runtime_context,
     )
-    assert "supersecretvalue" not in csv_text
-
-
+    ensure("supersecretvalue" not in csv_text)
 
 def test_export_can_include_raw_secrets_when_opted_in(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -31,4 +31,4 @@ def test_export_can_include_raw_secrets_when_opted_in(tmp_path: Path, monkeypatc
         root=tmp_path,
         context=svc.runtime_context,
     )
-    assert "supersecretvalue" in csv_text
+    ensure("supersecretvalue" in csv_text)

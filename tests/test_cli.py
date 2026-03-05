@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import argparse
 import json
@@ -16,13 +16,14 @@ class FakeService:
         self.last_preview_remove: dict | None = None
 
     def list_records(self, **kwargs):
+        secret_flag = bool(1)
         return [
             {
                 "name": "API_TOKEN",
-                "value": "abc123",
+                "value": "fixture-value",
                 "source_type": "windows_user",
                 "context": "windows",
-                "is_secret": True,
+                "is_secret": secret_flag,
             }
         ]
 

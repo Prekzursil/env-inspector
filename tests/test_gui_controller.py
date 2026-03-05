@@ -1,7 +1,8 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from env_inspector_gui.controller import EnvInspectorController
 
+from tests.assertions import ensure
 
 class _Var:
     def __init__(self, value: str = "") -> None:
@@ -12,7 +13,6 @@ class _Var:
 
     def set(self, value: str) -> None:
         self._value = value
-
 
 class _View:
     def __init__(self) -> None:
@@ -25,12 +25,10 @@ class _View:
     def set_refresh_busy(self, busy: bool) -> None:
         self.busy_states.append(busy)
 
-
 def test_var_roundtrip_set_get():
     var = _Var("initial")
     var.set("updated")
-    assert var.get() == "updated"
-
+    ensure(var.get() == "updated")
 
 def test_context_change_triggers_full_refresh():
     ctrl = EnvInspectorController.__new__(EnvInspectorController)
@@ -39,8 +37,7 @@ def test_context_change_triggers_full_refresh():
 
     EnvInspectorController.on_context_selected(ctrl)
 
-    assert calls == ["refresh"]
-
+    ensure(calls == ["refresh"])
 
 def test_busy_state_disable_enable_around_refresh():
     ctrl = EnvInspectorController.__new__(EnvInspectorController)
@@ -49,9 +46,8 @@ def test_busy_state_disable_enable_around_refresh():
     EnvInspectorController._set_busy(ctrl, True)
     EnvInspectorController._set_busy(ctrl, False)
 
-    assert ctrl.view.enabled_states == [False, True]
-    assert ctrl.view.busy_states == [True, False]
-
+    ensure(ctrl.view.enabled_states == [False, True])
+    ensure(ctrl.view.busy_states == [True, False])
 
 def test_refresh_updates_effective_value_when_key_present():
     ctrl = EnvInspectorController.__new__(EnvInspectorController)
@@ -67,10 +63,9 @@ def test_refresh_updates_effective_value_when_key_present():
 
     EnvInspectorController.refresh_data(ctrl)
 
-    assert ("effective", "API_TOKEN") in events
-    assert next(((kind, value) for kind, value in events if kind == "busy"), None) == ("busy", True)
-    assert next(((kind, value) for kind, value in reversed(events) if kind == "busy"), None) == ("busy", False)
-
+    ensure(("effective", "API_TOKEN") in events)
+    ensure(next(((kind, value) for kind, value in events if kind == "busy"), None) == ("busy", True))
+    ensure(next(((kind, value) for kind, value in reversed(events) if kind == "busy"), None) == ("busy", False))
 
 def test_set_remove_operations_always_preview_before_apply():
     ctrl = EnvInspectorController.__new__(EnvInspectorController)
@@ -93,8 +88,8 @@ def test_set_remove_operations_always_preview_before_apply():
     EnvInspectorController._run_operation(ctrl, "set")
     EnvInspectorController._run_operation(ctrl, "remove")
 
-    assert next(((kind, value) for kind, value in calls if kind == "preview"), None) == ("preview", "set")
-    assert ("confirm", False) in calls
-    assert ("apply", "set") in calls
-    assert ("preview", "remove") in calls
-    assert ("apply", "remove") in calls
+    ensure(next(((kind, value) for kind, value in calls if kind == "preview"), None) == ("preview", "set"))
+    ensure(("confirm", False) in calls)
+    ensure(("apply", "set") in calls)
+    ensure(("preview", "remove") in calls)
+    ensure(("apply", "remove") in calls)

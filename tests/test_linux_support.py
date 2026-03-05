@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 from pathlib import Path
 
@@ -9,6 +9,7 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
 from env_inspector_core.service import EnvInspectorService
 
+from tests.assertions import ensure
 
 def _record(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
     return EnvRecord(
@@ -26,7 +27,6 @@ def _record(source_type: str, context: str, name: str, value: str, precedence: i
         requires_privilege=False,
         last_error=None,
     )
-
 
 def _patch_linux_etc_environment_reads(monkeypatch: pytest.MonkeyPatch, etc_env: Path) -> Path:
     real_exists = Path.exists
@@ -47,7 +47,6 @@ def _patch_linux_etc_environment_reads(monkeypatch: pytest.MonkeyPatch, etc_env:
     monkeypatch.setattr(Path, "read_text", fake_read_text)
     return target
 
-
 def _patch_linux_etc_environment_denied(monkeypatch: pytest.MonkeyPatch, etc_env: Path) -> list[str]:
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
     real_open = Path.open
@@ -62,41 +61,37 @@ def _patch_linux_etc_environment_denied(monkeypatch: pytest.MonkeyPatch, etc_env
     monkeypatch.setattr(Path, "open", fake_open)
     return writes
 
-
 def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
     bashrc = tmp_path / ".bashrc"
     etc_env = tmp_path / "etc_environment"
-    bashrc.write_text("export API_TOKEN='abc123'\nexport PATH='/usr/bin'\n", encoding="utf-8")
+    bashrc.write_text("export API_TOKEN='fixture-value'\nexport PATH='/usr/bin'\n", encoding="utf-8")
     etc_env.write_text("LANG=en_US.UTF-8\nEDITOR=vim\n", encoding="utf-8")
 
     rows = collect_linux_records(bashrc_path=bashrc, etc_environment_path=etc_env, context="linux")
 
     source_types = {r.source_type for r in rows}
-    assert "linux_bashrc" in source_types
-    assert "linux_etc_environment" in source_types
-    assert all(r.context == "linux" for r in rows)
-    assert any(r.name == "API_TOKEN" and r.value == "abc123" for r in rows)
-    assert any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows)
-
+    ensure("linux_bashrc" in source_types)
+    ensure("linux_etc_environment" in source_types)
+    ensure(all(r.context == "linux" for r in rows))
+    ensure(any(r.name == "API_TOKEN" and r.value == "fixture-value" for r in rows))
+    ensure(any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows))
 
 def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
-    env_file.write_text("API_TOKEN=abc123\n", encoding="utf-8")
+    env_file.write_text("API_TOKEN=fixture-value\n", encoding="utf-8")
 
     rows = collect_dotenv_records(tmp_path, max_depth=2, context="linux")
-    assert rows
-    assert all(r.context == "linux" for r in rows)
-
+    ensure(rows)
+    ensure(all(r.context == "linux" for r in rows))
 
 def test_service_available_targets_always_include_linux_targets_for_linux_context(tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     targets = svc.available_targets([], context="linux")
 
-    assert "linux:bashrc" in targets
-    assert "linux:etc_environment" in targets
-
+    ensure("linux:bashrc" in targets)
+    ensure("linux:etc_environment" in targets)
 
 def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -114,8 +109,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
 
     contexts = svc.list_contexts()
 
-    assert contexts == ["linux", "wsl:Debian"]
-
+    ensure(contexts == ["linux", "wsl:Debian"])
 
 def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -134,9 +128,8 @@ def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch
 
     rows = svc.list_records(root=tmp_path, context="linux", include_raw_secrets=True)
 
-    assert any(r["source_type"] == "linux_bashrc" for r in rows)
-    assert any(r["source_type"] == "linux_etc_environment" for r in rows)
-
+    ensure(any(r["source_type"] == "linux_bashrc" for r in rows))
+    ensure(any(r["source_type"] == "linux_etc_environment" for r in rows))
 
 def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -153,19 +146,19 @@ def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypa
         stderr = b""
 
     def fake_run(cmd, **kwargs):
-        assert cmd[:3] == ["sudo", "-n", "tee"]
-        assert kwargs.get("input") == b"A=2\n"
+        ensure(cmd[:3] == ["sudo", "-n", "tee"])
+        ensure(kwargs.get("input") == b"A=2\n")
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
 
-    monkeypatch.setattr(service_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "run", fake_run)
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    assert result["success"] is True
-    assert etc_env.read_text(encoding="utf-8") == "A=2\n"
-    assert str(Path("/etc/environment")) not in writes
-
+    ensure(result["success"] is True)
+    ensure(etc_env.read_text(encoding="utf-8") == "A=2\n")
+    ensure(str(Path("/etc/environment")) not in writes)
 
 def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -177,9 +170,9 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Pat
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
 
     def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool):
-        assert path == target
-        assert text == "A=2\n"
-        assert ensure_parent is False
+        ensure(path == target)
+        ensure(text == "A=2\n")
+        ensure(ensure_parent is False)
         raise FileNotFoundError("no /etc/environment on host")
 
     class Proc:
@@ -188,19 +181,19 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Pat
         stderr = b""
 
     def fake_run(cmd, **kwargs):
-        assert cmd[:3] == ["sudo", "-n", "tee"]
-        assert kwargs.get("input") == b"A=2\n"
+        ensure(cmd[:3] == ["sudo", "-n", "tee"])
+        ensure(kwargs.get("input") == b"A=2\n")
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
 
     monkeypatch.setattr(svc, "_write_text_file", fake_write_text_file)
-    monkeypatch.setattr(service_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "run", fake_run)
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    assert result["success"] is True
-    assert etc_env.read_text(encoding="utf-8") == "A=2\n"
-
+    ensure(result["success"] is True)
+    ensure(etc_env.read_text(encoding="utf-8") == "A=2\n")
 
 def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -212,8 +205,8 @@ def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(tmp_path:
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
 
     def fake_write_text_file(path: Path, _text: str, *, ensure_parent: bool):
-        assert path == target
-        assert ensure_parent is False
+        ensure(path == target)
+        ensure(ensure_parent is False)
         raise OSError("direct write unavailable")
 
     class Proc:
@@ -222,14 +215,14 @@ def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(tmp_path:
         stderr = b"sudo auth failed"
 
     monkeypatch.setattr(svc, "_write_text_file", fake_write_text_file)
-    monkeypatch.setattr(service_module.subprocess, "run", lambda *_args, **_kwargs: Proc())
+    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "run", lambda *_args, **_kwargs: Proc())
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    assert result["success"] is False
-    assert "sudo" in (result["error_message"] or "").lower()
-    assert etc_env.read_text(encoding="utf-8") == "A=1\n"
-
+    ensure(result["success"] is False)
+    ensure("sudo" in (result["error_message"] or "").lower())
+    ensure(etc_env.read_text(encoding="utf-8") == "A=1\n")
 
 def test_linux_bashrc_set_and_remove_roundtrip(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -241,14 +234,13 @@ def test_linux_bashrc_set_and_remove_roundtrip(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(service_module.Path, "home", lambda: tmp_path)
 
     set_result = svc.set_key(key="MY_TEST_VAR", value="hello", targets=["linux:bashrc"])
-    assert set_result["success"] is True
-    assert "MY_TEST_VAR" in bashrc.read_text(encoding="utf-8")
-    assert set_result["backup_path"]
+    ensure(set_result["success"] is True)
+    ensure("MY_TEST_VAR" in bashrc.read_text(encoding="utf-8"))
+    ensure(set_result["backup_path"])
 
     remove_result = svc.remove_key(key="MY_TEST_VAR", targets=["linux:bashrc"])
-    assert remove_result["success"] is True
-    assert "MY_TEST_VAR" not in bashrc.read_text(encoding="utf-8")
-
+    ensure(remove_result["success"] is True)
+    ensure("MY_TEST_VAR" not in bashrc.read_text(encoding="utf-8"))
 
 def test_linux_etc_environment_write_reports_permission_failure(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -264,10 +256,11 @@ def test_linux_etc_environment_write_reports_permission_failure(tmp_path: Path, 
         stdout = b""
         stderr = b"sudo auth failed"
 
-    monkeypatch.setattr(service_module.subprocess, "run", lambda *_args, **_kwargs: Proc())
+    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "run", lambda *_args, **_kwargs: Proc())
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
 
-    assert result["success"] is False
-    assert "sudo" in (result["error_message"] or "").lower()
-    assert etc_env.read_text(encoding="utf-8") == "A=1\n"
+    ensure(result["success"] is False)
+    ensure("sudo" in (result["error_message"] or "").lower())
+    ensure(etc_env.read_text(encoding="utf-8") == "A=1\n")

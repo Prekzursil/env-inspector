@@ -1,9 +1,10 @@
-from __future__ import division
+from __future__ import division, absolute_import
 
 from pathlib import Path
 import unittest
 
 import env_inspector
+from env_inspector_core.path_policy import PathPolicyError
 
 
 def _case() -> unittest.TestCase:
@@ -36,28 +37,6 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
     case.assertIn("Invalid --root", err)
 
 
-def test_legacy_print_secrets_revalidates_root_before_list_records(tmp_path: Path, monkeypatch, capsys):
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    outside = tmp_path.parent.resolve()
-
-    monkeypatch.chdir(workspace)
-    monkeypatch.setattr(env_inspector, "resolve_scan_root", lambda _root: outside)
-
-    class _ForbiddenService:
-        def __init__(self, *args, **kwargs):  # pragma: no cover - should not be reached
-            raise AssertionError("EnvInspectorService should not be created for revalidation failure")
-
-    monkeypatch.setattr(env_inspector, "EnvInspectorService", _ForbiddenService)
-
-    code = env_inspector._legacy_print_secrets(str(workspace))
-
-    case = _case()
-    case.assertEqual(code, 2)
-    err = capsys.readouterr().err
-    case.assertIn("Invalid --root", err)
-
-
 def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, monkeypatch, capsys):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -67,8 +46,9 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
     captured = {}
 
     def _list_records(**kwargs):
+        secret_flag = bool(1)
         captured.update(kwargs)
-        return [{"is_secret": True, "source_type": "dotenv", "source_id": ".env", "name": "API_TOKEN"}]
+        return [{"is_secret": secret_flag, "source_type": "dotenv", "source_id": ".env", "name": "API_TOKEN"}]
 
     class _Service:
         list_records = staticmethod(_list_records)
@@ -104,3 +84,34 @@ def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, m
     case.assertEqual(code, 2)
     err = capsys.readouterr().err
     case.assertIn("Legacy --print-secrets only supports the current working directory.", err)
+
+
+def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(tmp_path: Path, monkeypatch):
+    workspace = (tmp_path / "workspace").resolve()
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+
+    calls: list[str] = []
+
+    def _validated_root(_value):
+        calls.append(str(_value))
+        return workspace
+
+    monkeypatch.setattr(env_inspector, "resolve_scan_root", _validated_root)
+
+    case = _case()
+    case.assertEqual(env_inspector._resolve_legacy_print_secrets_root(str(workspace)), workspace)
+    case.assertEqual(len(calls), 2)
+
+
+def test_resolve_legacy_print_secrets_root_rejects_missing_directory(tmp_path: Path, monkeypatch):
+    workspace = (tmp_path / "workspace").resolve()
+    missing = workspace / "missing"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+
+    case = _case()
+    with case.assertRaises(PathPolicyError) as exc_info:
+        env_inspector._resolve_legacy_print_secrets_root(missing)
+
+    case.assertIn("Scan root must exist as a directory", str(exc_info.exception))

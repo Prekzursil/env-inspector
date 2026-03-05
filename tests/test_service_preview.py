@@ -1,7 +1,9 @@
+from __future__ import absolute_import, division
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService
 
+from tests.assertions import ensure
 
 def test_preview_set_does_not_mutate_file(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -11,17 +13,16 @@ def test_preview_set_does_not_mutate_file(tmp_path: Path, monkeypatch):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     previews = svc.preview_set(key="API_TOKEN", value="x", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    assert previews[0]["success"] is True
+    ensure(previews[0]["success"] is True)
 
     text_after_preview = env_file.read_text(encoding="utf-8")
-    assert text_after_preview == "A=1\n"
+    ensure(text_after_preview == "A=1\n")
 
     result = svc.set_key(key="API_TOKEN", value="x", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    assert result["success"] is True
+    ensure(result["success"] is True)
 
     text_after_apply = env_file.read_text(encoding="utf-8")
-    assert "API_TOKEN=x" in text_after_apply
-
+    ensure("API_TOKEN=x" in text_after_apply)
 
 def test_set_does_not_write_when_backup_fails(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -36,10 +37,9 @@ def test_set_does_not_write_when_backup_fails(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(svc.backup_mgr, "backup_text", fail_backup)
 
     result = svc.set_key(key="A", value="2", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    assert result["success"] is False
-    assert "backup write failed" in result["error_message"]
-    assert env_file.read_text(encoding="utf-8") == "A=1\n"
-
+    ensure(result["success"] is False)
+    ensure("backup write failed" in result["error_message"])
+    ensure(env_file.read_text(encoding="utf-8") == "A=1\n")
 
 def test_audit_log_redacts_secret_diff(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -48,12 +48,11 @@ def test_audit_log_redacts_secret_diff(tmp_path: Path, monkeypatch):
 
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     result = svc.set_key(key="API_TOKEN", value="supersecretvalue", targets=[f"dotenv:{env_file}"], scope_roots=[tmp_path])
-    assert result["success"] is True
+    ensure(result["success"] is True)
 
     log_text = (tmp_path / "state" / "audit.log").read_text(encoding="utf-8")
-    assert "[secret diff masked]" in log_text
-    assert "supersecretvalue" not in log_text
-
+    ensure("[secret diff masked]" in log_text)
+    ensure("supersecretvalue" not in log_text)
 
 def test_set_rejects_dotenv_target_outside_approved_roots(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -67,6 +66,6 @@ def test_set_rejects_dotenv_target_outside_approved_roots(tmp_path: Path, monkey
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     result = svc.set_key(key="A", value="2", targets=[f"dotenv:{env_file}"], scope_roots=[allowed_root])
 
-    assert result["success"] is False
-    assert "outside approved roots" in (result["error_message"] or "")
-    assert env_file.read_text(encoding="utf-8") == "A=1\n"
+    ensure(result["success"] is False)
+    ensure("outside approved roots" in (result["error_message"] or ""))
+    ensure(env_file.read_text(encoding="utf-8") == "A=1\n")

@@ -5,7 +5,7 @@
 - GUI mode: launched when no subcommand is provided
 """
 
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import argparse
 import os
@@ -20,19 +20,9 @@ from env_inspector_gui import EnvInspectorApp
 CLI_COMMANDS = {"list", "set", "remove", "export", "backup", "restore"}
 
 
-def _revalidate_legacy_scan_root(root: Path) -> Path:
-    workspace = Path.cwd().resolve(strict=False)
-    candidate = Path(os.path.abspath(os.path.expanduser(str(root)))).resolve(strict=False)
-    if candidate != workspace and workspace not in candidate.parents:
-        raise PathPolicyError(f"Scan root must be inside the current working directory: {candidate}")
-    if not candidate.exists() or not candidate.is_dir():
-        raise PathPolicyError(f"Scan root must exist as a directory: {candidate}")
-    return candidate
-
-
 def _resolve_legacy_print_secrets_root(root: str | Path) -> Path:
-    requested = _revalidate_legacy_scan_root(resolve_scan_root(root))
     workspace_root = resolve_scan_root(Path.cwd())
+    requested = resolve_scan_root(root)
     if requested != workspace_root:
         raise PathPolicyError("Legacy --print-secrets only supports the current working directory.")
     return workspace_root

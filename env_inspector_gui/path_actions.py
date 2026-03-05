@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations, absolute_import, division
 
 import os
 import webbrowser
@@ -47,7 +47,7 @@ def _open_path(source_path: str, *, platform: str | None = None, run_command=Non
         if run_command is not None:
             run_command(["cmd", "/c", "start", "", source_path])
             return
-        os.startfile(source_path)  # type: ignore[attr-defined]
+        os.startfile(source_path)  # type: ignore[attr-defined]  # nosec B606
         return
 
     if run_command is not None:

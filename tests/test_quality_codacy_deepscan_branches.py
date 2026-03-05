@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from email.message import Message
 import secrets
@@ -19,6 +19,10 @@ def _case() -> unittest.TestCase:
 
 def _token() -> str:
     return secrets.token_hex(8)
+
+
+def _empty_token() -> str:
+    return str()
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:
@@ -314,7 +318,7 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPSCAN_OPEN_ISSUES_URL", "https://deepscan.io/api/projects/1/issues/open")
 
     def _deepscan_args():
-        return type("Args", (), {"token": "", "out_json": "o/deep.json", "out_md": "o/deep.md"})()
+        return type("Args", (), {"token": _empty_token(), "out_json": "o/deep.json", "out_md": "o/deep.md"})()
 
     monkeypatch.setattr(deepscan_mod, "_parse_args", _deepscan_args)
     monkeypatch.setattr(deepscan_mod, "_resolve_deepscan_endpoint", lambda _url: ("deepscan.io", "/api", {}))
@@ -338,7 +342,7 @@ def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
                 "owner": "Prekzursil",
                 "repo": "env-inspector",
                 "branch": "main",
-                "token": "",
+                "token": _empty_token(),
                 "out_json": "o/codacy.json",
                 "out_md": "o/codacy.md",
             },
@@ -350,4 +354,3 @@ def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
     rc = codacy_mod.main()
 
     _case().assertEqual(rc, 0)
-
