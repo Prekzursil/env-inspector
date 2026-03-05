@@ -1,5 +1,3 @@
-from __future__ import annotations, division
-
 from pathlib import Path
 import unittest
 
