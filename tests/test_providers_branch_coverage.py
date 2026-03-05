@@ -95,7 +95,12 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
             }
             return mapping.get(path, "")
 
-    rows = providers.collect_wsl_records(_FakeWsl(), include_etc=True)
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return getattr(self, "_dotenv_paths", [])
+
+    fake = _FakeWsl()
+    rows = providers.collect_wsl_records(fake, include_etc=True)
+    _case().assertEqual(fake.scan_dotenv_files("Ubuntu", "/workspace", 1), [])
 
     case = _case()
     case.assertTrue(any(r.source_type == SOURCE_WSL_BASHRC and r.name == "API_TOKEN" for r in rows))
@@ -113,7 +118,12 @@ def test_collect_wsl_records_respects_excluded_distros():
         def read_file(self, distro: str, path: str) -> str:
             return ""
 
-    rows = providers.collect_wsl_records(_FakeWsl(), include_etc=False, exclude_distros={"ubuntu"})
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return getattr(self, "_dotenv_paths", [])
+
+    fake = _FakeWsl()
+    rows = providers.collect_wsl_records(fake, include_etc=False, exclude_distros={"ubuntu"})
+    _case().assertEqual(fake.scan_dotenv_files("Ubuntu", "/workspace", 1), [])
 
     _case().assertTrue(all(r.source_id != "Ubuntu" for r in rows))
 
@@ -123,9 +133,22 @@ def test_collect_wsl_helpers_return_empty_when_wsl_unavailable():
         def available(self) -> bool:
             return False
 
-    _case().assertEqual(providers.collect_wsl_records(_FakeWsl()), [])
+        def list_distros(self) -> List[str]:
+            return []
+
+        def read_file(self, distro: str, path: str) -> str:
+            return ""
+
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            return getattr(self, "_dotenv_paths", [])
+
+    fake = _FakeWsl()
+    _case().assertEqual(fake.list_distros(), [])
+    _case().assertEqual(fake.read_file("Ubuntu", "~/.bashrc"), "")
+    _case().assertEqual(fake.scan_dotenv_files("Ubuntu", "/workspace", 2), [])
+    _case().assertEqual(providers.collect_wsl_records(fake), [])
     _case().assertEqual(
-        providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2),
+        providers.collect_wsl_dotenv_records(fake, "Ubuntu", "/workspace", 2),
         [],
     )
 
@@ -141,9 +164,15 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
         def read_file(self, distro: str, path: str) -> str:
             return "A=1\n"
 
-    rows = providers.collect_wsl_dotenv_records(_FakeWsl(), "Ubuntu", "/workspace", 2)
+        def list_distros(self) -> List[str]:
+            return ["Ubuntu"]
+
+    fake = _FakeWsl()
+    _case().assertEqual(fake.list_distros(), ["Ubuntu"])
+    rows = providers.collect_wsl_dotenv_records(fake, "Ubuntu", "/workspace", 2)
 
     case = _case()
     case.assertEqual(len(rows), 1)
     case.assertEqual(rows[0].name, "A")
     case.assertEqual(rows[0].value, "1")
+
