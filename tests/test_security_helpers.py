@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import annotations
 
 import urllib.error
 
@@ -86,17 +86,16 @@ def test_request_json_https_http_error(monkeypatch):
 
     class _Connection:
         def __init__(self, host: str, timeout: int):
-            self.host = host
-            self.timeout = timeout
+            pass
 
         def request(self, method, path, body=None, headers=None):
-            self.request_args = (method, path, body, headers)
+            pass
 
         def getresponse(self):
             return _Response()
 
         def close(self):
-            self.closed = True
+            pass
 
     monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
 
@@ -107,7 +106,6 @@ def test_request_json_https_http_error(monkeypatch):
             headers={"Accept": "application/json"},
         )
     assert exc_info.value.code == 403
-
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

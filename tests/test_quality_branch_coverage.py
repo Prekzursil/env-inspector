@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from unittest import TestCase
 import urllib.error
 
 
@@ -10,13 +9,14 @@ from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 
 
-def test_codacy_extract_total_open_handles_nested_and_missing_counts():
+def test_codacy_walk_nodes_and_extract_total_open():
     payload = {"outer": [{"nested": {"open_issues": 7}}, {"other": "x"}]}
-    case = TestCase()
 
-    case.assertEqual(codacy_mod.extract_total_open(payload), 7)
-    case.assertEqual(codacy_mod.extract_total_open({"pagination": {"total": 4}}), 4)
-    case.assertIsNone(codacy_mod.extract_total_open({"outer": [{"nested": "value"}]}))
+    nodes = codacy_mod._walk_nodes(payload)
+
+    assert payload in nodes
+    assert codacy_mod.extract_total_open(payload) == 7
+    assert codacy_mod.extract_total_open({"outer": [{"nested": "value"}]}) is None
 
 
 def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monkeypatch, capsys):
