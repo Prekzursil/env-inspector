@@ -143,7 +143,8 @@ python3 scripts/quality/assert_coverage_100.py \
 
 1. Open Actions and run `.github/workflows/env-inspector-exe-release.yml` on your branch.
 2. Download the `env-inspector-exe` artifact from the run summary.
-3. Verify checksum with `env-inspector.exe.sha256` before testing.
+3. Push a `v*` tag when you want the workflow to publish or update the GitHub release entry.
+4. Verify checksum with `env-inspector.exe.sha256` before testing.
 
 ## CI, reviews, and merges
 
