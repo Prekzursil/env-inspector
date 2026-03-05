@@ -213,7 +213,7 @@ def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]
 class WslProvider:
     def __init__(
         self,
-        runner: Callable[..., CompletedProcess[bytes]] | None = None,
+        runner: Callable[..., CompletedProcess] | None = None,
         wsl_exe: str | None = None,
     ) -> None:
         self.runner = runner or run
@@ -319,21 +319,24 @@ class WslProvider:
     def write_file_with_privilege(self, distro: str, path: str, content: str) -> None:
         quoted_path = shlex.quote(path)
 
+        root_error: RuntimeError | None = None
+
         # 1) Try direct root user execution.
         try:
             self._run(["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
             return
-        except RuntimeError:
-            pass
+        except RuntimeError as exc:
+            root_error = exc
 
         # 2) Fallback to sudo.
         try:
             self._run(["-d", distro, "-e", "bash", "-lc", f"sudo tee {quoted_path} >/dev/null"], input_text=content)
             return
-        except Exception as exc:
+        except RuntimeError as exc:
+            cause = exc if root_error is None else root_error
             raise RuntimeError(
                 "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
-            ) from exc
+            ) from cause
 
     def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
         quoted_root = shlex.quote(root_path)

@@ -8,7 +8,7 @@ from env_inspector_core.providers import WslProvider
 
 from tests.assertions import ensure
 
-def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> CompletedProcess[bytes]:
+def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> CompletedProcess:
     return CompletedProcess(args=["wsl"], returncode=returncode, stdout=stdout, stderr=stderr)
 
 def test_write_file_with_privilege_root_success():

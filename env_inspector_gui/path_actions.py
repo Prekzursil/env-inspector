@@ -1,4 +1,4 @@
-from __future__ import annotations, absolute_import, division
+from __future__ import absolute_import, division
 
 import os
 import webbrowser
@@ -44,10 +44,13 @@ def open_source_path(
 def _open_path(source_path: str, *, platform: str | None = None, run_command=None) -> None:
     system = (platform or _platform_name()).lower()
     if system in {"windows", "win32", "nt"}:
-        if run_command is not None:
-            run_command(["cmd", "/c", "start", "", source_path])
+        if run_command is None:
+            uri = Path(source_path).resolve().as_uri()
+            opened = webbrowser.open(uri)
+            if not opened:
+                raise RuntimeError("Failed to open source path")
             return
-        os.startfile(source_path)  # type: ignore[attr-defined]  # nosec B606
+        run_command(["cmd", "/c", "start", "", source_path])
         return
 
     if run_command is not None:

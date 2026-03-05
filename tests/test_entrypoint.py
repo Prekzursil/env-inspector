@@ -1,6 +1,7 @@
 from __future__ import division, absolute_import
 
 from pathlib import Path
+from typing import List
 import unittest
 
 import env_inspector
@@ -91,7 +92,7 @@ def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(t
     workspace.mkdir()
     monkeypatch.chdir(workspace)
 
-    calls: list[str] = []
+    calls: List[str] = []
 
     def _validated_root(_value):
         calls.append(str(_value))
