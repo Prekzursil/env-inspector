@@ -70,8 +70,6 @@ jobs:
 
           if [ "$repo" = "env-inspector" ]; then
             if [ -f requirements-build.txt ]; then
-              python3 -m pip install --upgrade pip
-              python3 -m pip install -r requirements-build.txt
               has_target=true
               oss_mode="executed"
               skip_reason=""
