@@ -54,7 +54,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
           mkdir -p semgrep-zero
           mapfile -t configs < .tmp/semgrep-configs.txt
           args=()
@@ -62,7 +61,16 @@ jobs:
             [ -n "$cfg" ] || continue
             args+=(--config "$cfg")
           done
-          semgrep scan \
+          env \
+            -u HTTP_PROXY \
+            -u HTTPS_PROXY \
+            -u ALL_PROXY \
+            -u NO_PROXY \
+            -u http_proxy \
+            -u https_proxy \
+            -u all_proxy \
+            -u no_proxy \
+            semgrep scan \
             --error \
             --metrics=off \
             --json \
@@ -84,7 +92,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
           mkdir -p semgrep-zero
           mapfile -t configs < .tmp/semgrep-configs.txt
           args=()
@@ -92,7 +99,16 @@ jobs:
             [ -n "$cfg" ] || continue
             args+=(--config "$cfg")
           done
-          semgrep scan \
+          env \
+            -u HTTP_PROXY \
+            -u HTTPS_PROXY \
+            -u ALL_PROXY \
+            -u NO_PROXY \
+            -u http_proxy \
+            -u https_proxy \
+            -u all_proxy \
+            -u no_proxy \
+            semgrep scan \
             --metrics=off \
             --sarif \
             --output semgrep-zero/semgrep.sarif \
