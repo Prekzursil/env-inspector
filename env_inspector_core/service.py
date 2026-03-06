@@ -291,11 +291,10 @@ class EnvInspectorService:
             # Non-POSIX hosts can raise FileNotFoundError for this fixed path; still attempt sudo fallback.
             pass
 
-        sudo_path = which("sudo")
-        if not sudo_path:
+        if not which("sudo"):
             raise RuntimeError("sudo is not available for /etc/environment fallback.")
         proc = run(  # nosec B603
-            [sudo_path, "-n", "tee", self._LINUX_ETC_ENV_PATH],
+            ["sudo", "-n", "tee", self._LINUX_ETC_ENV_PATH],
             input=text.encode("utf-8"),
             stdout=PIPE,
             stderr=PIPE,
