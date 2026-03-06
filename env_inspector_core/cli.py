@@ -3,9 +3,10 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import List, Sequence
+from typing import Any, Dict, List, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
+from .rendering import export_rows
 from .service import EnvInspectorService
 
 
@@ -78,10 +79,8 @@ def _reject_raw_secret_stdout(args: argparse.Namespace) -> None:
         raise ValueError("--include-raw-secrets is not supported for stdout-rendered CLI output.")
 
 
-def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
-    _reject_raw_secret_stdout(args)
-    rendered = service.export_records(
-        output=args.output,
+def _stdout_safe_rows(service: EnvInspectorService, args: argparse.Namespace) -> List[Dict[str, Any]]:
+    rows = service.list_records(
         include_raw_secrets=False,
         root=args.root,
         context=args.context,
@@ -90,21 +89,24 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> Non
         distro=args.distro,
         scan_depth=args.scan_depth,
     )
+    safe_rows: List[Dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        if item.get("is_secret"):
+            item["value"] = "[secret masked]"
+        safe_rows.append(item)
+    return safe_rows
+
+
+def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
+    _reject_raw_secret_stdout(args)
+    rendered = export_rows(_stdout_safe_rows(service, args), output=args.output)
     _write_rendered_output(rendered)
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
     _reject_raw_secret_stdout(args)
-    rendered = service.export_records(
-        output=args.output,
-        include_raw_secrets=False,
-        root=args.root,
-        context=args.context,
-        source=args.source,
-        wsl_path=args.wsl_path,
-        distro=args.distro,
-        scan_depth=args.scan_depth,
-    )
+    rendered = export_rows(_stdout_safe_rows(service, args), output=args.output)
     _write_rendered_output(rendered)
     return 0
 

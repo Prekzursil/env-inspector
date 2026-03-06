@@ -14,26 +14,28 @@ class FakeService:
         self.last_remove: dict | None = None
         self.last_preview_set: dict | None = None
         self.last_preview_remove: dict | None = None
-        self.last_export: dict | None = None
+        self.last_list: dict | None = None
 
-    def export_records(self, **kwargs):
-        self.last_export = kwargs
-        if kwargs.get("output") == "json":
-            secret_flag = bool(1)
-            return json.dumps(
-                [
-                    {
-                        "name": "API_TOKEN",
-                        "value": "fixture-value",
-                        "source_type": "windows_user",
-                        "context": "windows",
-                        "is_secret": secret_flag,
-                    }
-                ],
-                ensure_ascii=True,
-                indent=2,
-            )
-        return "name,value\nAPI_TOKEN,abc***123\n"
+    def list_records(self, **kwargs):
+        self.last_list = kwargs
+        secret_flag = bool(1)
+        return [
+            {
+                "name": "API_TOKEN",
+                "value": "fixture-value",
+                "source_type": "windows_user",
+                "source_id": "windows:user",
+                "source_path": "registry://HKCU/Environment",
+                "context": "windows",
+                "is_secret": secret_flag,
+                "is_persistent": True,
+                "is_mutable": True,
+                "precedence_rank": 10,
+                "writable": True,
+                "requires_privilege": False,
+                "last_error": None,
+            }
+        ]
 
     def preview_set(self, **kwargs):
         self.last_preview_set = kwargs
@@ -89,11 +91,12 @@ def test_run_cli_list_json_contract(capsys):
     code = run_cli(["list", "--output", "json"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
-    case.assertIsNotNone(svc.last_export)
-    case.assertIs(svc.last_export["include_raw_secrets"], False)
+    case.assertIsNotNone(svc.last_list)
+    case.assertIs(svc.last_list["include_raw_secrets"], False)
     out = capsys.readouterr().out
     payload = json.loads(out)
     case.assertEqual(payload[0]["name"], "API_TOKEN")
+    case.assertEqual(payload[0]["value"], "[secret masked]")
 
 
 def test_run_cli_list_non_json_uses_export_records(capsys):
@@ -101,10 +104,11 @@ def test_run_cli_list_non_json_uses_export_records(capsys):
     code = run_cli(["list", "--output", "csv"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
-    case.assertIsNotNone(svc.last_export)
-    case.assertIs(svc.last_export["include_raw_secrets"], False)
+    case.assertIsNotNone(svc.last_list)
+    case.assertIs(svc.last_list["include_raw_secrets"], False)
     out = capsys.readouterr().out
-    case.assertIn("API_TOKEN,abc***123", out)
+    case.assertIn("API_TOKEN", out)
+    case.assertIn("[secret masked]", out)
 
 
 def test_run_cli_set_and_remove(capsys):
@@ -188,11 +192,12 @@ def test_run_cli_export_backup_and_restore(capsys):
     case.assertEqual(export_code, 0)
     case.assertEqual(backup_code, 0)
     case.assertEqual(restore_code, 0)
-    case.assertIsNotNone(svc.last_export)
-    case.assertIs(svc.last_export["include_raw_secrets"], False)
+    case.assertIsNotNone(svc.last_list)
+    case.assertIs(svc.last_list["include_raw_secrets"], False)
 
     out = capsys.readouterr().out
-    case.assertIn("API_TOKEN,abc***123", out)
+    case.assertIn("API_TOKEN", out)
+    case.assertIn("[secret masked]", out)
     case.assertIn("backup1", out)
     case.assertIn("op-restore", out)
 
@@ -226,6 +231,6 @@ def test_run_cli_rejects_raw_secret_stdout_for_list_and_export(capsys):
     case = _case()
     case.assertEqual(list_code, 2)
     case.assertEqual(export_code, 2)
-    case.assertIsNone(svc.last_export)
+    case.assertIsNone(svc.last_list)
     err = capsys.readouterr().err
     case.assertIn("--include-raw-secrets is not supported", err)
