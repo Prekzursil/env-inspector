@@ -173,7 +173,7 @@ def rows_to_payload(rows: List[EnvRecord], *, include_raw_secrets: bool) -> List
     payload: List[Dict[str, Any]] = []
     for record in rows:
         item = record.to_dict(include_value=True)
-        if record.is_secret and not include_raw_secrets:
+        if bool(item.get("is_secret")) and not include_raw_secrets:
             item["value"] = mask_value(record.value)
         payload.append(item)
     return payload

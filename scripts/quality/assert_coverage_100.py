@@ -219,6 +219,33 @@ def evaluate(
     return status, findings
 
 
+def _append_component_lines(lines: List[str], payload: Dict[str, Any]) -> None:
+    components = payload.get("components") or []
+    if components:
+        for item in components:
+            lines.append(
+                f"- `{item['name']}`: `{item['percent']:.2f}%` ({item['covered']}/{item['total']}) from `{item['path']}`"
+            )
+        return
+    lines.append(_NONE_LIST_ITEM)
+
+
+def _append_covered_source_lines(lines: List[str], payload: Dict[str, Any]) -> None:
+    sources = payload.get("covered_sources") or []
+    if sources:
+        lines.extend(f"- `{source_path}`" for source_path in sources)
+        return
+    lines.append(_NONE_LIST_ITEM)
+
+
+def _append_finding_lines(lines: List[str], payload: Dict[str, Any]) -> None:
+    findings = payload.get("findings") or []
+    if findings:
+        lines.extend(f"- {finding}" for finding in findings)
+        return
+    lines.append(_NONE_LIST_ITEM)
+
+
 def _render_md(payload: Dict[str, Any]) -> str:
     lines = [
         "# Coverage 100 Gate",
@@ -229,28 +256,13 @@ def _render_md(payload: Dict[str, Any]) -> str:
         "",
         "## Components",
     ]
-
-    for item in payload.get("components", []):
-        lines.append(
-            f"- `{item['name']}`: `{item['percent']:.2f}%` ({item['covered']}/{item['total']}) from `{item['path']}`"
-        )
-
-    if not payload.get("components"):
-        lines.append(_NONE_LIST_ITEM)
+    _append_component_lines(lines, payload)
 
     lines.extend(["", "## Covered sources"])
-    sources = payload.get("covered_sources") or []
-    if sources:
-        lines.extend(f"- `{source_path}`" for source_path in sources)
-    else:
-        lines.append(_NONE_LIST_ITEM)
+    _append_covered_source_lines(lines, payload)
 
     lines.extend(["", "## Findings"])
-    findings = payload.get("findings") or []
-    if findings:
-        lines.extend(f"- {finding}" for finding in findings)
-    else:
-        lines.append(_NONE_LIST_ITEM)
+    _append_finding_lines(lines, payload)
 
     return "\n".join(lines) + "\n"
 
