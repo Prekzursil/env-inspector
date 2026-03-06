@@ -39,7 +39,6 @@ jobs:
             --out-json "codacy-zero/codacy.json" \
             --out-md "codacy-zero/codacy.md"
       - name: Assert Codacy open issue count is zero
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           python3 scripts/quality/check_codacy_zero.py \
             --provider gh \
