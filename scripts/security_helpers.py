@@ -1,5 +1,6 @@
 import ipaddress
 import json
+from email.message import Message
 import re
 import ssl
 import urllib.error
@@ -222,11 +223,14 @@ def request_json_https(
         timeout=timeout,
     )
     if status >= 400:
+        error_headers = Message()
+        for header_name, header_value in response_headers.items():
+            error_headers[header_name] = header_value
         raise urllib.error.HTTPError(
             url=f"https://{validated_host}{request_target}",
             code=status,
             msg=reason,
-            hdrs=response_headers,
+            hdrs=error_headers,
             fp=None,
         )
 

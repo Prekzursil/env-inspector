@@ -1,4 +1,4 @@
-from __future__ import annotations, absolute_import, division
+from __future__ import absolute_import, division
 
 from typing import List
 from .models import DisplayedRow, SortState

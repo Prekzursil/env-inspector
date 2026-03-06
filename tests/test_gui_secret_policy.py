@@ -1,4 +1,4 @@
-from __future__ import annotations, absolute_import, division
+from __future__ import absolute_import, division
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.secret_policy import build_search_value, resolve_copy_payload, resolve_load_value

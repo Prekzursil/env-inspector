@@ -1,4 +1,4 @@
-from __future__ import annotations, absolute_import, division
+from __future__ import absolute_import, division
 
 from env_inspector_gui.controller import EnvInspectorController
 
