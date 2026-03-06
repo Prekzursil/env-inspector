@@ -28,6 +28,20 @@ class FakeService:
         ]
 
     def export_records(self, **kwargs):
+        if kwargs.get("output") == "json":
+            return json.dumps(
+                [
+                    {
+                        "name": "API_TOKEN",
+                        "value": "fixture-value",
+                        "source_type": "windows_user",
+                        "context": "windows",
+                        "is_secret": True,
+                    }
+                ],
+                ensure_ascii=True,
+                indent=2,
+            )
         return "name,value\nAPI_TOKEN,abc***123\n"
 
     def preview_set(self, **kwargs):

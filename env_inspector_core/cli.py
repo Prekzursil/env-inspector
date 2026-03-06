@@ -70,19 +70,6 @@ def _emit_payload(payload: object) -> int:
 
 
 def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
-    rows = service.list_records(
-        root=args.root,
-        context=args.context,
-        source=args.source,
-        wsl_path=args.wsl_path,
-        distro=args.distro,
-        scan_depth=args.scan_depth,
-        include_raw_secrets=args.include_raw_secrets,
-    )
-    if args.output == "json":
-        print(json.dumps(rows, ensure_ascii=True, indent=2))
-        return
-
     rendered = service.export_records(
         output=args.output,
         include_raw_secrets=args.include_raw_secrets,
