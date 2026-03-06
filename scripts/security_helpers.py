@@ -1,12 +1,12 @@
 from __future__ import annotations, absolute_import, division
 
 import ssl
+import http.client
 import ipaddress
 import json
 import re
 import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -162,6 +162,16 @@ def _json_body_or_none(data: dict[str, Any] | None) -> str | None:
     return json.dumps(data) if data is not None else None
 
 
+def _secure_ssl_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    tls_version_enum = getattr(ssl, "TLSVersion", None)
+    if tls_version_enum is not None:
+        tls_v1_2 = getattr(tls_version_enum, "TLSv1_2", None)
+        if tls_v1_2 is not None:
+            context.minimum_version = tls_v1_2
+    return context
+
+
 def _execute_https_request(
     *,
     host: str,
@@ -171,25 +181,21 @@ def _execute_https_request(
     body: str | None,
     timeout: int,
 ) -> tuple[int, str, str, dict[str, str]]:
-    request = urllib.request.Request(
-        url=f"https://{host}{request_target}",
-        data=body.encode("utf-8") if body is not None else None,
-        headers=headers,
-        method=method.upper(),
-    )
-    context = ssl.create_default_context()
-    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    connection = http.client.HTTPSConnection(
+        host,
+        timeout=timeout,
+        context=_secure_ssl_context(),
+    )  # nosemgrep: python.lang.security.audit.httpsconnection-detected.httpsconnection-detected -- host and request_target are validated and HTTPS-only.
     try:
-        with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
-            raw_body = response.read().decode("utf-8")
-            response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
-            status = int(response.getcode())
-            reason = str(getattr(response, "reason", "") or "HTTP error")
-            return status, reason, raw_body, response_headers
-    except urllib.error.HTTPError as exc:
-        raw_body = exc.read().decode("utf-8", errors="replace")
-        response_headers = {str(k).lower(): str(v) for k, v in dict(exc.headers or {}).items()}
-        return int(exc.code), str(exc.reason or "HTTP error"), raw_body, response_headers
+        connection.request(method.upper(), request_target, body=body, headers=headers)
+        response = connection.getresponse()
+        raw_body = response.read().decode("utf-8")
+        response_headers = {str(k).lower(): str(v) for k, v in response.getheaders()}
+        status = int(response.status)
+        reason = str(getattr(response, "reason", "") or "HTTP error")
+        return status, reason, raw_body, response_headers
+    finally:
+        connection.close()
 
 
 def request_json_https(
@@ -252,4 +258,3 @@ def safe_input_file_path_in_workspace(raw: str, *, base: Path | None = None) -> 
     if not resolved.exists() or not resolved.is_file():
         raise ValueError(f"Input file does not exist: {resolved}")
     return resolved
-

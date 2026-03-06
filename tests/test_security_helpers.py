@@ -26,37 +26,35 @@ def test_identifier_and_url_helpers():
 def test_request_json_https_success(monkeypatch):
     recorded: dict[str, object] = {}
 
-    class _Headers:
-        def items(self):
-            return [("X-Hits", "1")]
-
     class _Response:
+        status = 200
         reason = "OK"
-        headers = _Headers()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            recorded["closed"] = True
-            return False
 
         def read(self):
             return b'{"ok":true}'
 
-        def getcode(self):
-            return 200
+        def getheaders(self):
+            return [("X-Hits", "1")]
 
-    def _urlopen(request, timeout=0, context=None):
-        recorded["url"] = request.full_url
-        recorded["method"] = request.get_method()
-        recorded["headers"] = dict(request.header_items())
-        recorded["body"] = request.data.decode("utf-8") if request.data is not None else None
-        recorded["timeout"] = timeout
-        recorded["context"] = context
-        return _Response()
+    class _Connection:
+        def __init__(self, host, timeout=0, context=None):
+            recorded["host"] = host
+            recorded["timeout"] = timeout
+            recorded["context"] = context
 
-    monkeypatch.setattr(sec.urllib.request, "urlopen", _urlopen)
+        def request(self, method, url, body=None, headers=None):
+            recorded["method"] = method
+            recorded["url"] = url
+            recorded["headers"] = dict(headers or {})
+            recorded["body"] = body
+
+        def getresponse(self):
+            return _Response()
+
+        def close(self):
+            recorded["closed"] = True
+
+    monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
 
     payload, headers = sec.request_json_https(
         host="api.codacy.com",
@@ -69,7 +67,8 @@ def test_request_json_https_success(monkeypatch):
 
     ensure(payload == {"ok": True})
     ensure(headers["x-hits"] == "1")
-    ensure(recorded["url"] == "https://api.codacy.com/api/v3/issues/search?limit=1")
+    ensure(recorded["host"] == "api.codacy.com")
+    ensure(recorded["url"] == "/api/v3/issues/search?limit=1")
     ensure(recorded["method"] == "POST")
     ensure(recorded["body"] == '{"x": 1}')
     ensure(recorded["closed"] is True)
@@ -77,16 +76,30 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["context"].minimum_version == sec.ssl.TLSVersion.TLSv1_2)
 
 def test_request_json_https_http_error(monkeypatch):
-    def _urlopen(request, timeout=0, context=None):
-        raise urllib.error.HTTPError(
-            url=request.full_url,
-            code=403,
-            msg="Forbidden",
-            hdrs={},
-            fp=None,
-        )
+    class _Response:
+        status = 403
+        reason = "Forbidden"
 
-    monkeypatch.setattr(sec.urllib.request, "urlopen", _urlopen)
+        def read(self):
+            return b'{"error":"denied"}'
+
+        def getheaders(self):
+            return []
+
+    class _Connection:
+        def __init__(self, host, timeout=0, context=None):
+            self.host = host
+
+        def request(self, method, url, body=None, headers=None):
+            return None
+
+        def getresponse(self):
+            return _Response()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
 
     with pytest.raises(urllib.error.HTTPError, match="Forbidden") as exc_info:
         sec.request_json_https(
