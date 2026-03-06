@@ -178,6 +178,7 @@ def _execute_https_request(
         method=method.upper(),
     )
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     try:
         with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
             raw_body = response.read().decode("utf-8")
@@ -251,5 +252,4 @@ def safe_input_file_path_in_workspace(raw: str, *, base: Path | None = None) -> 
     if not resolved.exists() or not resolved.is_file():
         raise ValueError(f"Input file does not exist: {resolved}")
     return resolved
-
 

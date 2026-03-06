@@ -74,6 +74,7 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["body"] == '{"x": 1}')
     ensure(recorded["closed"] is True)
     ensure(recorded["context"] is not None)
+    ensure(recorded["context"].minimum_version == sec.ssl.TLSVersion.TLSv1_2)
 
 def test_request_json_https_http_error(monkeypatch):
     def _urlopen(request, timeout=0, context=None):
