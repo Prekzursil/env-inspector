@@ -4,10 +4,13 @@ import argparse
 import json
 import unittest
 from types import SimpleNamespace
-from typing import cast
+from typing import Any
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli
+
+
+RecordRow = dict[str, Any]
 
 
 class FakeService:
@@ -18,7 +21,7 @@ class FakeService:
         self.last_preview_remove: dict | None = None
         self.last_list: dict | None = None
 
-    def list_records(self, **kwargs):
+    def list_records(self, **kwargs: Any) -> list[RecordRow]:
         self.last_list = kwargs
         secret_flag = bool(1)
         return [
@@ -39,36 +42,54 @@ class FakeService:
             }
         ]
 
-    def preview_set(self, **kwargs):
+    def preview_set(self, **kwargs: Any) -> list[dict[str, object]]:
         self.last_preview_set = kwargs
         return [{"success": True, "operation_id": "op-preview-set"}]
 
-    def preview_remove(self, **kwargs):
+    def preview_remove(self, **kwargs: Any) -> list[dict[str, object]]:
         self.last_preview_remove = kwargs
         return [{"success": True, "operation_id": "op-preview-remove"}]
 
-    def set_key(self, **kwargs):
+    def set_key(self, **kwargs: Any) -> dict[str, object]:
         self.last_set = kwargs
         return {"success": True, "operation_id": "op-set"}
 
-    def remove_key(self, **kwargs):
+    def remove_key(self, **kwargs: Any) -> dict[str, object]:
         self.last_remove = kwargs
         return {"success": True, "operation_id": "op-remove"}
 
-    def list_backups(self, **kwargs):
+    def list_backups(self, **kwargs: Any) -> list[str]:
         return ["/workspace/backup1"]
 
-    def restore_backup(self, **kwargs):
+    def restore_backup(self, **kwargs: Any) -> dict[str, object]:
         return {"success": True, "operation_id": "op-restore"}
 
 
-class FixedRowsService(FakeService):
-    def __init__(self, rows) -> None:
-        super().__init__()
+class FixedRowsService:
+    def __init__(self, rows: list[RecordRow]) -> None:
+        self.last_list: dict[str, Any] | None = None
         self._rows = rows
 
-    def list_records(self, **kwargs):
-        self.last_list = kwargs
+    def list_records(
+        self,
+        *,
+        include_raw_secrets: bool,
+        root: str,
+        context: str | None,
+        source: list[str],
+        wsl_path: str | None,
+        distro: str | None,
+        scan_depth: int,
+    ) -> list[RecordRow]:
+        self.last_list = {
+            "include_raw_secrets": include_raw_secrets,
+            "root": root,
+            "context": context,
+            "source": source,
+            "wsl_path": wsl_path,
+            "distro": distro,
+            "scan_depth": scan_depth,
+        }
         return self._rows
 
 
@@ -144,7 +165,8 @@ def test_stdout_safe_rows_projects_only_exportable_fields():
         include_raw_secrets=False,
     )
     rows[0]["debug_marker"] = "fixture-extra"
-    safe_rows = cli_mod._stdout_safe_rows(FixedRowsService(rows), args)
+    typed_service: cli_mod.SupportsListRecords = FixedRowsService(rows)
+    safe_rows = cli_mod._stdout_safe_rows(typed_service, args)
 
     case = _case()
     case.assertEqual(safe_rows[0]["value"], "[secret masked]")
