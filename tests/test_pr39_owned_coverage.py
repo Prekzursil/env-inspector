@@ -386,7 +386,7 @@ def test_sentry_owned_branches_cover_headers_output_validation_and_main(tmp_path
     invalid_args = SimpleNamespace(
         org="my-org",
         project=["proj"],
-        token="fixture-token",
+        token=f"{tmp_path.name}-token",
         out_json=str(tmp_path.parent / "escaped.json"),
         out_md="reports/sentry.md",
     )

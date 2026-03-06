@@ -46,17 +46,26 @@ def test_request_json_https_success(monkeypatch):
         def getcode(self):
             return self.status
 
-    def _fake_urlopen(request, timeout=0, context=None):
-        recorded["url"] = request.full_url
-        recorded["host"] = sec.urllib.parse.urlparse(request.full_url).hostname
-        recorded["timeout"] = timeout
-        recorded["context"] = context
-        recorded["method"] = request.get_method()
-        recorded["headers"] = dict(request.header_items())
-        recorded["body"] = request.data.decode("utf-8") if request.data is not None else None
-        return _Response()
+    class _FakeOpener:
+        def open(self, request, timeout=0):
+            recorded["url"] = request.full_url
+            recorded["host"] = sec.urllib.parse.urlparse(request.full_url).hostname
+            recorded["timeout"] = timeout
+            recorded["method"] = request.get_method()
+            recorded["headers"] = dict(request.header_items())
+            recorded["body"] = request.data.decode("utf-8") if request.data is not None else None
+            return _Response()
 
-    monkeypatch.setattr(sec.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(sec.urllib.request, "build_opener", lambda _handler: _FakeOpener())
+    monkeypatch.setattr(sec.urllib.request, "HTTPSHandler", lambda context=None: context)
+    real_secure_context = sec._secure_ssl_context
+
+    def _fake_secure_context():
+        context = real_secure_context()
+        recorded["context"] = context
+        return context
+
+    monkeypatch.setattr(sec, "_secure_ssl_context", _fake_secure_context)
 
     payload, headers = sec.request_json_https(
         host="api.codacy.com",
@@ -78,16 +87,18 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["context"].minimum_version == sec.ssl.TLSVersion.TLSv1_2)
 
 def test_request_json_https_http_error(monkeypatch):
-    def _raise_http_error(request, timeout=0, context=None):
-        raise urllib.error.HTTPError(
-            request.full_url,
-            403,
-            "Forbidden",
-            hdrs={},
-            fp=io.BytesIO(b'{"error":"denied"}'),
-        )
+    class _FakeOpener:
+        def open(self, request, timeout=0):
+            raise urllib.error.HTTPError(
+                request.full_url,
+                403,
+                "Forbidden",
+                hdrs={},
+                fp=io.BytesIO(b'{"error":"denied"}'),
+            )
 
-    monkeypatch.setattr(sec.urllib.request, "urlopen", _raise_http_error)
+    monkeypatch.setattr(sec.urllib.request, "build_opener", lambda _handler: _FakeOpener())
+    monkeypatch.setattr(sec.urllib.request, "HTTPSHandler", lambda context=None: context)
 
     with pytest.raises(urllib.error.HTTPError, match="Forbidden") as exc_info:
         sec.request_json_https(

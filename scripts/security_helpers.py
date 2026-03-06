@@ -189,7 +189,8 @@ def _execute_https_request(
         method=method.upper(),
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout, context=_secure_ssl_context()) as response:
+        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
+        with opener.open(request, timeout=timeout) as response:
             raw_body = response.read().decode("utf-8")
             response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
             status = int(getattr(response, "status", response.getcode()))
