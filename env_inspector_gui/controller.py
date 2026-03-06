@@ -3,7 +3,7 @@ from __future__ import annotations, absolute_import, division
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
 from env_inspector_core.service import EnvInspectorService
@@ -58,7 +58,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.tk = tk.Tk()
         self.tk.title(f"{APP_NAME} (Core + GUI)")
 
-    def _load_boot_state(self, root_path: Path) -> tuple[PersistedUiState, Path]:
+    def _load_boot_state(self, root_path: Path) -> Tuple[PersistedUiState, Path]:
         loaded = load_ui_state(self.state_dir)
         fallback_root = resolve_scan_root(root_path)
         boot_state = sanitize_loaded_state(
@@ -228,12 +228,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.view.update_details_value("")
         self.view.set_details_enabled(False)
 
-    def _set_detail_values(self, values: dict[str, str]) -> None:
+    def _set_detail_values(self, values: Dict[str, str]) -> None:
         for key, value in values.items():
             if key in self.view.details_vars:
                 self.view.details_vars[key].set(value)
 
-    def _set_detail_pairs(self, pairs: tuple[tuple[str, str], ...]) -> None:
+    def _set_detail_pairs(self, pairs: Tuple[Tuple[str, str], ...]) -> None:
         for key, value in pairs:
             if key in self.view.details_vars:
                 self.view.details_vars[key].set(value)
@@ -390,7 +390,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.targets_summary_var.set(f"Targets: {len(self.selected_targets)} selected")
         self._persist_state()
 
-    def _maybe_choose_dotenv_targets(self, key: str, targets: list[str]) -> list[str] | None:
+    def _maybe_choose_dotenv_targets(self, key: str, targets: List[str]) -> List[str] | None:
         dotenv_targets = self._collect_dotenv_targets(targets)
         if len(dotenv_targets) <= 1 or not self._has_multiple_dotenv_matches(key):
             return targets
@@ -403,7 +403,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         keep = set(dialog.result)
         return [target for target in targets if target not in dotenv_targets or target in keep]
 
-    def _collect_dotenv_targets(self, targets: list[str]) -> list[str]:
+    def _collect_dotenv_targets(self, targets: List[str]) -> List[str]:
         return [target for target in targets if target.startswith(("dotenv:", "wsl_dotenv:"))]
 
     def _has_multiple_dotenv_matches(self, key: str) -> bool:
@@ -415,17 +415,17 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
                     return True
         return False
 
-    def _preview_operation(self, action: str, key: str, value: str, targets: list[str]) -> list[dict[str, Any]]:
+    def _preview_operation(self, action: str, key: str, value: str, targets: List[str]) -> List[Dict[str, Any]]:
         if action == "set":
             return self.service.preview_set(key=key, value=value, targets=targets, scope_roots=[self.root_path])
         return self.service.preview_remove(key=key, targets=targets, scope_roots=[self.root_path])
 
-    def _confirm_diff(self, action: str, previews: list[dict[str, Any]], preview_only: bool = False) -> bool:
+    def _confirm_diff(self, action: str, previews: List[Dict[str, Any]], preview_only: bool = False) -> bool:
         dialog = DiffPreviewDialog(self.tk, action=action, previews=previews, preview_only=preview_only)
         self.tk.wait_window(dialog.win)
         return bool(dialog.confirmed)
 
-    def _apply_operation(self, action: str, key: str, value: str, targets: list[str]) -> dict[str, Any]:
+    def _apply_operation(self, action: str, key: str, value: str, targets: List[str]) -> Dict[str, Any]:
         if action == "set":
             return self.service.set_key(key=key, value=value, targets=targets, scope_roots=[self.root_path])
         return self.service.remove_key(key=key, targets=targets, scope_roots=[self.root_path])
@@ -450,7 +450,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._report_operation_result(action, result)
         self.refresh_data()
 
-    def _resolve_operation_inputs(self) -> tuple[str, str, list[str]] | None:
+    def _resolve_operation_inputs(self) -> Tuple[str, str, List[str]] | None:
         key = self.key_text.get().strip()
         value = self.value_text.get()
         if not key:
@@ -469,21 +469,21 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return None
         return key, value, scoped_targets
 
-    def _safe_preview(self, action: str, key: str, value: str, targets: list[str]) -> list[dict[str, Any]] | None:
+    def _safe_preview(self, action: str, key: str, value: str, targets: List[str]) -> List[Dict[str, Any]] | None:
         try:
             return self._preview_operation(action, key, value, targets)
         except Exception as exc:
             self.messagebox.showerror(APP_NAME, f"Failed to compute preview: {exc}")
             return None
 
-    def _safe_apply(self, action: str, key: str, value: str, targets: list[str]) -> dict[str, Any] | None:
+    def _safe_apply(self, action: str, key: str, value: str, targets: List[str]) -> Dict[str, Any] | None:
         try:
             return self._apply_operation(action, key, value, targets)
         except Exception as exc:
             self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {exc}")
             return None
 
-    def _report_operation_result(self, action: str, result: dict[str, Any]) -> None:
+    def _report_operation_result(self, action: str, result: Dict[str, Any]) -> None:
         if isinstance(result, dict) and "results" in result:
             failed = [x for x in result["results"] if not x.get("success")]
             if failed:

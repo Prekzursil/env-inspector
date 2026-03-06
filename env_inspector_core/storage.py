@@ -1,5 +1,6 @@
 from __future__ import annotations, absolute_import, division
 
+from typing import Dict, List, Tuple
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -22,7 +23,7 @@ class BackupManager:
         self._enforce_retention(target)
         return path
 
-    def _next_backup_path(self) -> tuple[str, Path]:
+    def _next_backup_path(self) -> Tuple[str, Path]:
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
         for sequence in range(10000):
@@ -47,15 +48,15 @@ class BackupManager:
         for old in files[self.retention :]:
             old.unlink(missing_ok=True)
 
-    def list_backups(self, target: str) -> list[Path]:
-        backups: list[Path] = []
+    def list_backups(self, target: str) -> List[Path]:
+        backups: List[Path] = []
         for backup in self.list_all_backups():
             payload = self._load_backup_payload(backup)
             if payload is not None and str(payload.get("target", "")) == target:
                 backups.append(backup)
         return sorted(backups, reverse=True)
 
-    def list_all_backups(self) -> list[Path]:
+    def list_all_backups(self) -> List[Path]:
         return sorted(self.base_dir.glob("**/*.backup.json"), reverse=True)
 
     def _load_backup_payload(self, backup_path: Path) -> dict | None:
@@ -69,7 +70,7 @@ class BackupManager:
         payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))
         return str(payload["text"])
 
-    def read_backup_payload(self, backup_path: Path) -> dict[str, str]:
+    def read_backup_payload(self, backup_path: Path) -> Dict[str, str]:
         payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))
         return {"target": str(payload["target"]), "text": str(payload["text"])}
 

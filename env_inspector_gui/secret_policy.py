@@ -1,5 +1,6 @@
 from __future__ import annotations, absolute_import, division
 
+from typing import Tuple
 from collections.abc import Callable
 
 from env_inspector_core.models import EnvRecord
@@ -31,7 +32,7 @@ def resolve_copy_payload(
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
     as_pair: bool,
-) -> tuple[str, bool]:
+) -> Tuple[str, bool]:
     use_raw = show_secrets or not record.is_secret
     if record.is_secret and not show_secrets:
         use_raw = confirm_raw()
@@ -46,7 +47,7 @@ def resolve_load_value(
     *,
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
-) -> tuple[str | None, bool]:
+) -> Tuple[str | None, bool]:
     if show_secrets or not record.is_secret:
         return record.value, True
 

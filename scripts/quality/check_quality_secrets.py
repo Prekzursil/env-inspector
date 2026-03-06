@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 try:
     from ._security_imports import safe_output_path_in_workspace
@@ -42,7 +42,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _dedupe(items: List[str]) -> List[str]:
-    seen: set[str] = set()
+    seen: Set[str] = set()
     out: List[str] = []
     for item in items:
         key = str(item or "").strip()

@@ -40,7 +40,7 @@ from .providers import (
 )
 from .rendering import audit_safe_result, export_rows
 from .resolver import resolve_effective_value
-from .secrets import looks_secret, mask_value
+from .secrets import looks_secret
 from .service_listing import (
     HostCollectionRequest,
     HostRowCollectors,

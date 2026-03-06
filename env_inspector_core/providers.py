@@ -6,7 +6,7 @@ import shlex
 import shutil
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple
 
 from .constants import (
     SOURCE_DOTENV,
@@ -298,7 +298,7 @@ class WslProvider:
             if name:
                 distros.append(name)
         deduped: List[str] = []
-        seen: set[str] = set()
+        seen: Set[str] = set()
         for d in distros:
             if d not in seen:
                 deduped.append(d)
@@ -552,7 +552,7 @@ def _append_wsl_records(
 def collect_wsl_records(
     wsl: WslClient,
     include_etc: bool = True,
-    exclude_distros: set[str] | None = None,
+    exclude_distros: Set[str] | None = None,
 ) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
     if not wsl.available():

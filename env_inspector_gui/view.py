@@ -1,6 +1,6 @@
 from __future__ import annotations, absolute_import, division
 
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 
 class EnvInspectorView:
@@ -14,7 +14,7 @@ class EnvInspectorView:
         self.filter_entry = None
         self.details_value_text = None
         self.details_value_scroll_x = None
-        self.details_vars: dict[str, Any] = {}
+        self.details_vars: Dict[str, Any] = {}
 
         self.context_combo = None
         self.wsl_distro_combo = None
@@ -251,10 +251,10 @@ class EnvInspectorView:
         self.status = ttk.Label(bottom, text="")
         self.status.pack(side="right")
 
-    def set_context_values(self, contexts: list[str]) -> None:
+    def set_context_values(self, contexts: List[str]) -> None:
         self.context_combo.configure(values=contexts)
 
-    def set_wsl_distros(self, distros: list[str], *, enabled: bool) -> None:
+    def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
         self.wsl_distro_combo.configure(values=distros)
         self.wsl_distro_combo.configure(state=("readonly" if enabled else "disabled"))
         state = "normal" if enabled else "disabled"
@@ -282,7 +282,7 @@ class EnvInspectorView:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-    def insert_table_row(self, values: tuple[Any, ...], *, striped: bool) -> str:
+    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
         tag = "row_even" if striped else "row_odd"
         return str(self.tree.insert("", "end", values=values, tags=(tag,)))
 

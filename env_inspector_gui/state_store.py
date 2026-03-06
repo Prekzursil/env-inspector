@@ -1,5 +1,6 @@
 from __future__ import annotations, absolute_import, division
 
+from typing import List
 import json
 from pathlib import Path
 
@@ -56,8 +57,8 @@ def save_ui_state(state_dir: Path, state: PersistedUiState) -> Path:
 def sanitize_loaded_state(
     state: PersistedUiState,
     *,
-    available_contexts: list[str],
-    available_targets: list[str],
+    available_contexts: List[str],
+    available_targets: List[str],
     fallback_root: Path,
 ) -> PersistedUiState:
     clean = PersistedUiState(**state.to_dict())
@@ -84,7 +85,7 @@ def _sanitize_root(root_path: str, fallback_root: Path) -> Path:
     return Path(fallback_root)
 
 
-def _sanitize_context(context: str, available_contexts: list[str]) -> str:
+def _sanitize_context(context: str, available_contexts: List[str]) -> str:
     if not available_contexts:
         return ""
     if context in available_contexts:
@@ -92,7 +93,7 @@ def _sanitize_context(context: str, available_contexts: list[str]) -> str:
     return available_contexts[0]
 
 
-def _sanitize_targets(selected_targets: list[str], available_targets: list[str]) -> list[str]:
+def _sanitize_targets(selected_targets: List[str], available_targets: List[str]) -> List[str]:
     available_set = set(available_targets)
     return [target for target in selected_targets if target in available_set]
 

@@ -3,7 +3,7 @@ from __future__ import annotations, absolute_import, division
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List, Set, Tuple
 
 
 class PathPolicyError(ValueError):
@@ -13,7 +13,7 @@ class PathPolicyError(ValueError):
 @dataclass(frozen=True)
 class ScopedPath:
     path: Path
-    roots: tuple[Path, ...]
+    roots: Tuple[Path, ...]
 
 
 def _contains_null(raw: str) -> bool:
@@ -34,9 +34,9 @@ def _normalize_path_text(value: str | Path, *, field_name: str) -> str:
     return os.path.normpath(os.path.abspath(os.path.expanduser(raw)))
 
 
-def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
-    normalized: list[Path] = []
-    seen: set[str] = set()
+def normalize_scope_roots(roots: Iterable[str | Path]) -> List[Path]:
+    normalized: List[Path] = []
+    seen: Set[str] = set()
     workspace_root = Path.cwd()
     workspace_text = str(workspace_root)
     for root in roots:
@@ -75,7 +75,7 @@ def _validate_dotenv_name(path: Path) -> None:
     raise PathPolicyError("dotenv target must point to a file named '.env' or '.env.*'.")
 
 
-def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
+def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
     if not target.startswith("dotenv:"):
         raise PathPolicyError("Expected target with 'dotenv:' prefix.")
     raw = target[len("dotenv:") :]
