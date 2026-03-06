@@ -6,7 +6,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 
 
@@ -24,21 +24,21 @@ def _parse_https_url(raw_url: str):
     return parsed
 
 
-def _normalized_hosts(values: set[str] | None) -> set[str]:
+def _normalized_hosts(values: Optional[Set[str]]) -> Set[str]:
     if not values:
         return set()
     return {value.lower().strip(".") for value in values if value.strip(".")}
 
 
-def _hostname_matches_suffix(hostname: str, suffixes: set[str]) -> bool:
+def _hostname_matches_suffix(hostname: str, suffixes: Set[str]) -> bool:
     return any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes)
 
 
 def _validate_hostname_allowlists(
     hostname: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
+    allowed_hosts: Optional[Set[str]] = None,
+    allowed_host_suffixes: Optional[Set[str]] = None,
 ) -> None:
     exact_hosts = _normalized_hosts(allowed_hosts)
     if exact_hosts and hostname not in exact_hosts:
@@ -76,8 +76,8 @@ def _reject_local_targets(hostname: str) -> None:
 def normalize_https_url(
     raw_url: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
+    allowed_hosts: Optional[Set[str]] = None,
+    allowed_host_suffixes: Optional[Set[str]] = None,
     strip_query: bool = False,
 ) -> str:
     """Validate user-provided URLs for CLI scripts.
@@ -124,9 +124,9 @@ def encode_identifier(raw: str, *, field_name: str) -> str:
 def split_validated_https_url(
     raw_url: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
-) -> tuple[str, str, dict[str, str]]:
+    allowed_hosts: Optional[Set[str]] = None,
+    allowed_host_suffixes: Optional[Set[str]] = None,
+) -> Tuple[str, str, Dict[str, str]]:
     safe_url = normalize_https_url(
         raw_url,
         allowed_hosts=allowed_hosts,
@@ -151,20 +151,19 @@ def _normalize_https_path(path: str) -> str:
     return safe_path
 
 
-def _build_request_target(path: str, query: dict[str, str] | None) -> str:
+def _build_request_target(path: str, query: Optional[Dict[str, str]]) -> str:
     query_text = urllib.parse.urlencode(query or {}, doseq=False)
     return path + (f"?{query_text}" if query_text else "")
 
 
-def _json_body_or_none(data: dict[str, Any] | None) -> str | None:
+def _json_body_or_none(data: Optional[Dict[str, Any]]) -> Optional[str]:
     return json.dumps(data) if data is not None else None
 
 
 def _secure_ssl_context() -> ssl.SSLContext:
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
     context.check_hostname = True
     context.verify_mode = ssl.CERT_REQUIRED
-    context.load_default_certs(purpose=ssl.Purpose.SERVER_AUTH)
     tls_version_enum = getattr(ssl, "TLSVersion", None)
     if tls_version_enum is not None:
         tls_v1_2 = getattr(tls_version_enum, "TLSv1_2", None)
@@ -178,10 +177,10 @@ def _execute_https_request(
     host: str,
     method: str,
     request_target: str,
-    headers: dict[str, str],
-    body: str | None,
+    headers: Dict[str, str],
+    body: Optional[str],
     timeout: int,
-) -> tuple[int, str, str, dict[str, str]]:
+) -> Tuple[int, str, str, Dict[str, str]]:
     request = urllib.request.Request(
         url=f"https://{host}{request_target}",
         data=body.encode("utf-8") if body is not None else None,
@@ -207,12 +206,12 @@ def request_json_https(
     *,
     host: str,
     path: str,
-    headers: dict[str, str],
+    headers: Dict[str, str],
     method: str = "GET",
-    query: dict[str, str] | None = None,
-    data: dict[str, Any] | None = None,
+    query: Optional[Dict[str, str]] = None,
+    data: Optional[Dict[str, Any]] = None,
     timeout: int = 30,
-) -> tuple[Any, dict[str, str]]:
+) -> Tuple[Any, Dict[str, str]]:
     validated_host = _normalize_https_host(host)
     normalized_path = _normalize_https_path(path)
     request_target = _build_request_target(normalized_path, query)
@@ -237,7 +236,7 @@ def request_json_https(
     return json.loads(raw_body), response_headers
 
 
-def safe_output_path_in_workspace(raw: str, fallback: str, base: Path | None = None) -> Path:
+def safe_output_path_in_workspace(raw: str, fallback: str, base: Optional[Path] = None) -> Path:
     root = (base or Path.cwd()).resolve()
     candidate = Path((raw or "").strip() or fallback).expanduser()  # codeql[py/path-injection] constrained to workspace
     if not candidate.is_absolute():
@@ -250,7 +249,7 @@ def safe_output_path_in_workspace(raw: str, fallback: str, base: Path | None = N
     return resolved
 
 
-def safe_input_file_path_in_workspace(raw: str, *, base: Path | None = None) -> Path:
+def safe_input_file_path_in_workspace(raw: str, *, base: Optional[Path] = None) -> Path:
     root = (base or Path.cwd()).resolve()
     candidate = Path((raw or "").strip()).expanduser()  # codeql[py/path-injection] constrained to workspace
     if not candidate.is_absolute():

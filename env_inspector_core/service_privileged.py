@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 from pathlib import Path
 from shutil import which
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
-from typing import Callable
+from typing import Callable, Optional
 
 
 def _try_direct_write(path: Path, text: str, write_text_file: Callable[[Path, str], None]) -> bool:
@@ -18,8 +16,8 @@ def _run_sudo_tee(
     allowed_sudo_path: str,
     expected_path: str,
     text: str,
-    run_fn: Callable[..., CompletedProcess[str]],
-) -> CompletedProcess[str]:
+    run_fn: Callable[..., CompletedProcess],
+) -> CompletedProcess:
     return run_fn(  # nosec B603
         [allowed_sudo_path, "-n", "tee", expected_path],
         input=text,
@@ -36,8 +34,8 @@ def write_linux_etc_environment_with_privilege(
     expected_path: str,
     text: str,
     write_text_file: Callable[[Path, str], None],
-    which_fn: Callable[[str], str | None] = which,
-    run_fn: Callable[..., CompletedProcess[str]] = run,
+    which_fn: Callable[[str], Optional[str]] = which,
+    run_fn: Callable[..., CompletedProcess] = run,
 ) -> None:
     if fixed_path != expected_path:
         raise RuntimeError(f"Unexpected /etc/environment resolution: {fixed_path}")

@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from .constants import (
     SOURCE_DOTENV,
@@ -75,11 +73,11 @@ def collect_host_rows(
 def collect_wsl_rows(
     *,
     runtime_context: str,
-    current_wsl_distro: str | None,
+    current_wsl_distro: Optional[str],
     wsl: Any,
     scan_depth: int,
-    distro: str | None,
-    wsl_path: str | None,
+    distro: Optional[str],
+    wsl_path: Optional[str],
     collect_wsl_records_fn: Callable[..., List[EnvRecord]],
     collect_wsl_dotenv_records_fn: Callable[..., List[EnvRecord]],
 ) -> List[EnvRecord]:
@@ -88,7 +86,7 @@ def collect_wsl_rows(
         return rows
 
     try:
-        exclude_distros: set[str] | None = None
+        exclude_distros: Optional[Set[str]] = None
         if runtime_context == "linux" and current_wsl_distro:
             exclude_distros = {current_wsl_distro}
         bridge_rows = collect_wsl_records_fn(wsl, include_etc=True, exclude_distros=exclude_distros)
@@ -114,8 +112,8 @@ def collect_wsl_rows(
 def apply_row_filters(
     rows: List[EnvRecord],
     *,
-    source: List[str] | None,
-    context: str | None,
+    source: Optional[List[str]],
+    context: Optional[str],
 ) -> List[EnvRecord]:
     if source:
         source_set = set(source)
@@ -129,7 +127,7 @@ def powershell_target_for_path(source_path: str) -> str:
     return TARGET_POWERSHELL_ALL_USERS if "Program Files" in source_path else TARGET_POWERSHELL_CURRENT_USER
 
 
-def record_target(record: EnvRecord) -> str | None:
+def record_target(record: EnvRecord) -> Optional[str]:
     static_targets = {
         SOURCE_LINUX_BASHRC: TARGET_LINUX_BASHRC,
         SOURCE_LINUX_ETC_ENV: TARGET_LINUX_ETC_ENV,
@@ -152,10 +150,10 @@ def record_target(record: EnvRecord) -> str | None:
 def available_targets(
     records: List[EnvRecord],
     *,
-    context: str | None,
+    context: Optional[str],
     win_provider_present: bool,
 ) -> List[str]:
-    targets: set[str] = set()
+    targets: Set[str] = set()
     for record in records:
         if context and record.context != context:
             continue

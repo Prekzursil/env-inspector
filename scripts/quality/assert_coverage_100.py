@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 
 import argparse
 import json
@@ -9,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
@@ -71,7 +71,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def parse_named_path(value: str) -> tuple[str, Path]:
+def parse_named_path(value: str) -> Tuple[str, Path]:
     match = _PAIR_RE.match(value.strip())
     if not match:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
@@ -116,9 +116,9 @@ def _normalize_source_path(raw_path: str) -> str:
     return text
 
 
-def coverage_sources_from_xml(path: Path) -> set[str]:
+def coverage_sources_from_xml(path: Path) -> Set[str]:
     text = path.read_text(encoding="utf-8")  # lgtm [py/path-injection]
-    covered_sources: set[str] = set()
+    covered_sources: Set[str] = set()
     for match in _XML_FILENAME_RE.finditer(text):
         filename = _normalize_source_path(match.group("value"))
         if filename:
@@ -140,8 +140,8 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     return CoverageStats(name=name, path=str(path), covered=covered, total=total)
 
 
-def coverage_sources_from_lcov(path: Path) -> set[str]:
-    covered_sources: set[str] = set()
+def coverage_sources_from_lcov(path: Path) -> Set[str]:
+    covered_sources: Set[str] = set()
     for raw in path.read_text(encoding="utf-8").splitlines():  # lgtm [py/path-injection]
         line = raw.strip()
         if not line.startswith("SF:"):
@@ -159,8 +159,8 @@ def _matches_required_source(source_path: str, required_source: str) -> bool:
     return source_path == normalized_required or source_path.startswith(f"{normalized_required}/")
 
 
-def _find_missing_required_sources(reported_sources: set[str], required_sources: list[str]) -> list[str]:
-    missing: list[str] = []
+def _find_missing_required_sources(reported_sources: Set[str], required_sources: List[str]) -> List[str]:
+    missing: List[str] = []
     for required_source in required_sources:
         normalized_required = _normalize_source_path(required_source).rstrip("/")
         if not normalized_required:
@@ -171,14 +171,14 @@ def _find_missing_required_sources(reported_sources: set[str], required_sources:
     return missing
 
 
-def _is_tests_only_report(reported_sources: set[str]) -> bool:
+def _is_tests_only_report(reported_sources: Set[str]) -> bool:
     return bool(reported_sources) and all(
         source_path == "tests" or source_path.startswith("tests/") for source_path in reported_sources
     )
 
 
-def _coverage_findings(stats: list[CoverageStats], min_percent: float) -> list[str]:
-    findings: list[str] = []
+def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[str]:
+    findings: List[str] = []
     for item in stats:
         if item.percent < min_percent:
             findings.append(
@@ -195,8 +195,8 @@ def _coverage_findings(stats: list[CoverageStats], min_percent: float) -> list[s
     return findings
 
 
-def _source_findings(reported_sources: set[str], required_sources: list[str]) -> list[str]:
-    findings: list[str] = []
+def _source_findings(reported_sources: Set[str], required_sources: List[str]) -> List[str]:
+    findings: List[str] = []
     if _is_tests_only_report(reported_sources):
         findings.append("coverage inputs only reference tests/ paths; first-party sources are missing.")
 
@@ -206,12 +206,12 @@ def _source_findings(reported_sources: set[str], required_sources: list[str]) ->
 
 
 def evaluate(
-    stats: list[CoverageStats],
+    stats: List[CoverageStats],
     min_percent: float,
     *,
-    required_sources: list[str] | None = None,
-    reported_sources: set[str] | None = None,
-) -> tuple[str, list[str]]:
+    required_sources: Optional[List[str]] = None,
+    reported_sources: Optional[Set[str]] = None,
+) -> Tuple[str, List[str]]:
     normalized_sources = reported_sources or set()
     findings = _coverage_findings(stats, min_percent)
     findings.extend(_source_findings(normalized_sources, required_sources or []))
@@ -219,7 +219,7 @@ def evaluate(
     return status, findings
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     lines = [
         "# Coverage 100 Gate",
         "",
@@ -258,8 +258,8 @@ def _render_md(payload: dict) -> str:
 def main() -> int:
     args = _parse_args()
 
-    stats: list[CoverageStats] = []
-    covered_sources: set[str] = set()
+    stats: List[CoverageStats] = []
+    covered_sources: Set[str] = set()
     for item in args.xml:
         name, path = parse_named_path(item)
         stats.append(parse_coverage_xml(name, path))

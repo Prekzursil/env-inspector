@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import json
 from pathlib import Path
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Tuple
 
 
 def restore_dotenv_target(
@@ -46,7 +44,7 @@ def restore_wsl_target(
     target: str,
     text: str,
     wsl: Any,
-    parse_wsl_dotenv_target_fn: Callable[[str], tuple[str, str]],
+    parse_wsl_dotenv_target_fn: Callable[[str], Tuple[str, str]],
     validate_wsl_distro_name_fn: Callable[[str], str],
     linux_etc_env_path: str,
     wsl_dotenv_prefix: str = "wsl_dotenv:",

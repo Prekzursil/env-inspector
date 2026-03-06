@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division
 
 import io
+from email.message import Message
+from typing import Any, Dict, Optional
 import urllib.error
 
 import pytest
@@ -25,7 +27,8 @@ def test_identifier_and_url_helpers():
     ensure(query == {"limit": "1", "query": "x"})
 
 def test_request_json_https_success(monkeypatch):
-    recorded: dict[str, object] = {}
+    recorded: Dict[str, Any] = {}
+    captured_context: Dict[str, sec.ssl.SSLContext] = {}
 
     class _Response:
         status = 200
@@ -47,7 +50,8 @@ def test_request_json_https_success(monkeypatch):
             return self.status
 
     class _FakeOpener:
-        def open(self, request, timeout=0):
+        @staticmethod
+        def open(request, timeout=0):
             recorded["url"] = request.full_url
             recorded["host"] = sec.urllib.parse.urlparse(request.full_url).hostname
             recorded["timeout"] = timeout
@@ -62,7 +66,7 @@ def test_request_json_https_success(monkeypatch):
 
     def _fake_secure_context():
         context = real_secure_context()
-        recorded["context"] = context
+        captured_context["value"] = context
         return context
 
     monkeypatch.setattr(sec, "_secure_ssl_context", _fake_secure_context)
@@ -83,17 +87,20 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["method"] == "POST")
     ensure(recorded["body"] == '{"x": 1}')
     ensure(recorded["closed"] is True)
-    ensure(recorded["context"] is not None)
-    ensure(recorded["context"].minimum_version == sec.ssl.TLSVersion.TLSv1_2)
+    ensure("value" in captured_context)
+    tls_v1_2 = getattr(getattr(sec.ssl, "TLSVersion", None), "TLSv1_2", None)
+    if tls_v1_2 is not None:
+        ensure(captured_context["value"].minimum_version == tls_v1_2)
 
 def test_request_json_https_http_error(monkeypatch):
     class _FakeOpener:
         def open(self, request, timeout=0):
+            headers = Message()
             raise urllib.error.HTTPError(
                 request.full_url,
                 403,
                 "Forbidden",
-                hdrs={},
+                hdrs=headers,
                 fp=io.BytesIO(b'{"error":"denied"}'),
             )
 
@@ -113,7 +120,9 @@ def test_secure_ssl_context_uses_tls_client_defaults():
 
     ensure(context.verify_mode == sec.ssl.CERT_REQUIRED)
     ensure(context.check_hostname is True)
-    ensure(context.minimum_version == sec.ssl.TLSVersion.TLSv1_2)
+    tls_v1_2 = getattr(getattr(sec.ssl, "TLSVersion", None), "TLSv1_2", None)
+    if tls_v1_2 is not None:
+        ensure(context.minimum_version == tls_v1_2)
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

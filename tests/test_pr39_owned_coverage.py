@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 from pathlib import Path
 from types import SimpleNamespace
 import runpy
 import sys
+from typing import Dict
 
 import pytest
 
@@ -77,13 +76,14 @@ def test_main_gui_mode_runs_app_with_resolved_root(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(env_inspector, "_parse_gui_args", lambda _argv: SimpleNamespace(root=".", print_secrets=False))
     monkeypatch.setattr(env_inspector, "resolve_scan_root", lambda _root: workspace)
 
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
     class _FakeApp:
         def __init__(self, root: Path) -> None:
             captured["root"] = root
 
-        def run(self) -> None:
+        @staticmethod
+        def run() -> None:
             captured["ran"] = True
 
     monkeypatch.setattr(env_inspector, "EnvInspectorApp", _FakeApp)
@@ -223,7 +223,7 @@ def test_service_listing_filters_cover_registry_fallback(tmp_path: Path, monkeyp
 
 def test_privileged_writer_returns_after_direct_write(tmp_path: Path):
     target = tmp_path / "environment"
-    writes: dict[str, object] = {}
+    writes: Dict[str, object] = {}
 
     def _write_text_file(path: Path, text: str) -> None:
         writes["path"] = path
