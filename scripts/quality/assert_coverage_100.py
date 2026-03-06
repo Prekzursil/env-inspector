@@ -5,7 +5,6 @@ import json
 import posixpath
 import re
 import sys
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,6 +42,7 @@ _PAIR_RE = re.compile(r"^(?P<name>[^=]+)=(?P<path>.+)$")
 _XML_LINES_VALID_RE = re.compile(r'lines-valid="(\d+(?:\.\d+)?)"')
 _XML_LINES_COVERED_RE = re.compile(r'lines-covered="(\d+(?:\.\d+)?)"')
 _XML_LINE_HITS_RE = re.compile(r"<line\b[^>]*\bhits=\"(\d+(?:\.\d+)?)\"")
+_XML_FILENAME_RE = re.compile(r"""<[^>]+\bfilename=(?P<quote>["'])(?P<value>.*?)(?P=quote)""")
 _NONE_LIST_ITEM = "- None"
 
 
@@ -113,14 +113,10 @@ def _normalize_source_path(raw_path: str) -> str:
 
 
 def coverage_sources_from_xml(path: Path) -> set[str]:
-    try:
-        root = ET.fromstring(path.read_text(encoding="utf-8"))  # lgtm [py/path-injection]
-    except ET.ParseError:
-        return set()
-
+    text = path.read_text(encoding="utf-8")  # lgtm [py/path-injection]
     covered_sources: set[str] = set()
-    for node in root.findall(".//*[@filename]"):
-        filename = _normalize_source_path(node.attrib.get("filename", ""))
+    for match in _XML_FILENAME_RE.finditer(text):
+        filename = _normalize_source_path(match.group("value"))
         if filename:
             covered_sources.add(filename)
     return covered_sources
