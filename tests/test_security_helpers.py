@@ -109,6 +109,25 @@ def test_request_json_https_http_error(monkeypatch):
         )
     ensure(exc_info.value.code == 403)
 
+
+def test_secure_ssl_context_uses_default_context(monkeypatch):
+    captured: dict[str, object] = {}
+    real_create_default_context = sec.ssl.create_default_context
+
+    def _fake_create_default_context(*, purpose):
+        captured["purpose"] = purpose
+        context = real_create_default_context(purpose=purpose)
+        captured["context"] = context
+        return context
+
+    monkeypatch.setattr(sec.ssl, "create_default_context", _fake_create_default_context)
+
+    context = sec._secure_ssl_context()
+
+    ensure(captured["purpose"] == sec.ssl.Purpose.SERVER_AUTH)
+    ensure(context is captured["context"])
+    ensure(context.minimum_version == sec.ssl.TLSVersion.TLSv1_2)
+
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 

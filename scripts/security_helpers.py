@@ -1,10 +1,8 @@
-from __future__ import annotations, absolute_import, division
-
-import ssl
 import http.client
 import ipaddress
 import json
 import re
+import ssl
 import urllib.error
 import urllib.parse
 from pathlib import Path
@@ -163,19 +161,12 @@ def _json_body_or_none(data: dict[str, Any] | None) -> str | None:
 
 
 def _secure_ssl_context() -> ssl.SSLContext:
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context.check_hostname = True
-    context.verify_mode = ssl.CERT_REQUIRED
-    context.load_default_certs()
+    context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
     tls_version_enum = getattr(ssl, "TLSVersion", None)
     if tls_version_enum is not None:
         tls_v1_2 = getattr(tls_version_enum, "TLSv1_2", None)
         if tls_v1_2 is not None:
             context.minimum_version = tls_v1_2
-    if hasattr(ssl, "OP_NO_TLSv1"):
-        context.options |= ssl.OP_NO_TLSv1
-    if hasattr(ssl, "OP_NO_TLSv1_1"):
-        context.options |= ssl.OP_NO_TLSv1_1
     return context
 
 
@@ -188,7 +179,7 @@ def _execute_https_request(
     body: str | None,
     timeout: int,
 ) -> tuple[int, str, str, dict[str, str]]:
-    connection = http.client.HTTPSConnection(
+    connection = http.client.HTTPSConnection(  # nosec B309 - validated host/path and explicit TLS context make the stdlib HTTPS client acceptable here.
         host,
         timeout=timeout,
         context=_secure_ssl_context(),

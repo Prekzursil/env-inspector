@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path, PureWindowsPath
 from typing import Callable, List, Sequence, Tuple
@@ -79,7 +81,7 @@ def validated_powershell_restore_path(
 
 
 def linux_etc_environment_path(linux_etc_env_path: str) -> Path:
-    path = PureWindowsPath(linux_etc_env_path) if os.name == "nt" else Path(linux_etc_env_path)
+    path = Path(PureWindowsPath(linux_etc_env_path).as_posix()) if os.name == "nt" else Path(linux_etc_env_path)
     if path.as_posix() != linux_etc_env_path:
         raise RuntimeError(f"Unexpected /etc/environment resolution: {path}")
     return path

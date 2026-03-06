@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import argparse
 import json
@@ -173,13 +174,7 @@ def _is_tests_only_report(reported_sources: set[str]) -> bool:
     )
 
 
-def evaluate(
-    stats: list[CoverageStats],
-    min_percent: float,
-    *,
-    required_sources: list[str] | None = None,
-    reported_sources: set[str] | None = None,
-) -> tuple[str, list[str]]:
+def _coverage_findings(stats: list[CoverageStats], min_percent: float) -> list[str]:
     findings: list[str] = []
     for item in stats:
         if item.percent < min_percent:
@@ -190,19 +185,33 @@ def evaluate(
     combined_total = sum(item.total for item in stats)
     combined_covered = sum(item.covered for item in stats)
     combined = 100.0 if combined_total <= 0 else (combined_covered / combined_total) * 100.0
-
     if combined < min_percent:
         findings.append(
             f"combined coverage below {min_percent:.2f}%: {combined:.2f}% ({combined_covered}/{combined_total})"
         )
+    return findings
 
-    normalized_sources = reported_sources or set()
-    if _is_tests_only_report(normalized_sources):
+
+def _source_findings(reported_sources: set[str], required_sources: list[str]) -> list[str]:
+    findings: list[str] = []
+    if _is_tests_only_report(reported_sources):
         findings.append("coverage inputs only reference tests/ paths; first-party sources are missing.")
 
-    for required_source in _find_missing_required_sources(normalized_sources, required_sources or []):
+    for required_source in _find_missing_required_sources(reported_sources, required_sources):
         findings.append(f"missing required source path: {required_source}")
+    return findings
 
+
+def evaluate(
+    stats: list[CoverageStats],
+    min_percent: float,
+    *,
+    required_sources: list[str] | None = None,
+    reported_sources: set[str] | None = None,
+) -> tuple[str, list[str]]:
+    normalized_sources = reported_sources or set()
+    findings = _coverage_findings(stats, min_percent)
+    findings.extend(_source_findings(normalized_sources, required_sources or []))
     status = "pass" if not findings else "fail"
     return status, findings
 

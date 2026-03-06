@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from types import SimpleNamespace
 import runpy
@@ -130,7 +132,9 @@ def test_service_wrapper_and_listing_branches_cover_owned_helpers(tmp_path: Path
 
     svc.wsl = type("NoWsl", (), {"available": lambda self: False})()  # type: ignore[assignment]
     ensure(svc._bridge_distros() == [])
-    ensure(svc.resolve_effective("API_TOKEN", "linux", [_record("dotenv", ".env")]).name == "API_TOKEN")
+    resolved = svc.resolve_effective("API_TOKEN", "linux", [_record("dotenv", ".env")])
+    ensure(resolved is not None)
+    ensure(resolved.name == "API_TOKEN")
     ensure(svc._powershell_target_for_path(r"C:\Program Files\PowerShell\7\profile.ps1") == "powershell:all_users")
     with pytest.raises(RuntimeError, match="Unsupported PowerShell target"):
         svc._powershell_profile_path("powershell:unsupported")

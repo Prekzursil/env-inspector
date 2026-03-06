@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
@@ -11,15 +13,6 @@ from .constants import (
     SOURCE_WSL_ETC_ENV,
 )
 from .models import EnvRecord
-from .providers import (
-    build_registry_records,
-    collect_dotenv_records,
-    collect_linux_records,
-    collect_powershell_profile_records,
-    collect_process_records,
-    collect_wsl_dotenv_records,
-    collect_wsl_records,
-)
 from .secrets import mask_value
 
 TARGET_LINUX_BASHRC = "linux:bashrc"
