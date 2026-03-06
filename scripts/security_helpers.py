@@ -192,7 +192,8 @@ def _execute_https_request(
             reason = str(getattr(response, "reason", "") or "HTTP error")
     except urllib.error.HTTPError as exc:
         raw_body = exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
-        response_headers = {str(k).lower(): str(v) for k, v in (exc.headers.items() if exc.headers else [])}
+        error_headers = tuple(exc.headers.items()) if exc.headers else ()
+        response_headers = {str(k).lower(): str(v) for k, v in error_headers}
         status = int(exc.code)
         reason = str(exc.reason or "HTTP error")
     return status, reason, raw_body, response_headers
