@@ -61,6 +61,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
           mkdir -p semgrep-zero
           mapfile -t configs < .tmp/semgrep-configs.txt
           args=()
@@ -99,6 +100,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
           mkdir -p semgrep-zero
           mapfile -t configs < .tmp/semgrep-configs.txt
           args=()
