@@ -69,6 +69,10 @@ def _emit_payload(payload: object) -> int:
     return 1
 
 
+def _write_rendered_output(rendered: str) -> None:
+    sys.stdout.write(rendered)
+
+
 def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
     rendered = service.export_records(
         output=args.output,
@@ -80,7 +84,7 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> Non
         distro=args.distro,
         scan_depth=args.scan_depth,
     )
-    print(rendered, end="")
+    _write_rendered_output(rendered)
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
@@ -94,7 +98,7 @@ def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> i
         distro=args.distro,
         scan_depth=args.scan_depth,
     )
-    print(rendered, end="")
+    _write_rendered_output(rendered)
     return 0
 
 
