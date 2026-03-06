@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
