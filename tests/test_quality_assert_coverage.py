@@ -59,3 +59,18 @@ def test_safe_input_file_path_in_workspace_rejects_escape(tmp_path: Path, monkey
 
     with pytest.raises(ValueError, match="escapes workspace root"):
         sec.safe_input_file_path_in_workspace(str(outside))
+
+
+def test_normalize_source_path_handles_empty_and_workspace_absolute_paths(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    inside_file = tmp_path / "env_inspector.py"
+    inside_file.write_text("print('ok')\n", encoding="utf-8")
+
+    ensure(coverage_mod._normalize_source_path("") == "")
+    ensure(coverage_mod._normalize_source_path(str(tmp_path)) == "")
+    ensure(coverage_mod._normalize_source_path(str(inside_file)) == "env_inspector.py")
+
+
+def test_normalize_source_path_handles_empty_normpath_result(monkeypatch):
+    monkeypatch.setattr(coverage_mod.posixpath, "normpath", lambda _value: "")
+    ensure(coverage_mod._normalize_source_path("ignored") == "")
