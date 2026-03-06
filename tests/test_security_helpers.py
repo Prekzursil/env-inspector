@@ -88,9 +88,7 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["body"] == '{"x": 1}')
     ensure(recorded["closed"] is True)
     ensure("value" in captured_context)
-    tls_v1_2 = getattr(getattr(sec.ssl, "TLSVersion", None), "TLSv1_2", None)
-    if tls_v1_2 is not None:
-        ensure(captured_context["value"].minimum_version == tls_v1_2)
+    ensure(getattr(captured_context["value"], "protocol", None) == sec.ssl.PROTOCOL_TLSv1_2)
 
 def test_request_json_https_http_error(monkeypatch):
     class _FakeOpener:
@@ -120,9 +118,7 @@ def test_secure_ssl_context_uses_tls_client_defaults():
 
     ensure(context.verify_mode == sec.ssl.CERT_REQUIRED)
     ensure(context.check_hostname is True)
-    tls_v1_2 = getattr(getattr(sec.ssl, "TLSVersion", None), "TLSv1_2", None)
-    if tls_v1_2 is not None:
-        ensure(context.minimum_version == tls_v1_2)
+    ensure(getattr(context, "protocol", None) == sec.ssl.PROTOCOL_TLSv1_2)
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

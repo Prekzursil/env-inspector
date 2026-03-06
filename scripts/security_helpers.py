@@ -161,14 +161,10 @@ def _json_body_or_none(data: Optional[Dict[str, Any]]) -> Optional[str]:
 
 
 def _secure_ssl_context() -> ssl.SSLContext:
-    context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     context.check_hostname = True
     context.verify_mode = ssl.CERT_REQUIRED
-    tls_version_enum = getattr(ssl, "TLSVersion", None)
-    if tls_version_enum is not None:
-        tls_v1_2 = getattr(tls_version_enum, "TLSv1_2", None)
-        if tls_v1_2 is not None:
-            context.minimum_version = tls_v1_2
+    context.load_default_certs(purpose=ssl.Purpose.SERVER_AUTH)
     return context
 
 
