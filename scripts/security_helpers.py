@@ -1,11 +1,12 @@
 from __future__ import annotations, absolute_import, division
 
-import http.client
+import ssl
 import ipaddress
 import json
 import re
 import urllib.error
 import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -170,15 +171,24 @@ def _execute_https_request(
     body: str | None,
     timeout: int,
 ) -> tuple[int, str, str, dict[str, str]]:
-    connection = http.client.HTTPSConnection(host, timeout=timeout)
+    request = urllib.request.Request(
+        url=f"https://{host}{request_target}",
+        data=body.encode("utf-8") if body is not None else None,
+        headers=headers,
+        method=method.upper(),
+    )
+    context = ssl.create_default_context()
     try:
-        connection.request(method.upper(), request_target, body=body, headers=headers)
-        response = connection.getresponse()
-        raw_body = response.read().decode("utf-8")
-        response_headers = {str(k).lower(): str(v) for k, v in response.getheaders()}
-        return int(response.status), str(response.reason or "HTTP error"), raw_body, response_headers
-    finally:
-        connection.close()
+        with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
+            raw_body = response.read().decode("utf-8")
+            response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
+            status = int(response.getcode())
+            reason = str(getattr(response, "reason", "") or "HTTP error")
+            return status, reason, raw_body, response_headers
+    except urllib.error.HTTPError as exc:
+        raw_body = exc.read().decode("utf-8", errors="replace")
+        response_headers = {str(k).lower(): str(v) for k, v in dict(exc.headers or {}).items()}
+        return int(exc.code), str(exc.reason or "HTTP error"), raw_body, response_headers
 
 
 def request_json_https(
