@@ -40,8 +40,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Diff preview dialog now uses per-target tabs, monospace text, and colored diff line tags.
 - Secret handling is consistent across filter/search, copy, and load flows when secrets are hidden.
 - Status bar now includes visible counts, active context, and last refresh time.
-- Snyk workflow policy now classifies scan outcomes (`quota_exhausted`, `vulns_found`, `clean`, `runtime_error`) and records machine-readable decision metadata in `artifacts/snyk-oss-mode.json`.
-- Snyk quota exhaustion (`Code test limit reached` / `SNYK-CLI-0000`) is treated as non-blocking by policy; non-quota vulnerability/runtime failures remain blocking.
+- Repository security static analysis now runs through a Semgrep zero-findings workflow.
+- Quality gate aggregation now requires `Semgrep Zero` as the repository security static-analysis gate.
 - Quality API scripts now use fixed-host HTTPS request helpers and strict identifier validation to avoid user-influenced URL sink flows.
 
 ## [1.0.0] - 2026-02-18

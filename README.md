@@ -149,15 +149,8 @@ python3 scripts/quality/assert_coverage_100.py \
 
 - Pull requests are expected to pass all required repository checks before merge.
 - Branch policy includes strict quality gates, including zero-open issue contexts and 100% coverage gate enforcement.
-- `Snyk Zero` is the required Snyk gate and now emits `artifacts/snyk-oss-mode.json` with explicit decision fields:
-  - `quota_detected`
-  - `findings_detected`
-  - `oss_outcome`
-  - `code_outcome`
-  - `decision`
-  - `decision_reason`
-- Quota-aware policy: if Snyk reports quota exhaustion (`Code test limit reached` / `SNYK-CLI-0000`), the gate passes by policy; otherwise vulnerabilities/runtime errors still fail the gate.
-- External provider status contexts such as `code/snyk (...)` are informational unless explicitly listed in branch-protection required contexts.
+- `Semgrep Zero` is the required static security gate for repository code and workflow content.
+- Semgrep artifacts are emitted under `semgrep-zero/` as JSON and SARIF for inspection.
 - Keep changes scoped and include evidence from deterministic local verification commands.
 - Update docs (`README.md`, `CHANGELOG.md`) when behavior changes.
 

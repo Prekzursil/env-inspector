@@ -16,7 +16,6 @@ except ImportError:  # pragma: no cover - direct script execution
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
     "CODACY_API_TOKEN",
-    "SNYK_TOKEN",
     "SENTRY_AUTH_TOKEN",
     "DEEPSCAN_API_TOKEN",
 ]
