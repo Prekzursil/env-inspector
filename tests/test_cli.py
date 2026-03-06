@@ -3,6 +3,7 @@ from __future__ import absolute_import, division
 import argparse
 import json
 import unittest
+from typing import Any, cast
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli
@@ -137,7 +138,7 @@ def test_stdout_safe_rows_projects_only_exportable_fields():
 
     svc.list_records = _list_records
 
-    safe_rows = cli_mod._stdout_safe_rows(svc, args)
+    safe_rows = cli_mod._stdout_safe_rows(cast(Any, svc), args)
 
     case = _case()
     case.assertEqual(safe_rows[0]["value"], "[secret masked]")

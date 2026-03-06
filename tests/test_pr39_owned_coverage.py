@@ -178,6 +178,9 @@ def test_service_wrapper_and_listing_branches_cover_owned_helpers(tmp_path: Path
     ensure(svc.set_key(key="API_TOKEN", value="1", targets=["linux:bashrc", "linux:etc_environment"])["success"] is False)
     ensure(svc.remove_key(key="API_TOKEN", targets=["linux:bashrc", "linux:etc_environment"])["success"] is False)
 
+    def _raise_registry_runtime(_provider):
+        raise RuntimeError("boom")
+
     host_rows = service_listing_module.collect_host_rows(
         runtime_context="windows",
         root_path=tmp_path,
@@ -186,7 +189,7 @@ def test_service_wrapper_and_listing_branches_cover_owned_helpers(tmp_path: Path
         powershell_profile_paths=[profile],
         collect_process_records_fn=lambda **kwargs: [_record("process", "process", context="windows")],
         collect_dotenv_records_fn=lambda *args, **kwargs: [_record("dotenv", str(tmp_path / ".env"), context="windows")],
-        build_registry_records_fn=lambda _provider: (_ for _ in ()).throw(RuntimeError("boom")),
+        build_registry_records_fn=_raise_registry_runtime,
         collect_powershell_profile_records_fn=lambda _paths: [
             _record("powershell_profile", str(profile), context="windows")
         ],
@@ -210,12 +213,15 @@ def test_privileged_writer_returns_after_direct_write(tmp_path: Path):
         writes["text"] = text
         path.write_text(text, encoding="utf-8")
 
+    def _fail_which(_name: str):
+        raise AssertionError("sudo should not be used")
+
     service_privileged_module.write_linux_etc_environment_with_privilege(
         fixed_path=str(target),
         expected_path=str(target),
         text="A=1\n",
         write_text_file=_write_text_file,
-        which_fn=lambda _name: (_ for _ in ()).throw(AssertionError("sudo should not be used")),
+        which_fn=_fail_which,
     )
 
     ensure(writes == {"path": target, "text": "A=1\n"})
@@ -223,7 +229,7 @@ def test_privileged_writer_returns_after_direct_write(tmp_path: Path):
 
 def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
-    ensure(coverage_mod.CoverageStats(name="empty", path="x", covered=0, total=0).percent == 100.0)
+    ensure(coverage_mod.CoverageStats(name="empty", path="x", covered=0, total=0).percent == pytest.approx(100.0))
 
     outside_file = tmp_path.parent / "outside.py"
     outside_file.write_text("print('x')\n", encoding="utf-8")

@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import posixpath
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -42,6 +43,7 @@ _PAIR_RE = re.compile(r"^(?P<name>[^=]+)=(?P<path>.+)$")
 _XML_LINES_VALID_RE = re.compile(r'lines-valid="(\d+(?:\.\d+)?)"')
 _XML_LINES_COVERED_RE = re.compile(r'lines-covered="(\d+(?:\.\d+)?)"')
 _XML_LINE_HITS_RE = re.compile(r"<line\b[^>]*\bhits=\"(\d+(?:\.\d+)?)\"")
+_NONE_LIST_ITEM = "- None"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -96,18 +98,18 @@ def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
 
 
 def _normalize_source_path(raw_path: str) -> str:
-    text = raw_path.strip().replace("\\", "/")
+    text = posixpath.normpath(raw_path.strip().replace("\\", "/"))
     if not text:
         return ""
+    if text == ".":
+        return ""
 
-    candidate = Path(text)
-    if candidate.is_absolute():
-        try:
-            candidate = candidate.resolve(strict=False).relative_to(Path.cwd().resolve(strict=False))
-        except ValueError:
-            return candidate.as_posix()
-
-    return candidate.as_posix()
+    workspace_root = posixpath.normpath(Path.cwd().resolve(strict=False).as_posix())
+    if text == workspace_root:
+        return ""
+    if text.startswith(f"{workspace_root}/"):
+        return text[len(workspace_root) + 1 :]
+    return text
 
 
 def coverage_sources_from_xml(path: Path) -> set[str]:
@@ -226,21 +228,21 @@ def _render_md(payload: dict) -> str:
         )
 
     if not payload.get("components"):
-        lines.append("- None")
+        lines.append(_NONE_LIST_ITEM)
 
     lines.extend(["", "## Covered sources"])
     sources = payload.get("covered_sources") or []
     if sources:
         lines.extend(f"- `{source_path}`" for source_path in sources)
     else:
-        lines.append("- None")
+        lines.append(_NONE_LIST_ITEM)
 
     lines.extend(["", "## Findings"])
     findings = payload.get("findings") or []
     if findings:
         lines.extend(f"- {finding}" for finding in findings)
     else:
-        lines.append("- None")
+        lines.append(_NONE_LIST_ITEM)
 
     return "\n".join(lines) + "\n"
 

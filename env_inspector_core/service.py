@@ -852,7 +852,7 @@ class EnvInspectorService:
                 error_message=None,
                 value_masked=None,
             )
-        except (RuntimeError, ValueError, TypeError, OSError, PermissionError, KeyError, json.JSONDecodeError) as exc:
+        except (RuntimeError, ValueError, TypeError, OSError, KeyError) as exc:
             result = OperationResult(
                 operation_id=operation_id,
                 target="restore",
