@@ -4,7 +4,7 @@ import argparse
 import json
 import unittest
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli
