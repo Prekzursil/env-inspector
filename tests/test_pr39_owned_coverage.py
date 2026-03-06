@@ -119,7 +119,7 @@ def test_entrypoint_script_main_invokes_sys_exit(monkeypatch):
     ensure(exc_info.value.code == 0)
 
 
-def test_service_wrapper_and_listing_branches_cover_owned_helpers(tmp_path: Path, monkeypatch):
+def _service_with_broken_registry(tmp_path: Path, monkeypatch) -> EnvInspectorService:
     monkeypatch.setattr(service_module, "is_windows", lambda: True)
 
     class _BrokenProvider:
@@ -129,7 +129,11 @@ def test_service_wrapper_and_listing_branches_cover_owned_helpers(tmp_path: Path
     monkeypatch.setattr(service_module, "WindowsRegistryProvider", _BrokenProvider)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     ensure(svc.win_provider is None)
+    return svc
 
+
+def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
+    svc = _service_with_broken_registry(tmp_path, monkeypatch)
     svc.wsl = type("NoWsl", (), {"available": lambda self: False})()  # type: ignore[assignment]
     ensure(svc._bridge_distros() == [])
     resolved = svc.resolve_effective("API_TOKEN", "linux", [_record("dotenv", ".env")])
@@ -182,22 +186,31 @@ def test_service_wrapper_and_listing_branches_cover_owned_helpers(tmp_path: Path
     ensure(svc.set_key(key="API_TOKEN", value="1", targets=["linux:bashrc", "linux:etc_environment"])["success"] is False)
     ensure(svc.remove_key(key="API_TOKEN", targets=["linux:bashrc", "linux:etc_environment"])["success"] is False)
 
+
+def test_service_listing_filters_cover_registry_fallback(tmp_path: Path, monkeypatch):
+    _service_with_broken_registry(tmp_path, monkeypatch)
+    profile = tmp_path / "profile.ps1"
+
     def _raise_registry_runtime(_provider):
         raise RuntimeError("boom")
 
     host_rows = service_listing_module.collect_host_rows(
-        runtime_context="windows",
-        root_path=tmp_path,
-        scan_depth=2,
-        win_provider=object(),
-        powershell_profile_paths=[profile],
-        collect_process_records_fn=lambda **kwargs: [_record("process", "process", context="windows")],
-        collect_dotenv_records_fn=lambda *args, **kwargs: [_record("dotenv", str(tmp_path / ".env"), context="windows")],
-        build_registry_records_fn=_raise_registry_runtime,
-        collect_powershell_profile_records_fn=lambda _paths: [
-            _record("powershell_profile", str(profile), context="windows")
-        ],
-        collect_linux_records_fn=lambda **kwargs: [_record("linux_bashrc", "~/.bashrc", context="linux")],
+        request=service_listing_module.HostCollectionRequest(
+            runtime_context="windows",
+            root_path=tmp_path,
+            scan_depth=2,
+            win_provider=object(),
+            powershell_profile_paths=[profile],
+        ),
+        collectors=service_listing_module.HostRowCollectors(
+            collect_process_records_fn=lambda **kwargs: [_record("process", "process", context="windows")],
+            collect_dotenv_records_fn=lambda *args, **kwargs: [_record("dotenv", str(tmp_path / ".env"), context="windows")],
+            build_registry_records_fn=_raise_registry_runtime,
+            collect_powershell_profile_records_fn=lambda _paths: [
+                _record("powershell_profile", str(profile), context="windows")
+            ],
+            collect_linux_records_fn=lambda **kwargs: [_record("linux_bashrc", "~/.bashrc", context="linux")],
+        ),
     )
     filtered_rows = service_listing_module.apply_row_filters(
         host_rows,
@@ -231,7 +244,7 @@ def test_privileged_writer_returns_after_direct_write(tmp_path: Path):
     ensure(writes == {"path": target, "text": "A=1\n"})
 
 
-def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, capsys):
+def test_coverage_helpers_cover_source_normalization_and_fallback_xml(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     ensure(coverage_mod.CoverageStats(name="empty", path="x", covered=0, total=0).percent == pytest.approx(100.0))
 
@@ -255,6 +268,9 @@ def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, caps
     ensure(
         coverage_mod.coverage_sources_from_lcov(lcov_path) == {"scripts/quality/assert_coverage_100.py"}
     )
+
+
+def test_coverage_evaluate_reports_missing_first_party_sources():
     ensure(
         coverage_mod.evaluate(
             [coverage_mod.CoverageStats(name="python", path="x", covered=1, total=1)],
@@ -266,6 +282,8 @@ def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, caps
     )
     ensure(coverage_mod._matches_required_source("env_inspector.py", "") is False)
 
+
+def test_coverage_render_lists_empty_sources_and_findings():
     rendered = coverage_mod._render_md(
         {
             "status": "pass",
@@ -279,6 +297,11 @@ def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, caps
     ensure("## Covered sources" in rendered)
     ensure("- None" in rendered)
 
+
+def test_coverage_main_rejects_workspace_escape(tmp_path: Path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    fallback_xml = tmp_path / "fallback.xml"
+    _write_cobertura_xml(fallback_xml, "env_inspector.py", hits="0")
     invalid_args = SimpleNamespace(
         xml=[f"python={fallback_xml}"],
         lcov=[],
@@ -291,6 +314,9 @@ def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, caps
     ensure(coverage_mod.main() == 1)
     ensure("escapes workspace root" in capsys.readouterr().err)
 
+
+def test_coverage_main_cli_succeeds_with_valid_xml(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     good_xml = tmp_path / "good.xml"
     _write_cobertura_xml(good_xml, "env_inspector.py")
     monkeypatch.setattr(
@@ -312,6 +338,9 @@ def test_coverage_helpers_cover_owned_branches(tmp_path: Path, monkeypatch, caps
         runpy.run_path(str(Path(coverage_mod.__file__)), run_name="__main__")
     ensure(exc_info.value.code == 0)
 
+
+def test_coverage_main_requires_inputs(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         coverage_mod,
         "_parse_args",

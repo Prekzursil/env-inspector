@@ -42,6 +42,8 @@ from .rendering import audit_safe_result, export_rows
 from .resolver import resolve_effective_value
 from .secrets import looks_secret, mask_value
 from .service_listing import (
+    HostCollectionRequest,
+    HostRowCollectors,
     apply_row_filters as _apply_row_filters_helper,
     available_targets as _available_targets_helper,
     collect_host_rows as _collect_host_rows_helper,
@@ -54,6 +56,7 @@ from .service_ops import (
     diff_text as _diff_text_helper,
     make_operation_result as _make_operation_result_helper,
     masked_value as _masked_value_helper,
+    OperationResultInput,
     operation_error_types as _operation_error_types_helper,
     operation_result as _operation_result_helper,
 )
@@ -196,16 +199,20 @@ class EnvInspectorService:
 
     def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
         return _collect_host_rows_helper(
-            runtime_context=self.runtime_context,
-            root_path=root_path,
-            scan_depth=scan_depth,
-            win_provider=self.win_provider,
-            powershell_profile_paths=self.get_powershell_profile_paths(),
-            collect_process_records_fn=collect_process_records,
-            collect_dotenv_records_fn=collect_dotenv_records,
-            build_registry_records_fn=build_registry_records,
-            collect_powershell_profile_records_fn=collect_powershell_profile_records,
-            collect_linux_records_fn=collect_linux_records,
+            request=HostCollectionRequest(
+                runtime_context=self.runtime_context,
+                root_path=root_path,
+                scan_depth=scan_depth,
+                win_provider=self.win_provider,
+                powershell_profile_paths=self.get_powershell_profile_paths(),
+            ),
+            collectors=HostRowCollectors(
+                collect_process_records_fn=collect_process_records,
+                collect_dotenv_records_fn=collect_dotenv_records,
+                build_registry_records_fn=build_registry_records,
+                collect_powershell_profile_records_fn=collect_powershell_profile_records,
+                collect_linux_records_fn=collect_linux_records,
+            ),
         )
 
     def _collect_wsl_rows(
@@ -614,15 +621,17 @@ class EnvInspectorService:
         value_masked: str | None,
     ) -> OperationResult:
         return _operation_result_helper(
-            operation_id=operation_id,
-            target=target,
-            action=action,
-            success=success,
-            backup_path=backup_path,
-            preview_only=preview_only,
-            diff_preview=diff_preview,
-            error_message=error_message,
-            value_masked=value_masked,
+            OperationResultInput(
+                operation_id=operation_id,
+                target=target,
+                action=action,
+                success=success,
+                backup_path=backup_path,
+                preview_only=preview_only,
+                diff_preview=diff_preview,
+                error_message=error_message,
+                value_masked=value_masked,
+            )
         )
 
     def _execute_target_operation(

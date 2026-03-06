@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
@@ -23,34 +24,50 @@ TARGET_WINDOWS_USER = "windows:user"
 TARGET_WINDOWS_MACHINE = "windows:machine"
 
 
+@dataclass(frozen=True)
+class HostCollectionRequest:
+    runtime_context: str
+    root_path: Path
+    scan_depth: int
+    win_provider: Any
+    powershell_profile_paths: List[Path]
+
+
+@dataclass(frozen=True)
+class HostRowCollectors:
+    collect_process_records_fn: Callable[..., List[EnvRecord]]
+    collect_dotenv_records_fn: Callable[..., List[EnvRecord]]
+    build_registry_records_fn: Callable[[Any], List[EnvRecord]]
+    collect_powershell_profile_records_fn: Callable[[List[Path]], List[EnvRecord]]
+    collect_linux_records_fn: Callable[..., List[EnvRecord]]
+
+
 def collect_host_rows(
     *,
-    runtime_context: str,
-    root_path: Path,
-    scan_depth: int,
-    win_provider: Any,
-    powershell_profile_paths: List[Path],
-    collect_process_records_fn: Callable[..., List[EnvRecord]],
-    collect_dotenv_records_fn: Callable[..., List[EnvRecord]],
-    build_registry_records_fn: Callable[[Any], List[EnvRecord]],
-    collect_powershell_profile_records_fn: Callable[[List[Path]], List[EnvRecord]],
-    collect_linux_records_fn: Callable[..., List[EnvRecord]],
+    request: HostCollectionRequest,
+    collectors: HostRowCollectors,
 ) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
-    rows.extend(collect_process_records_fn(context=runtime_context))
-    rows.extend(collect_dotenv_records_fn(root_path, max_depth=scan_depth, context=runtime_context))
+    rows.extend(collectors.collect_process_records_fn(context=request.runtime_context))
+    rows.extend(
+        collectors.collect_dotenv_records_fn(
+            request.root_path,
+            max_depth=request.scan_depth,
+            context=request.runtime_context,
+        )
+    )
 
-    if win_provider is not None:
+    if request.win_provider is not None:
         try:
-            registry_rows = build_registry_records_fn(win_provider)
+            registry_rows = collectors.build_registry_records_fn(request.win_provider)
         except (OSError, RuntimeError, ValueError):
             registry_rows = []
         rows.extend(registry_rows)
 
-    if runtime_context == "windows":
-        rows.extend(collect_powershell_profile_records_fn(powershell_profile_paths))
+    if request.runtime_context == "windows":
+        rows.extend(collectors.collect_powershell_profile_records_fn(request.powershell_profile_paths))
     else:
-        rows.extend(collect_linux_records_fn(context=runtime_context))
+        rows.extend(collectors.collect_linux_records_fn(context=request.runtime_context))
 
     return rows
 

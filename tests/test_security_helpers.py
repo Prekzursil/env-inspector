@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division
 
+import io
 import urllib.error
 
 import pytest
@@ -29,32 +30,33 @@ def test_request_json_https_success(monkeypatch):
     class _Response:
         status = 200
         reason = "OK"
+        headers = {"X-Hits": "1"}
 
         def read(self):
             return b'{"ok":true}'
 
-        def getheaders(self):
-            return [("X-Hits", "1")]
+        def __enter__(self):
+            recorded["entered"] = True
+            return self
 
-    class _Connection:
-        def __init__(self, host, timeout=0, context=None):
-            recorded["host"] = host
-            recorded["timeout"] = timeout
-            recorded["context"] = context
-
-        def request(self, method, url, body=None, headers=None):
-            recorded["method"] = method
-            recorded["url"] = url
-            recorded["headers"] = dict(headers or {})
-            recorded["body"] = body
-
-        def getresponse(self):
-            return _Response()
-
-        def close(self):
+        def __exit__(self, exc_type, exc, tb):
             recorded["closed"] = True
+            return False
 
-    monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
+        def getcode(self):
+            return self.status
+
+    def _fake_urlopen(request, timeout=0, context=None):
+        recorded["url"] = request.full_url
+        recorded["host"] = sec.urllib.parse.urlparse(request.full_url).hostname
+        recorded["timeout"] = timeout
+        recorded["context"] = context
+        recorded["method"] = request.get_method()
+        recorded["headers"] = dict(request.header_items())
+        recorded["body"] = request.data.decode("utf-8") if request.data is not None else None
+        return _Response()
+
+    monkeypatch.setattr(sec.urllib.request, "urlopen", _fake_urlopen)
 
     payload, headers = sec.request_json_https(
         host="api.codacy.com",
@@ -68,7 +70,7 @@ def test_request_json_https_success(monkeypatch):
     ensure(payload == {"ok": True})
     ensure(headers["x-hits"] == "1")
     ensure(recorded["host"] == "api.codacy.com")
-    ensure(recorded["url"] == "/api/v3/issues/search?limit=1")
+    ensure(recorded["url"] == "https://api.codacy.com/api/v3/issues/search?limit=1")
     ensure(recorded["method"] == "POST")
     ensure(recorded["body"] == '{"x": 1}')
     ensure(recorded["closed"] is True)
@@ -76,30 +78,16 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["context"].minimum_version == sec.ssl.TLSVersion.TLSv1_2)
 
 def test_request_json_https_http_error(monkeypatch):
-    class _Response:
-        status = 403
-        reason = "Forbidden"
+    def _raise_http_error(request, timeout=0, context=None):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            403,
+            "Forbidden",
+            hdrs={},
+            fp=io.BytesIO(b'{"error":"denied"}'),
+        )
 
-        def read(self):
-            return b'{"error":"denied"}'
-
-        def getheaders(self):
-            return []
-
-    class _Connection:
-        def __init__(self, host, timeout=0, context=None):
-            self.host = host
-
-        def request(self, method, url, body=None, headers=None):
-            return None
-
-        def getresponse(self):
-            return _Response()
-
-        def close(self):
-            return None
-
-    monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
+    monkeypatch.setattr(sec.urllib.request, "urlopen", _raise_http_error)
 
     with pytest.raises(urllib.error.HTTPError, match="Forbidden") as exc_info:
         sec.request_json_https(
@@ -109,23 +97,11 @@ def test_request_json_https_http_error(monkeypatch):
         )
     ensure(exc_info.value.code == 403)
 
-
-def test_secure_ssl_context_uses_default_context(monkeypatch):
-    captured: dict[str, object] = {}
-    real_create_default_context = sec.ssl.create_default_context
-
-    def _fake_create_default_context(*, purpose):
-        captured["purpose"] = purpose
-        context = real_create_default_context(purpose=purpose)
-        captured["context"] = context
-        return context
-
-    monkeypatch.setattr(sec.ssl, "create_default_context", _fake_create_default_context)
-
+def test_secure_ssl_context_uses_tls_client_defaults():
     context = sec._secure_ssl_context()
 
-    ensure(captured["purpose"] == sec.ssl.Purpose.SERVER_AUTH)
-    ensure(context is captured["context"])
+    ensure(context.verify_mode == sec.ssl.CERT_REQUIRED)
+    ensure(context.check_hostname is True)
     ensure(context.minimum_version == sec.ssl.TLSVersion.TLSv1_2)
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):

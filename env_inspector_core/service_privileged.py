@@ -10,7 +10,7 @@ def _try_direct_write(path: Path, text: str, write_text_file: Callable[[Path, st
     try:
         write_text_file(path, text)
         return True
-    except (OSError, PermissionError):
+    except OSError:
         return False
 
 

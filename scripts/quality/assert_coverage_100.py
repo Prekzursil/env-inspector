@@ -17,12 +17,15 @@ if str(_HELPER_ROOT) not in sys.path:
 
 
 def _load_security_helpers():
-    from security_helpers import safe_input_file_path_in_workspace, safe_output_path_in_workspace
+    from security_helpers import (
+        safe_input_file_path_in_workspace as _safe_input_helper,
+        safe_output_path_in_workspace as _safe_output_helper,
+    )
 
-    return safe_input_file_path_in_workspace, safe_output_path_in_workspace
+    return _safe_input_helper, _safe_output_helper
 
 
-safe_input_file_path_in_workspace, safe_output_path_in_workspace = _load_security_helpers()
+SAFE_INPUT_FILE_PATH_IN_WORKSPACE, SAFE_OUTPUT_PATH_IN_WORKSPACE = _load_security_helpers()
 
 
 @dataclass
@@ -74,7 +77,7 @@ def parse_named_path(value: str) -> tuple[str, Path]:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
     name = match.group("name").strip()
     raw_path = match.group("path").strip()
-    candidate = safe_input_file_path_in_workspace(raw_path)
+    candidate = SAFE_INPUT_FILE_PATH_IN_WORKSPACE(raw_path)
     return name, candidate
 
 
@@ -295,8 +298,8 @@ def main() -> int:
     }
 
     try:
-        out_json = safe_output_path_in_workspace(args.out_json, "coverage-100/coverage.json")
-        out_md = safe_output_path_in_workspace(args.out_md, "coverage-100/coverage.md")
+        out_json = SAFE_OUTPUT_PATH_IN_WORKSPACE(args.out_json, "coverage-100/coverage.json")
+        out_md = SAFE_OUTPUT_PATH_IN_WORKSPACE(args.out_md, "coverage-100/coverage.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
