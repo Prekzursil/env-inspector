@@ -5,7 +5,7 @@ import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Protocol, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -25,6 +25,11 @@ _SAFE_EXPORT_KEYS = (
     "requires_privilege",
     "last_error",
 )
+
+
+class SupportsListRecords(Protocol):
+    def list_records(self, **kwargs: Any) -> List[Dict[str, Any]]:
+        ...
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -102,7 +107,7 @@ def _sanitize_stdout_row(row: Dict[str, Any]) -> Dict[str, Any]:
     return safe_row
 
 
-def _stdout_safe_rows(service: EnvInspectorService, args: argparse.Namespace) -> List[Dict[str, Any]]:
+def _stdout_safe_rows(service: SupportsListRecords, args: argparse.Namespace) -> List[Dict[str, Any]]:
     rows = service.list_records(
         include_raw_secrets=False,
         root=args.root,
