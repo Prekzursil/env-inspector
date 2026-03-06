@@ -93,8 +93,9 @@ def test_run_cli_list_json_contract(capsys):
     code = run_cli(["list", "--output", "json"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
-    case.assertIsNotNone(svc.last_list)
-    case.assertIs(svc.last_list["include_raw_secrets"], False)
+    last_list = cast(dict[str, object], svc.last_list)
+    case.assertIsNotNone(last_list)
+    case.assertIs(last_list["include_raw_secrets"], False)
     out = capsys.readouterr().out
     payload = json.loads(out)
     case.assertEqual(payload[0]["name"], "API_TOKEN")
@@ -137,7 +138,7 @@ def test_stdout_safe_rows_projects_only_exportable_fields():
     def _list_records(**_kwargs):
         return rows
 
-    svc.list_records = _list_records
+    cast(Any, svc).list_records = _list_records
 
     safe_rows = cli_mod._stdout_safe_rows(cast(Any, svc), args)
 

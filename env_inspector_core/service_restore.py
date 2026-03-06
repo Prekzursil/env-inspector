@@ -2,7 +2,7 @@ from __future__ import absolute_import, division
 
 import json
 from pathlib import Path
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, cast
 
 
 def restore_dotenv_target(
@@ -31,8 +31,9 @@ def restore_linux_target(
     etc_target: str = "linux:etc_environment",
 ) -> None:
     if target == bashrc_target:
-        path_out = Path.home() / ".bashrc"
-        path_out.parent.mkdir(parents=True, exist_ok=True)
+        path_out = Path(Path.home(), ".bashrc")
+        bashrc_parent = cast(Path, path_out.parent)
+        bashrc_parent.mkdir(parents=True, exist_ok=True)
         path_out.write_text(text, encoding="utf-8")
         return
     if target == etc_target:
