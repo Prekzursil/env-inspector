@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division
 
-import csv
 import difflib
-import io
 import json
 import os
 import uuid
@@ -53,8 +51,19 @@ from .providers import (
     get_runtime_context,
     is_windows,
 )
+from .rendering import audit_safe_result, export_rows
 from .resolver import resolve_effective_value
 from .secrets import looks_secret, mask_value
+from .service_paths import (
+    get_powershell_profile_paths as _get_powershell_profile_paths,
+    is_path_within as _is_path_within,
+    linux_etc_environment_path as _linux_etc_environment_path,
+    powershell_target_path_and_roots as _powershell_target_path_and_roots,
+    validate_path_in_roots as _validate_path_in_roots,
+    validated_powershell_restore_path as _validated_powershell_restore_path,
+    write_scoped_text_file as _write_scoped_text_file,
+    write_text_file as _write_text_file,
+)
 from .storage import AuditLogger, BackupManager
 
 TARGET_WINDOWS_USER = "windows:user"
@@ -96,34 +105,19 @@ class EnvInspectorService:
 
     @staticmethod
     def get_powershell_profile_paths() -> List[Path]:
-        docs = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents"
-        current = docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
-        all_users = Path(r"C:\\Program Files\\PowerShell\\7\\profile.ps1")
-        return [current, all_users]
+        return _get_powershell_profile_paths()
 
     @staticmethod
     def _is_path_within(path: Path, root: Path) -> bool:
-        try:
-            path.relative_to(root)
-            return True
-        except ValueError:
-            return False
+        return _is_path_within(path, root)
 
     @classmethod
     def _validate_path_in_roots(cls, path: Path, roots: Sequence[Path], *, label: str) -> Path:
-        resolved_path = path.resolve(strict=False)
-        resolved_roots = [root.resolve(strict=False) for root in roots]
-        for root in resolved_roots:
-            if cls._is_path_within(resolved_path, root):
-                return resolved_path
-        raise RuntimeError(f"{label} is outside approved roots: {resolved_path}")
+        return _validate_path_in_roots(path, roots, label=label)
 
     @staticmethod
     def _write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
-        if ensure_parent:
-            path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8", newline="") as handle:
-            handle.write(text)
+        _write_text_file(path, text, ensure_parent=ensure_parent)
 
     def _write_scoped_text_file(
         self,
@@ -133,29 +127,32 @@ class EnvInspectorService:
         text: str,
         label: str,
     ) -> Path:
-        safe_path = self._validate_path_in_roots(candidate_path, list(allowed_roots), label=label)
-        self._write_text_file(safe_path, text, ensure_parent=True)
-        return safe_path
+        return _write_scoped_text_file(
+            candidate_path=candidate_path,
+            allowed_roots=allowed_roots,
+            text=text,
+            label=label,
+        )
 
     def _powershell_target_path_and_roots(self, target: str) -> Tuple[Path, List[Path], bool]:
-        if target == TARGET_POWERSHELL_CURRENT_USER:
-            profile = self._powershell_profile_path(TARGET_POWERSHELL_CURRENT_USER).resolve(strict=False)
-            return profile, [Path.home().resolve(strict=False)], False
-        if target == TARGET_POWERSHELL_ALL_USERS:
-            profile = self._powershell_profile_path(TARGET_POWERSHELL_ALL_USERS).resolve(strict=False)
-            return profile, [Path(r"C:\\Program Files").resolve(strict=False)], True
-        raise RuntimeError(f"Unsupported PowerShell target: {target}")
+        return _powershell_target_path_and_roots(
+            target,
+            profile_resolver=self._powershell_profile_path,
+            current_user_target=TARGET_POWERSHELL_CURRENT_USER,
+            all_users_target=TARGET_POWERSHELL_ALL_USERS,
+        )
 
     def _validated_powershell_restore_path(self, target: str) -> Path:
-        profile, allowed_roots, _requires_priv = self._powershell_target_path_and_roots(target)
-        return self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
+        return _validated_powershell_restore_path(
+            target,
+            profile_resolver=self._powershell_profile_path,
+            current_user_target=TARGET_POWERSHELL_CURRENT_USER,
+            all_users_target=TARGET_POWERSHELL_ALL_USERS,
+        )
 
     @classmethod
     def _linux_etc_environment_path(cls) -> Path:
-        path = Path(cls._LINUX_ETC_ENV_PATH)
-        if path.as_posix() != cls._LINUX_ETC_ENV_PATH:
-            raise RuntimeError(f"Unexpected /etc/environment resolution: {path}")
-        return path
+        return _linux_etc_environment_path(cls._LINUX_ETC_ENV_PATH)
 
     def list_contexts(self) -> List[str]:
         contexts = [self.runtime_context]
@@ -789,24 +786,9 @@ class EnvInspectorService:
                 resolved_scope_roots=resolved_scope_roots,
                 secret_operation=secret_operation,
             )
-            self.audit.log(self._audit_safe_result(result, redact=secret_operation))
+            self.audit.log(audit_safe_result(result, redact=secret_operation))
             results.append(result)
         return results
-
-    @staticmethod
-    def _audit_safe_result(result: OperationResult, *, redact: bool) -> OperationResult:
-        if not redact:
-            return result
-        return OperationResult(
-            operation_id=result.operation_id,
-            target=result.target,
-            action=result.action,
-            success=result.success,
-            backup_path=result.backup_path,
-            diff_preview="[secret diff masked]",
-            error_message=result.error_message,
-            value_masked=result.value_masked,
-        )
 
     def preview_set(
         self,
@@ -873,23 +855,7 @@ class EnvInspectorService:
         **list_kwargs: Any,
     ) -> str:
         rows = self.list_records(include_raw_secrets=include_raw_secrets, **list_kwargs)
-        if output == "json":
-            return json.dumps(rows, ensure_ascii=True, indent=2)
-        if output == "csv":
-            if not rows:
-                return ""
-            keys = sorted(rows[0].keys())
-            buf = io.StringIO()
-            writer = csv.DictWriter(buf, fieldnames=keys)
-            writer.writeheader()
-            writer.writerows(rows)
-            return buf.getvalue()
-
-        # table
-        lines = []
-        for row in rows:
-            lines.append(f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}")
-        return "\n".join(lines) + ("\n" if lines else "")
+        return export_rows(rows, output=output)
 
     def list_backups(self, *, target: str | None = None) -> List[str]:
         if target:
@@ -1006,4 +972,3 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
-
