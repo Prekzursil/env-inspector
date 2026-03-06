@@ -6,6 +6,7 @@ import pytest
 
 from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
+import env_inspector_core.service_paths as service_paths_module
 
 from tests.assertions import ensure
 
@@ -53,11 +54,11 @@ def test_linux_etc_environment_path_guard_handles_platform_semantics(tmp_path: P
     _ = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(EnvInspectorService, "_LINUX_ETC_ENV_PATH", r"\etc\environment")
 
-    monkeypatch.setattr(service_module.os, "name", "nt", raising=False)
+    monkeypatch.setattr(service_paths_module.os, "name", "nt", raising=False)
     with pytest.raises(RuntimeError, match="Unexpected /etc/environment resolution"):
         EnvInspectorService._linux_etc_environment_path()
 
-    monkeypatch.setattr(service_module.os, "name", "posix", raising=False)
+    monkeypatch.setattr(service_paths_module.os, "name", "posix", raising=False)
     resolved = EnvInspectorService._linux_etc_environment_path()
     ensure(resolved.as_posix() == r"\etc\environment")
 
@@ -114,7 +115,7 @@ def test_restore_wsl_bashrc_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
 
 def test_linux_etc_environment_path_guard_non_windows_branch(tmp_path: Path, monkeypatch):
     _ = EnvInspectorService(state_dir=tmp_path / "state")
-    monkeypatch.setattr(service_module.os, "name", "posix", raising=False)
+    monkeypatch.setattr(service_paths_module.os, "name", "posix", raising=False)
     monkeypatch.setattr(EnvInspectorService, "_LINUX_ETC_ENV_PATH", r"\etc\environment")
 
     resolved = EnvInspectorService._linux_etc_environment_path()
@@ -174,4 +175,3 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
     ensure(writes["path"] == profile)
     ensure(writes["text"] == "$env:A='1'\n")
     ensure(writes["ensure_parent"] is True)
-

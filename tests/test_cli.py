@@ -111,6 +111,40 @@ def test_run_cli_list_non_json_uses_export_records(capsys):
     case.assertIn("[secret masked]", out)
 
 
+def test_stdout_safe_rows_projects_only_exportable_fields():
+    svc = FakeService()
+    args = argparse.Namespace(
+        root="/workspace",
+        context=None,
+        source=[],
+        wsl_path=None,
+        distro=None,
+        scan_depth=3,
+    )
+    rows = svc.list_records(
+        root=args.root,
+        context=args.context,
+        source=args.source,
+        wsl_path=args.wsl_path,
+        distro=args.distro,
+        scan_depth=args.scan_depth,
+        include_raw_secrets=False,
+    )
+    rows[0]["debug_marker"] = "fixture-extra"
+
+    def _list_records(**_kwargs):
+        return rows
+
+    svc.list_records = _list_records
+
+    safe_rows = cli_mod._stdout_safe_rows(svc, args)
+
+    case = _case()
+    case.assertEqual(safe_rows[0]["value"], "[secret masked]")
+    case.assertNotIn("debug_marker", safe_rows[0])
+    case.assertEqual(set(safe_rows[0]), set(cli_mod._SAFE_EXPORT_KEYS))
+
+
 def test_run_cli_set_and_remove(capsys):
     set_code = run_cli(["set", "--key", "A", "--value", "1", "--target", "windows:user"], service=FakeService())
     remove_code = run_cli(["remove", "--key", "A", "--target", "windows:user"], service=FakeService())

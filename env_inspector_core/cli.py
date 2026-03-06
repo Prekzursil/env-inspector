@@ -1,13 +1,30 @@
 from __future__ import absolute_import, division
 import argparse
+import csv
+import io
 import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
-from .rendering import export_rows
 from .service import EnvInspectorService
+
+_SAFE_EXPORT_KEYS = (
+    "source_type",
+    "source_id",
+    "source_path",
+    "context",
+    "name",
+    "value",
+    "is_secret",
+    "is_persistent",
+    "is_mutable",
+    "precedence_rank",
+    "writable",
+    "requires_privilege",
+    "last_error",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -70,13 +87,19 @@ def _emit_payload(payload: object) -> int:
     return 1
 
 
-def _write_rendered_output(rendered: str) -> None:
-    sys.stdout.write(rendered)
-
-
 def _reject_raw_secret_stdout(args: argparse.Namespace) -> None:
     if args.include_raw_secrets:
         raise ValueError("--include-raw-secrets is not supported for stdout-rendered CLI output.")
+
+
+def _sanitize_stdout_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    safe_row: Dict[str, Any] = {}
+    for key in _SAFE_EXPORT_KEYS:
+        if key == "value":
+            safe_row[key] = "[secret masked]" if row.get("is_secret") else row.get("value", "")
+            continue
+        safe_row[key] = row.get(key)
+    return safe_row
 
 
 def _stdout_safe_rows(service: EnvInspectorService, args: argparse.Namespace) -> List[Dict[str, Any]]:
@@ -91,23 +114,38 @@ def _stdout_safe_rows(service: EnvInspectorService, args: argparse.Namespace) ->
     )
     safe_rows: List[Dict[str, Any]] = []
     for row in rows:
-        item = dict(row)
-        if item.get("is_secret"):
-            item["value"] = "[secret masked]"
-        safe_rows.append(item)
+        safe_rows.append(_sanitize_stdout_row(row))
     return safe_rows
+
+
+def _emit_stdout_rows(rows: List[Dict[str, Any]], *, output: str) -> None:
+    if output == "json":
+        sys.stdout.write(json.dumps(rows, ensure_ascii=True, indent=2))
+        return
+    if output == "csv":
+        if not rows:
+            return
+        keys = sorted(rows[0].keys())
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(rows)
+        sys.stdout.write(buffer.getvalue())
+        return
+
+    lines = [f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}" for row in rows]
+    if lines:
+        sys.stdout.write("\n".join(lines) + "\n")
 
 
 def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
     _reject_raw_secret_stdout(args)
-    rendered = export_rows(_stdout_safe_rows(service, args), output=args.output)
-    _write_rendered_output(rendered)
+    _emit_stdout_rows(_stdout_safe_rows(service, args), output=args.output)
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
     _reject_raw_secret_stdout(args)
-    rendered = export_rows(_stdout_safe_rows(service, args), output=args.output)
-    _write_rendered_output(rendered)
+    _emit_stdout_rows(_stdout_safe_rows(service, args), output=args.output)
     return 0
 
 

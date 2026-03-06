@@ -14,7 +14,14 @@ _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() els
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import safe_input_file_path_in_workspace, safe_output_path_in_workspace
+
+def _load_security_helpers():
+    from security_helpers import safe_input_file_path_in_workspace, safe_output_path_in_workspace
+
+    return safe_input_file_path_in_workspace, safe_output_path_in_workspace
+
+
+safe_input_file_path_in_workspace, safe_output_path_in_workspace = _load_security_helpers()
 
 
 @dataclass
