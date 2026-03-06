@@ -1,10 +1,6 @@
-from __future__ import absolute_import, division
-
 import json
 import uuid
 from pathlib import Path
-from shutil import which
-from subprocess import run
 from typing import Any, Dict, List, Sequence, Tuple, Type
 
 from .constants import (
@@ -62,6 +58,8 @@ from .service_ops import (
     operation_result as _operation_result_helper,
 )
 from .service_privileged import (
+    run as _privileged_run,
+    which as _privileged_which,
     write_linux_etc_environment_with_privilege as _write_linux_etc_environment_with_privilege_helper,
 )
 from .service_restore import (
@@ -100,6 +98,8 @@ DOTENV_TARGET_PREFIX = "dotenv:"
 WSL_DOTENV_TARGET_PREFIX = "wsl_dotenv:"
 WSL_DOTENV_PATH_ERROR = "Unsupported WSL dotenv target path"
 LINUX_ETC_ENV_PATH = "/etc/environment"
+which = _privileged_which
+run = _privileged_run
 
 
 class EnvInspectorService:
@@ -118,7 +118,7 @@ class EnvInspectorService:
         if is_windows():
             try:
                 self.win_provider = WindowsRegistryProvider()
-            except Exception:
+            except RuntimeError:
                 self.win_provider = None
 
     def _effective_scope_roots(self, scope_roots: List[str | Path] | None = None) -> List[Path]:
@@ -852,7 +852,7 @@ class EnvInspectorService:
                 error_message=None,
                 value_masked=None,
             )
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError, OSError, PermissionError, KeyError, json.JSONDecodeError) as exc:
             result = OperationResult(
                 operation_id=operation_id,
                 target="restore",

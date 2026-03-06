@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
 
 import argparse
 import json
@@ -121,7 +120,7 @@ def _scan_projects(org: str, projects: list[str], token: str) -> tuple[str, list
             failures.append(f"Sentry API request failed for project {project}: HTTP {exc.code}")
             mode = "error"
             break
-        except Exception as exc:  # pragma: no cover - network/runtime surface
+        except (OSError, ValueError, RuntimeError) as exc:  # pragma: no cover - network/runtime surface
             failures.append(f"Sentry API request failed for project {project}: {exc}")
             mode = "error"
             break

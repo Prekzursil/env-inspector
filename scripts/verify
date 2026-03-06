@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON_BIN="${PYTHON:-python3}"
+
+cd "$ROOT_DIR"
+
+"$PYTHON_BIN" -m py_compile env_inspector.py env_inspector_core/*.py env_inspector_gui/*.py tests/*.py scripts/quality/*.py
+"$PYTHON_BIN" -m pytest -q -s

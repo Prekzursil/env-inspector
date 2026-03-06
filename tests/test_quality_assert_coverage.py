@@ -1,5 +1,3 @@
-from __future__ import annotations, absolute_import, division
-
 from pathlib import Path
 
 import pytest
@@ -61,4 +59,3 @@ def test_safe_input_file_path_in_workspace_rejects_escape(tmp_path: Path, monkey
 
     with pytest.raises(ValueError, match="escapes workspace root"):
         sec.safe_input_file_path_in_workspace(str(outside))
-

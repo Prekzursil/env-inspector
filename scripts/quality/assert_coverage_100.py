@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from __future__ import annotations, absolute_import, division
 
 import argparse
 import json
 import re
 import sys
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +49,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--xml", action="append", default=[], help="Coverage XML input: name=path")
     parser.add_argument("--lcov", action="append", default=[], help="LCOV input: name=path")
     parser.add_argument(
+        "--require-source",
+        action="append",
+        default=[],
+        help="Workspace-relative file or directory that must appear in the coverage inputs.",
+    )
+    parser.add_argument(
         "--min-percent",
         type=float,
         default=100.0,
@@ -83,13 +89,39 @@ def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
     covered = 0
     for hits_raw in _XML_LINE_HITS_RE.findall(text):
         total += 1
-        try:
-            if int(float(hits_raw)) > 0:
-                covered += 1
-        except ValueError:
-            continue
+        if int(float(hits_raw)) > 0:
+            covered += 1
 
     return CoverageStats(name=name, path=str(path), covered=covered, total=total)
+
+
+def _normalize_source_path(raw_path: str) -> str:
+    text = raw_path.strip().replace("\\", "/")
+    if not text:
+        return ""
+
+    candidate = Path(text)
+    if candidate.is_absolute():
+        try:
+            candidate = candidate.resolve(strict=False).relative_to(Path.cwd().resolve(strict=False))
+        except ValueError:
+            return candidate.as_posix()
+
+    return candidate.as_posix()
+
+
+def coverage_sources_from_xml(path: Path) -> set[str]:
+    try:
+        root = ET.fromstring(path.read_text(encoding="utf-8"))  # lgtm [py/path-injection]
+    except ET.ParseError:
+        return set()
+
+    covered_sources: set[str] = set()
+    for node in root.findall(".//*[@filename]"):
+        filename = _normalize_source_path(node.attrib.get("filename", ""))
+        if filename:
+            covered_sources.add(filename)
+    return covered_sources
 
 
 def parse_lcov(name: str, path: Path) -> CoverageStats:
@@ -106,7 +138,50 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     return CoverageStats(name=name, path=str(path), covered=covered, total=total)
 
 
-def evaluate(stats: list[CoverageStats], min_percent: float) -> tuple[str, list[str]]:
+def coverage_sources_from_lcov(path: Path) -> set[str]:
+    covered_sources: set[str] = set()
+    for raw in path.read_text(encoding="utf-8").splitlines():  # lgtm [py/path-injection]
+        line = raw.strip()
+        if not line.startswith("SF:"):
+            continue
+        filename = _normalize_source_path(line.split(":", 1)[1])
+        if filename:
+            covered_sources.add(filename)
+    return covered_sources
+
+
+def _matches_required_source(source_path: str, required_source: str) -> bool:
+    normalized_required = _normalize_source_path(required_source).rstrip("/")
+    if not normalized_required:
+        return False
+    return source_path == normalized_required or source_path.startswith(f"{normalized_required}/")
+
+
+def _find_missing_required_sources(reported_sources: set[str], required_sources: list[str]) -> list[str]:
+    missing: list[str] = []
+    for required_source in required_sources:
+        normalized_required = _normalize_source_path(required_source).rstrip("/")
+        if not normalized_required:
+            continue
+        if any(_matches_required_source(source_path, normalized_required) for source_path in reported_sources):
+            continue
+        missing.append(normalized_required)
+    return missing
+
+
+def _is_tests_only_report(reported_sources: set[str]) -> bool:
+    return bool(reported_sources) and all(
+        source_path == "tests" or source_path.startswith("tests/") for source_path in reported_sources
+    )
+
+
+def evaluate(
+    stats: list[CoverageStats],
+    min_percent: float,
+    *,
+    required_sources: list[str] | None = None,
+    reported_sources: set[str] | None = None,
+) -> tuple[str, list[str]]:
     findings: list[str] = []
     for item in stats:
         if item.percent < min_percent:
@@ -122,6 +197,13 @@ def evaluate(stats: list[CoverageStats], min_percent: float) -> tuple[str, list[
         findings.append(
             f"combined coverage below {min_percent:.2f}%: {combined:.2f}% ({combined_covered}/{combined_total})"
         )
+
+    normalized_sources = reported_sources or set()
+    if _is_tests_only_report(normalized_sources):
+        findings.append("coverage inputs only reference tests/ paths; first-party sources are missing.")
+
+    for required_source in _find_missing_required_sources(normalized_sources, required_sources or []):
+        findings.append(f"missing required source path: {required_source}")
 
     status = "pass" if not findings else "fail"
     return status, findings
@@ -146,6 +228,13 @@ def _render_md(payload: dict) -> str:
     if not payload.get("components"):
         lines.append("- None")
 
+    lines.extend(["", "## Covered sources"])
+    sources = payload.get("covered_sources") or []
+    if sources:
+        lines.extend(f"- `{source_path}`" for source_path in sources)
+    else:
+        lines.append("- None")
+
     lines.extend(["", "## Findings"])
     findings = payload.get("findings") or []
     if findings:
@@ -160,18 +249,26 @@ def main() -> int:
     args = _parse_args()
 
     stats: list[CoverageStats] = []
+    covered_sources: set[str] = set()
     for item in args.xml:
         name, path = parse_named_path(item)
         stats.append(parse_coverage_xml(name, path))
+        covered_sources.update(coverage_sources_from_xml(path))
     for item in args.lcov:
         name, path = parse_named_path(item)
         stats.append(parse_lcov(name, path))
+        covered_sources.update(coverage_sources_from_lcov(path))
 
     if not stats:
         raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
 
     min_percent = max(0.0, min(100.0, float(args.min_percent)))
-    status, findings = evaluate(stats, min_percent)
+    status, findings = evaluate(
+        stats,
+        min_percent,
+        required_sources=list(args.require_source),
+        reported_sources=covered_sources,
+    )
     payload = {
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -186,6 +283,7 @@ def main() -> int:
             }
             for item in stats
         ],
+        "covered_sources": sorted(covered_sources),
         "findings": findings,
     }
 

@@ -1,8 +1,5 @@
-from __future__ import absolute_import, division
-
 import os
-from pathlib import Path
-from pathlib import PureWindowsPath
+from pathlib import Path, PureWindowsPath
 from typing import Callable, List, Sequence, Tuple
 
 

@@ -1,7 +1,4 @@
-from __future__ import absolute_import, division
-
 import difflib
-from subprocess import SubprocessError
 from typing import Tuple, Type
 
 from .models import OperationResult
@@ -79,5 +76,4 @@ def operation_error_types() -> Tuple[Type[BaseException], ...]:
         TypeError,
         OSError,
         PermissionError,
-        SubprocessError,
     )

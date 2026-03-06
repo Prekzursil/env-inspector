@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division
-
 import json
 from pathlib import Path
 from typing import Any, Callable, List
@@ -99,6 +97,7 @@ def restore_windows_registry_target(
             win_provider.remove_scope_value(scope, key)
     for key, value in data.items():
         win_provider.set_scope_value(scope, key, str(value))
+
 
 def restore_target(
     *,

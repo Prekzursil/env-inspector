@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division
-
 from pathlib import Path
 from shutil import which
 from subprocess import PIPE, run  # nosec B404

@@ -1,5 +1,3 @@
-from __future__ import annotations, absolute_import, division
-
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -35,11 +33,21 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     xml_path = tmp_path / "coverage.xml"
-    xml_path.write_text('<coverage lines-valid="1" lines-covered="1"/>\n', encoding="utf-8")
+    xml_path.write_text(
+        "<coverage>\n"
+        '  <packages><package name="."><classes>'
+        '<class name="env_inspector" filename="env_inspector.py" line-rate="1">'
+        '<lines><line number="1" hits="1" /></lines>'
+        "</class>"
+        "</classes></package></packages>\n"
+        "</coverage>\n",
+        encoding="utf-8",
+    )
 
     args = SimpleNamespace(
         xml=[f"python={xml_path}"],
         lcov=[],
+        require_source=["env_inspector.py"],
         min_percent=100.0,
         out_json="reports/coverage.json",
         out_md="reports/coverage.md",
@@ -51,6 +59,38 @@ def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
     ensure(rc == 0)
     ensure((tmp_path / "reports" / "coverage.json").exists())
     ensure((tmp_path / "reports" / "coverage.md").exists())
+
+
+def test_assert_coverage_main_rejects_tests_only_report(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    xml_path = tmp_path / "coverage.xml"
+    xml_path.write_text(
+        "<coverage>\n"
+        '  <packages><package name="tests"><classes>'
+        '<class name="test_quality" filename="tests/test_quality_assert_coverage.py" line-rate="1">'
+        '<lines><line number="1" hits="1" /></lines>'
+        "</class>"
+        "</classes></package></packages>\n"
+        "</coverage>\n",
+        encoding="utf-8",
+    )
+
+    args = SimpleNamespace(
+        xml=[f"python={xml_path}"],
+        lcov=[],
+        require_source=["env_inspector.py", "env_inspector_core"],
+        min_percent=100.0,
+        out_json="reports/coverage.json",
+        out_md="reports/coverage.md",
+    )
+    monkeypatch.setattr(coverage_mod, "_parse_args", lambda: args)
+
+    rc = coverage_mod.main()
+
+    ensure(rc == 1)
+    report_text = (tmp_path / "reports" / "coverage.md").read_text(encoding="utf-8")
+    ensure("tests/" in report_text)
+    ensure("missing required source path" in report_text)
 
 def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
