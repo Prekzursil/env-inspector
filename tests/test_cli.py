@@ -4,11 +4,10 @@ import argparse
 import json
 import unittest
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import cast
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli
-from env_inspector_core.service import EnvInspectorService
 
 
 class FakeService:
@@ -61,6 +60,16 @@ class FakeService:
 
     def restore_backup(self, **kwargs):
         return {"success": True, "operation_id": "op-restore"}
+
+
+class FixedRowsService(FakeService):
+    def __init__(self, rows) -> None:
+        super().__init__()
+        self._rows = rows
+
+    def list_records(self, **kwargs):
+        self.last_list = kwargs
+        return self._rows
 
 
 def _case() -> unittest.TestCase:
@@ -135,14 +144,7 @@ def test_stdout_safe_rows_projects_only_exportable_fields():
         include_raw_secrets=False,
     )
     rows[0]["debug_marker"] = "fixture-extra"
-
-    def _list_records(**_kwargs):
-        return rows
-
-    typed_service = cast(EnvInspectorService, svc)
-    cast(Any, typed_service).list_records = _list_records
-
-    safe_rows = cli_mod._stdout_safe_rows(typed_service, args)
+    safe_rows = cli_mod._stdout_safe_rows(FixedRowsService(rows), args)
 
     case = _case()
     case.assertEqual(safe_rows[0]["value"], "[secret masked]")
