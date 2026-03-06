@@ -8,6 +8,7 @@ from typing import Any, cast
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli
+from env_inspector_core.service import EnvInspectorService
 
 
 class FakeService:
@@ -138,9 +139,10 @@ def test_stdout_safe_rows_projects_only_exportable_fields():
     def _list_records(**_kwargs):
         return rows
 
-    cast(Any, svc).list_records = _list_records
+    typed_service = cast(EnvInspectorService, svc)
+    cast(Any, typed_service).list_records = _list_records
 
-    safe_rows = cli_mod._stdout_safe_rows(cast(Any, svc), args)
+    safe_rows = cli_mod._stdout_safe_rows(typed_service, args)
 
     case = _case()
     case.assertEqual(safe_rows[0]["value"], "[secret masked]")
