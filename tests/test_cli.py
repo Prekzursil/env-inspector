@@ -14,8 +14,10 @@ class FakeService:
         self.last_remove: dict | None = None
         self.last_preview_set: dict | None = None
         self.last_preview_remove: dict | None = None
+        self.last_export: dict | None = None
 
     def export_records(self, **kwargs):
+        self.last_export = kwargs
         if kwargs.get("output") == "json":
             secret_flag = bool(1)
             return json.dumps(
@@ -83,18 +85,24 @@ def test_emit_payload_handles_list_and_invalid_payload(capsys):
 
 
 def test_run_cli_list_json_contract(capsys):
-    code = run_cli(["list", "--output", "json"], service=FakeService())
+    svc = FakeService()
+    code = run_cli(["list", "--output", "json"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
+    case.assertIsNotNone(svc.last_export)
+    case.assertIs(svc.last_export["include_raw_secrets"], False)
     out = capsys.readouterr().out
     payload = json.loads(out)
     case.assertEqual(payload[0]["name"], "API_TOKEN")
 
 
 def test_run_cli_list_non_json_uses_export_records(capsys):
-    code = run_cli(["list", "--output", "csv"], service=FakeService())
+    svc = FakeService()
+    code = run_cli(["list", "--output", "csv"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
+    case.assertIsNotNone(svc.last_export)
+    case.assertIs(svc.last_export["include_raw_secrets"], False)
     out = capsys.readouterr().out
     case.assertIn("API_TOKEN,abc***123", out)
 
@@ -180,6 +188,8 @@ def test_run_cli_export_backup_and_restore(capsys):
     case.assertEqual(export_code, 0)
     case.assertEqual(backup_code, 0)
     case.assertEqual(restore_code, 0)
+    case.assertIsNotNone(svc.last_export)
+    case.assertIs(svc.last_export["include_raw_secrets"], False)
 
     out = capsys.readouterr().out
     case.assertIn("API_TOKEN,abc***123", out)
@@ -205,3 +215,17 @@ def test_run_cli_returns_error_for_unknown_command(monkeypatch, capsys):
     case = _case()
     case.assertEqual(rc, 2)
     case.assertIn("Unknown command: unknown", capsys.readouterr().err)
+
+
+def test_run_cli_rejects_raw_secret_stdout_for_list_and_export(capsys):
+    svc = FakeService()
+
+    list_code = run_cli(["list", "--include-raw-secrets"], service=svc)
+    export_code = run_cli(["export", "--include-raw-secrets"], service=svc)
+
+    case = _case()
+    case.assertEqual(list_code, 2)
+    case.assertEqual(export_code, 2)
+    case.assertIsNone(svc.last_export)
+    err = capsys.readouterr().err
+    case.assertIn("--include-raw-secrets is not supported", err)

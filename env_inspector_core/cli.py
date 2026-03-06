@@ -73,10 +73,16 @@ def _write_rendered_output(rendered: str) -> None:
     sys.stdout.write(rendered)
 
 
+def _reject_raw_secret_stdout(args: argparse.Namespace) -> None:
+    if args.include_raw_secrets:
+        raise ValueError("--include-raw-secrets is not supported for stdout-rendered CLI output.")
+
+
 def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
+    _reject_raw_secret_stdout(args)
     rendered = service.export_records(
         output=args.output,
-        include_raw_secrets=args.include_raw_secrets,
+        include_raw_secrets=False,
         root=args.root,
         context=args.context,
         source=args.source,
@@ -88,9 +94,10 @@ def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> Non
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
+    _reject_raw_secret_stdout(args)
     rendered = service.export_records(
         output=args.output,
-        include_raw_secrets=args.include_raw_secrets,
+        include_raw_secrets=False,
         root=args.root,
         context=args.context,
         source=args.source,
@@ -137,7 +144,11 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
 
     active_service = service or EnvInspectorService()
     if args.command == "list":
-        _list_records(active_service, args)
+        try:
+            _list_records(active_service, args)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         return 0
 
     handlers = {
@@ -151,4 +162,8 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
     if handler is None:
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2
-    return handler(active_service, args)
+    try:
+        return handler(active_service, args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
