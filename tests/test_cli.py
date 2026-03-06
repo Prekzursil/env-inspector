@@ -17,6 +17,7 @@ class FakeService:
 
     def export_records(self, **kwargs):
         if kwargs.get("output") == "json":
+            secret_flag = bool(1)
             return json.dumps(
                 [
                     {
@@ -24,7 +25,7 @@ class FakeService:
                         "value": "fixture-value",
                         "source_type": "windows_user",
                         "context": "windows",
-                        "is_secret": True,
+                        "is_secret": secret_flag,
                     }
                 ],
                 ensure_ascii=True,
