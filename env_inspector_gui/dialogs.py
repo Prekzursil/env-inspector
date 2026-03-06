@@ -231,7 +231,8 @@ class DiffPreviewDialog:
         self._render_diff_text(txt, str(preview.get("diff_preview") or "(no textual diff)"))
         txt.configure(state="disabled")
 
-    def _build_summary(self, tab: Any, preview: Dict[str, Any], target: str, ttk: Any) -> None:
+    @staticmethod
+    def _build_summary(tab: Any, preview: Dict[str, Any], target: str, ttk: Any) -> None:
         summary = ttk.Frame(tab)
         summary.pack(fill="x", pady=(0, 6))
         ttk.Label(summary, text=f"Target: {target}").pack(anchor="w")

@@ -70,7 +70,8 @@ class BackupManager:
         payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))
         return str(payload["text"])
 
-    def read_backup_payload(self, backup_path: Path) -> Dict[str, str]:
+    @staticmethod
+    def read_backup_payload(backup_path: Path) -> Dict[str, str]:
         payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))
         return {"target": str(payload["target"]), "text": str(payload["text"])}
 

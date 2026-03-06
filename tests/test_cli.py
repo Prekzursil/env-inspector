@@ -3,6 +3,7 @@ from __future__ import absolute_import, division
 import argparse
 import json
 import unittest
+from types import SimpleNamespace
 from typing import Any, cast
 
 import env_inspector_core.cli as cli_mod
@@ -114,7 +115,7 @@ def test_run_cli_list_non_json_uses_export_records(capsys):
 
 def test_stdout_safe_rows_projects_only_exportable_fields():
     svc = FakeService()
-    args = argparse.Namespace(
+    args = SimpleNamespace(
         root="/workspace",
         context=None,
         source=[],

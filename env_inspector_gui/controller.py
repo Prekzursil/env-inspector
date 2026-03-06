@@ -403,7 +403,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         keep = set(dialog.result)
         return [target for target in targets if target not in dotenv_targets or target in keep]
 
-    def _collect_dotenv_targets(self, targets: List[str]) -> List[str]:
+    @staticmethod
+    def _collect_dotenv_targets(targets: List[str]) -> List[str]:
         return [target for target in targets if target.startswith(("dotenv:", "wsl_dotenv:"))]
 
     def _has_multiple_dotenv_matches(self, key: str) -> bool:
