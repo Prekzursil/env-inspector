@@ -142,16 +142,17 @@ def test_linux_etc_environment_write_uses_sudo_fallback(tmp_path: Path, monkeypa
 
     class Proc:
         returncode = 0
-        stdout = b""
-        stderr = b""
+        stdout = ""
+        stderr = ""
 
     def fake_run(cmd, **kwargs):
-        ensure(cmd[:3] == ["sudo", "-n", "tee"])
-        ensure(kwargs.get("input") == b"A=2\n")
+        ensure(cmd[:3] == ["/usr/bin/sudo", "-n", "tee"])
+        ensure(kwargs.get("input") == "A=2\n")
+        ensure(kwargs.get("text") is True)
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
 
-    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "which", lambda _name: "/usr/bin/sudo")
     monkeypatch.setattr(service_module, "run", fake_run)
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
@@ -177,17 +178,18 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(tmp_path: Pat
 
     class Proc:
         returncode = 0
-        stdout = b""
-        stderr = b""
+        stdout = ""
+        stderr = ""
 
     def fake_run(cmd, **kwargs):
-        ensure(cmd[:3] == ["sudo", "-n", "tee"])
-        ensure(kwargs.get("input") == b"A=2\n")
+        ensure(cmd[:3] == ["/usr/bin/sudo", "-n", "tee"])
+        ensure(kwargs.get("input") == "A=2\n")
+        ensure(kwargs.get("text") is True)
         etc_env.write_text("A=2\n", encoding="utf-8")
         return Proc()
 
     monkeypatch.setattr(svc, "_write_text_file", fake_write_text_file)
-    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "which", lambda _name: "/usr/bin/sudo")
     monkeypatch.setattr(service_module, "run", fake_run)
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])
@@ -211,11 +213,11 @@ def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(tmp_path:
 
     class Proc:
         returncode = 1
-        stdout = b""
-        stderr = b"sudo auth failed"
+        stdout = ""
+        stderr = "sudo auth failed"
 
     monkeypatch.setattr(svc, "_write_text_file", fake_write_text_file)
-    monkeypatch.setattr(service_module, "which", lambda _name: "sudo")
+    monkeypatch.setattr(service_module, "which", lambda _name: "/usr/bin/sudo")
     monkeypatch.setattr(service_module, "run", lambda *_args, **_kwargs: Proc())
 
     result = svc.set_key(key="A", value="2", targets=["linux:etc_environment"])

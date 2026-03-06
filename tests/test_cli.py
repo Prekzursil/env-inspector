@@ -15,18 +15,6 @@ class FakeService:
         self.last_preview_set: dict | None = None
         self.last_preview_remove: dict | None = None
 
-    def list_records(self, **kwargs):
-        secret_flag = bool(1)
-        return [
-            {
-                "name": "API_TOKEN",
-                "value": "fixture-value",
-                "source_type": "windows_user",
-                "context": "windows",
-                "is_secret": secret_flag,
-            }
-        ]
-
     def export_records(self, **kwargs):
         if kwargs.get("output") == "json":
             return json.dumps(

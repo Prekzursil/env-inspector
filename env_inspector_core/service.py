@@ -291,11 +291,14 @@ class EnvInspectorService:
             # Non-POSIX hosts can raise FileNotFoundError for this fixed path; still attempt sudo fallback.
             pass
 
-        if not which("sudo"):
+        sudo_path = which("sudo")
+        allowed_sudo_path = sudo_path if sudo_path in {"/usr/bin/sudo", "/bin/sudo"} else None
+        if not allowed_sudo_path:
             raise RuntimeError("sudo is not available for /etc/environment fallback.")
         proc = run(  # nosec B603
-            ["sudo", "-n", "tee", self._LINUX_ETC_ENV_PATH],
-            input=text.encode("utf-8"),
+            [allowed_sudo_path, "-n", "tee", self._LINUX_ETC_ENV_PATH],
+            input=text,
+            text=True,
             stdout=PIPE,
             stderr=PIPE,
             check=False,
@@ -303,7 +306,7 @@ class EnvInspectorService:
         if proc.returncode == 0:
             return
 
-        err = proc.stderr.decode(errors="ignore").strip()
+        err = (proc.stderr or "").strip()
         raise RuntimeError(
             "Failed to write /etc/environment using direct write and sudo fallback. "
             "Run with elevated privileges or configure passwordless sudo for this command."
