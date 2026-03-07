@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
+from typing import Dict, List
 
 import pytest
 
@@ -43,13 +44,13 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
     svc.current_wsl_distro = "Ubuntu"
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
 
-    calls: dict[str, object] = {}
+    calls: Dict[str, object] = {}
 
-    def _fake_collect_wsl_records(wsl, include_etc: bool, exclude_distros) -> list[EnvRecord]:
+    def _fake_collect_wsl_records(wsl, include_etc: bool, exclude_distros) -> List[EnvRecord]:
         calls["exclude"] = exclude_distros
         return [_record(SOURCE_WSL_BASHRC, "~/.bashrc", context="wsl:Debian", source_id="Debian")]
 
-    def _fake_collect_wsl_dotenv_records(wsl, distro: str, root_path: str, max_depth: int) -> list[EnvRecord]:
+    def _fake_collect_wsl_dotenv_records(wsl, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
         calls["dotenv"] = (distro, root_path, max_depth)
         return [_record(SOURCE_WSL_DOTENV, "Debian:/home/user/.env", context="wsl:Debian", source_id="Debian")]
 
@@ -122,7 +123,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     with pytest.raises(RuntimeError, match="Unsupported Linux target"):
         svc._update_linux_file(target="linux:unknown", key="A", value="1", action="set", apply_changes=False)
 
-    wsl_writes: list[tuple[str, str, str]] = []
+    wsl_writes: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "")
     monkeypatch.setattr(
         svc.wsl,
@@ -179,7 +180,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     svc._restore_linux_target(target="linux:bashrc", text="export A=1\n")
     ensure((fake_home / ".bashrc").read_text(encoding="utf-8") == "export A=1\n")
 
-    etc_calls: list[str] = []
+    etc_calls: List[str] = []
     monkeypatch.setattr(svc, "_write_linux_etc_environment_with_privilege", etc_calls.append)
     svc._restore_linux_target(target="linux:etc_environment", text="A=1\n")
     ensure(etc_calls == ["A=1\n"])
@@ -187,7 +188,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     with pytest.raises(RuntimeError, match="Unsupported Linux restore target"):
         svc._restore_linux_target(target="linux:unknown", text="x")
 
-    wsl_calls: list[tuple[str, str, str]] = []
+    wsl_calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file_with_privilege",
@@ -213,10 +214,10 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
 
     class _FakeWinProvider:
         def __init__(self) -> None:
-            self.removed: list[tuple[str, str]] = []
-            self.sets: list[tuple[str, str, str]] = []
+            self.removed: List[Tuple[str, str]] = []
+            self.sets: List[Tuple[str, str, str]] = []
 
-        def list_scope(self, scope: str) -> dict[str, str]:
+        def list_scope(self, scope: str) -> Dict[str, str]:
             return {"KEEP": "1", "DROP": "2"}
 
         def remove_scope_value(self, scope: str, key: str) -> None:
@@ -231,7 +232,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     ensure(fake.removed and fake.removed[0][1] == "DROP")
     ensure(any(key == "NEW" for _scope, key, _value in fake.sets))
 
-    calls: list[str] = []
+    calls: List[str] = []
     monkeypatch.setattr(svc, "_restore_linux_target", lambda **kwargs: calls.append("linux"))
     monkeypatch.setattr(svc, "_restore_powershell_target", lambda **kwargs: calls.append("powershell"))
     monkeypatch.setattr(svc, "_restore_windows_registry_target", lambda **kwargs: calls.append("windows"))

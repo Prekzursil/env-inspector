@@ -1,18 +1,18 @@
 from __future__ import absolute_import, division
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Dict, List, Set, Tuple
 
 
 class TargetPickerDialog:
-    def __init__(self, parent: Any, targets: list[str], selected: list[str] | None = None) -> None:
+    def __init__(self, parent: Any, targets: List[str], selected: List[str] | None = None) -> None:
         import tkinter as tk
         from tkinter import ttk
 
-        self.result: list[str] | None = None
+        self.result: List[str] | None = None
         self._targets = list(targets)
-        self._vars: dict[str, tk.BooleanVar] = {}
-        self._checks: dict[str, Any] = {}
+        self._vars: Dict[str, tk.BooleanVar] = {}
+        self._checks: Dict[str, Any] = {}
         selected_set = set(selected or [])
 
         self.win = tk.Toplevel(parent)
@@ -70,7 +70,7 @@ class TargetPickerDialog:
         ttk.Button(preset_row, text="Select Windows Only", command=self._select_windows).pack(side="left", padx=(0, 6))
         ttk.Button(preset_row, text="Select WSL Only", command=self._select_wsl).pack(side="left", padx=(0, 6))
 
-    def _build_target_checks(self, body: Any, selected_set: set[str], has_selected: bool, tk: Any, ttk: Any) -> None:
+    def _build_target_checks(self, body: Any, selected_set: Set[str], has_selected: bool, tk: Any, ttk: Any) -> None:
         for target in self._targets:
             default = target in selected_set if has_selected else True
             var = tk.BooleanVar(value=default)
@@ -140,12 +140,12 @@ class TargetPickerDialog:
 
 
 class DotenvTargetDialog:
-    def __init__(self, parent: Any, key: str, targets: list[str]) -> None:
+    def __init__(self, parent: Any, key: str, targets: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
 
-        self.result: list[str] | None = None
-        self._vars: list[tuple[str, tk.BooleanVar]] = []
+        self.result: List[str] | None = None
+        self._vars: List[Tuple[str, tk.BooleanVar]] = []
 
         self.win = tk.Toplevel(parent)
         self.win.title("Select .env Targets")
@@ -185,7 +185,7 @@ class DiffPreviewDialog:
         parent: Any,
         *,
         action: str,
-        previews: list[dict[str, Any]],
+        previews: List[Dict[str, Any]],
         preview_only: bool = False,
     ) -> None:
         import tkinter as tk
@@ -218,7 +218,7 @@ class DiffPreviewDialog:
     def _build_preview_tabs(
         self,
         notebook: Any,
-        previews: list[dict[str, Any]],
+        previews: List[Dict[str, Any]],
         mono: Any,
         ttk: Any,
         scrolledtext: Any,
@@ -230,7 +230,7 @@ class DiffPreviewDialog:
         self,
         notebook: Any,
         idx: int,
-        preview: dict[str, Any],
+        preview: Dict[str, Any],
         mono: Any,
         ttk: Any,
         scrolledtext: Any,
@@ -249,7 +249,7 @@ class DiffPreviewDialog:
         txt.configure(state="disabled")
 
     @staticmethod
-    def _build_summary(tab: Any, preview: dict[str, Any], target: str, ttk: Any) -> None:
+    def _build_summary(tab: Any, preview: Dict[str, Any], target: str, ttk: Any) -> None:
         summary = ttk.Frame(tab)
         summary.pack(fill="x", pady=(0, 6))
         ttk.Label(summary, text=f"Target: {target}").pack(anchor="w")
@@ -295,7 +295,7 @@ class DiffPreviewDialog:
 
 
 class BackupPickerDialog:
-    def __init__(self, parent: Any, backups: list[str]) -> None:
+    def __init__(self, parent: Any, backups: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
 

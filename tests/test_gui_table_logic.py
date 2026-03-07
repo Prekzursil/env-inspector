@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
 
+from typing import Dict
+
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import SortState
 from env_inspector_gui.table_logic import build_display_rows, sort_display_rows, toggle_sort
@@ -8,7 +10,7 @@ from tests.assertions import ensure
 
 
 def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
-    payload: dict[str, object] = {
+    payload: Dict[str, object] = {
         "source_type": "dotenv",
         "source_path": "/workspace/.env",
         "context": "windows",

@@ -3,20 +3,20 @@ from __future__ import absolute_import, division
 import argparse
 import json
 import unittest
-from typing import Any, cast
+from typing import Any, Dict, List, cast
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli
 
 
-RecordRow = dict[str, object]
-ServiceCall = dict[str, object]
+RecordRow = Dict[str, object]
+ServiceCall = Dict[str, object]
 
 
 class ListArgs(argparse.Namespace):
     root: str
     context: str | None
-    source: list[str]
+    source: List[str]
     wsl_path: str | None
     distro: str | None
     scan_depth: int
@@ -30,7 +30,7 @@ class FakeService:
         self.last_preview_remove: ServiceCall | None = None
         self.last_list: ServiceCall | None = None
 
-    def list_records(self, **kwargs: object) -> list[RecordRow]:
+    def list_records(self, **kwargs: object) -> List[RecordRow]:
         self.last_list = kwargs
         secret_flag = bool(1)
         return [
@@ -51,33 +51,33 @@ class FakeService:
             }
         ]
 
-    def preview_set(self, **kwargs: object) -> list[dict[str, object]]:
+    def preview_set(self, **kwargs: object) -> List[Dict[str, object]]:
         self.last_preview_set = kwargs
         return [{"success": True, "operation_id": "op-preview-set"}]
 
-    def preview_remove(self, **kwargs: object) -> list[dict[str, object]]:
+    def preview_remove(self, **kwargs: object) -> List[Dict[str, object]]:
         self.last_preview_remove = kwargs
         return [{"success": True, "operation_id": "op-preview-remove"}]
 
-    def set_key(self, **kwargs: object) -> dict[str, object]:
+    def set_key(self, **kwargs: object) -> Dict[str, object]:
         self.last_set = kwargs
         return {"success": True, "operation_id": "op-set"}
 
-    def remove_key(self, **kwargs: object) -> dict[str, object]:
+    def remove_key(self, **kwargs: object) -> Dict[str, object]:
         self.last_remove = kwargs
         return {"success": True, "operation_id": "op-remove"}
 
     @staticmethod
-    def list_backups(**kwargs: object) -> list[str]:
+    def list_backups(**kwargs: object) -> List[str]:
         return ["/workspace/backup1"]
 
     @staticmethod
-    def restore_backup(**kwargs: object) -> dict[str, object]:
+    def restore_backup(**kwargs: object) -> Dict[str, object]:
         return {"success": True, "operation_id": "op-restore"}
 
 
 class FixedRowsService:
-    def __init__(self, rows: list[RecordRow]) -> None:
+    def __init__(self, rows: List[RecordRow]) -> None:
         self.last_list: ServiceCall | None = None
         self._rows = rows
 
@@ -87,11 +87,11 @@ class FixedRowsService:
         include_raw_secrets: bool,
         root: str,
         context: str | None,
-        source: list[str],
+        source: List[str],
         wsl_path: str | None,
         distro: str | None,
         scan_depth: int,
-    ) -> list[RecordRow]:
+    ) -> List[RecordRow]:
         self.last_list = {
             "include_raw_secrets": include_raw_secrets,
             "root": root,
@@ -135,7 +135,7 @@ def test_run_cli_list_json_contract(capsys):
     code = run_cli(["list", "--output", "json"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
-    last_list = cast(dict[str, object], svc.last_list)
+    last_list = cast(Dict[str, object], svc.last_list)
     case.assertIsNotNone(last_list)
     case.assertIs(last_list["include_raw_secrets"], False)
     out = capsys.readouterr().out
@@ -149,7 +149,7 @@ def test_run_cli_list_non_json_uses_export_records(capsys):
     code = run_cli(["list", "--output", "csv"], service=svc)
     case = _case()
     case.assertEqual(code, 0)
-    last_list = cast(dict[str, object], svc.last_list)
+    last_list = cast(Dict[str, object], svc.last_list)
     case.assertIsNotNone(last_list)
     case.assertIs(last_list["include_raw_secrets"], False)
     out = capsys.readouterr().out
@@ -269,7 +269,7 @@ def test_run_cli_export_backup_and_restore(capsys):
     case.assertEqual(export_code, 0)
     case.assertEqual(backup_code, 0)
     case.assertEqual(restore_code, 0)
-    last_list = cast(dict[str, object], svc.last_list)
+    last_list = cast(Dict[str, object], svc.last_list)
     case.assertIsNotNone(last_list)
     case.assertIs(last_list["include_raw_secrets"], False)
 

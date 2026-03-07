@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 from subprocess import CompletedProcess  # nosec B404
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -14,7 +15,7 @@ def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> Complete
 
 
 def test_write_file_with_privilege_root_success() -> None:
-    calls: list[list[str]] = []
+    calls: List[List[str]] = []
 
     def runner(cmd, **kwargs) -> CompletedProcess:
         calls.append(cmd)
@@ -32,8 +33,8 @@ def test_write_file_with_privilege_root_success() -> None:
 
 
 def test_write_file_with_privilege_falls_back_to_sudo() -> None:
-    calls: list[list[str]] = []
-    inputs: list[bytes | None] = []
+    calls: List[List[str]] = []
+    inputs: List[bytes | None] = []
 
     def runner(cmd, **kwargs) -> CompletedProcess:
         calls.append(cmd)
@@ -68,7 +69,7 @@ def test_write_file_with_privilege_raises_when_root_and_sudo_fail() -> None:
 
 
 def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: Path) -> None:
-    calls: list[list[str]] = []
+    calls: List[List[str]] = []
     fake_wsl = tmp_path / "wsl.exe"
     fake_wsl.write_text("", encoding="utf-8")
 
