@@ -44,7 +44,7 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
     try:
         payload = json.loads(_read_text(cfg))
-    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+    except (OSError, TypeError, ValueError):
         return PersistedUiState()
 
     if not isinstance(payload, dict):
