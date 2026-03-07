@@ -5,7 +5,7 @@ import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Protocol, Sequence
+from typing import Any, Dict, List, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -27,19 +27,7 @@ _SAFE_EXPORT_KEYS = (
 )
 
 
-class SupportsListRecords(Protocol):
-    def list_records(
-        self,
-        *,
-        root: str | Path | None = None,
-        context: str | None = None,
-        source: List[str] | None = None,
-        wsl_path: str | None = None,
-        distro: str | None = None,
-        scan_depth: int = DEFAULT_SCAN_DEPTH,
-        include_raw_secrets: bool = False,
-    ) -> List[Dict[str, Any]]:
-        ...
+SupportsListRecords = Any
 
 
 def build_parser() -> argparse.ArgumentParser:

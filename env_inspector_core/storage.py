@@ -79,14 +79,16 @@ class BackupManager:
     def list_all_backups(self) -> List[Path]:
         return sorted((Path(path) for path in glob.glob(str(self.base_dir / "**" / "*.backup.json"), recursive=True)), reverse=True)
 
-    def _load_backup_payload(self, backup_path: Path) -> dict | None:
+    @staticmethod
+    def _load_backup_payload(backup_path: Path) -> dict | None:
         try:
             payload = json.loads(_read_text(backup_path))
         except Exception:
             return None
         return payload if isinstance(payload, dict) else None
 
-    def restore_text(self, backup_path: Path) -> str:
+    @staticmethod
+    def restore_text(backup_path: Path) -> str:
         payload = json.loads(_read_text(Path(backup_path)))
         return str(payload["text"])
 

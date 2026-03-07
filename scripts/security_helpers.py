@@ -58,14 +58,13 @@ def _is_local_or_private_ip(hostname: str) -> bool:
     except ValueError:
         return False
 
-    checks = (
-        ip_value.is_private,
-        ip_value.is_loopback,
-        ip_value.is_link_local,
-        ip_value.is_reserved,
-        ip_value.is_multicast,
+    return (
+        ip_value.is_private
+        or ip_value.is_loopback
+        or ip_value.is_link_local
+        or ip_value.is_reserved
+        or ip_value.is_multicast
     )
-    return any(checks)
 
 
 def _reject_local_targets(hostname: str) -> None:
@@ -171,6 +170,23 @@ def _secure_ssl_context() -> ssl.SSLContext:
     return context
 
 
+def _read_https_success(response) -> Tuple[int, str, str, Dict[str, str]]:
+    raw_body = response.read().decode("utf-8")
+    response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
+    status = int(getattr(response, "status", response.getcode()))
+    reason = str(getattr(response, "reason", "") or "HTTP error")
+    return status, reason, raw_body, response_headers
+
+
+def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[str, str]]:
+    raw_body = exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
+    error_headers = tuple(exc.headers.items()) if exc.headers else ()
+    response_headers = {str(k).lower(): str(v) for k, v in error_headers}
+    status = int(exc.code)
+    reason = str(exc.reason or "HTTP error")
+    return status, reason, raw_body, response_headers
+
+
 def _execute_https_request(
     *,
     host: str,
@@ -189,16 +205,9 @@ def _execute_https_request(
     try:
         opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
         with opener.open(request, timeout=timeout) as response:
-            raw_body = response.read().decode("utf-8")
-            response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
-            status = int(getattr(response, "status", response.getcode()))
-            reason = str(getattr(response, "reason", "") or "HTTP error")
+            status, reason, raw_body, response_headers = _read_https_success(response)
     except urllib.error.HTTPError as exc:
-        raw_body = exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
-        error_headers = tuple(exc.headers.items()) if exc.headers else ()
-        response_headers = {str(k).lower(): str(v) for k, v in error_headers}
-        status = int(exc.code)
-        reason = str(exc.reason or "HTTP error")
+        status, reason, raw_body, response_headers = _read_https_error(exc)
     return status, reason, raw_body, response_headers
 
 

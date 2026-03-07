@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division
 
 import argparse
+import importlib
 import json
 import os
 import sys
@@ -16,15 +17,10 @@ _HELPER_ROOT = _SCRIPT_DIR if os.path.exists(_SCRIPT_DIR / "security_helpers.py"
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
-from security_helpers import (
-    encode_identifier as _encode_identifier,
-    request_json_https as _request_json_https,
-    safe_output_path_in_workspace as _safe_output_path_in_workspace,
-)
-
-encode_identifier = _encode_identifier
-request_json_https = _request_json_https
-safe_output_path_in_workspace = _safe_output_path_in_workspace
+_security_helpers = importlib.import_module("security_helpers")
+encode_identifier = _security_helpers.encode_identifier
+request_json_https = _security_helpers.request_json_https
+safe_output_path_in_workspace = _security_helpers.safe_output_path_in_workspace
 
 SENTRY_API_HOST = "sentry.io"
 
