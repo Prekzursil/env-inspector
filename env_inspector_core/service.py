@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 import json
 import os
 import uuid
@@ -158,8 +160,8 @@ class EnvInspectorService:
     def _write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
         _write_text_file(path, text, ensure_parent=ensure_parent)
 
+    @staticmethod
     def _write_scoped_text_file(
-        self,
         *,
         candidate_path: Path,
         allowed_roots: Sequence[Path],
@@ -277,19 +279,21 @@ class EnvInspectorService:
         payload = self.list_records(include_raw_secrets=True, **kwargs)
         return [EnvRecord(**item) for item in payload]
 
-    def resolve_effective(self, key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
+    @staticmethod
+    def resolve_effective(key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
         return resolve_effective_value(records, key, context)
 
     @staticmethod
     def _diff(before: str, after: str, target: str) -> str:
         return _diff_text_helper(before, after, target)
 
-    def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
+    @classmethod
+    def _write_linux_etc_environment_with_privilege(cls, text: str) -> None:
         _write_linux_etc_environment_with_privilege_helper(
-            fixed_path=self._LINUX_ETC_ENV_PATH,
+            fixed_path=cls._LINUX_ETC_ENV_PATH,
             expected_path=LINUX_ETC_ENV_PATH,
             text=text,
-            write_text_file=lambda path, payload: self._write_text_file(path, payload, ensure_parent=False),
+            write_text_file=lambda path, payload: cls._write_text_file(path, payload, ensure_parent=False),
             which_fn=which,
             run_fn=run,
         )
@@ -618,7 +622,8 @@ class EnvInspectorService:
         return backup_path
 
 
-    def _operation_result(self, payload: OperationResultInput) -> OperationResult:
+    @staticmethod
+    def _operation_result(payload: OperationResultInput) -> OperationResult:
         return _operation_result_helper(payload)
 
     def _execute_target_operation(

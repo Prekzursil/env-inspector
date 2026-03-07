@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import absolute_import, division
+
 import argparse
 import json
 import os

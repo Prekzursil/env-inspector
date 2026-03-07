@@ -220,7 +220,8 @@ def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypat
             self.removed: List[tuple[str, str]] = []
             self.sets: List[tuple[str, str, str]] = []
 
-        def list_scope(self, scope: str) -> Dict[str, str]:
+        @staticmethod
+        def list_scope(scope: str) -> Dict[str, str]:
             return {"KEEP": "1", "DROP": "2"}
 
         def remove_scope_value(self, scope: str, key: str) -> None:

@@ -5,7 +5,8 @@ import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Protocol, Sequence
+from typing import Any, Dict, List, Sequence
+from typing_extensions import Protocol
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -39,7 +40,7 @@ class SupportsListRecords(Protocol):
         scan_depth: int = DEFAULT_SCAN_DEPTH,
         include_raw_secrets: bool = False,
     ) -> List[Dict[str, Any]]:
-        ...
+        pass
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -99,10 +99,12 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
     svc.current_wsl_distro = "Ubuntu"
 
     class _FakeWsl:
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             return True
 
-        def list_distros_for_ui(self) -> list[str]:
+        @staticmethod
+        def list_distros_for_ui() -> list[str]:
             return ["Ubuntu", "Debian"]
 
     svc.wsl = _FakeWsl()  # type: ignore[assignment]

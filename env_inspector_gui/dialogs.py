@@ -266,7 +266,8 @@ class DiffPreviewDialog:
             else:
                 widget.insert("end", line + "\n", (tag,))
 
-    def _diff_tag(self, line: str) -> str | None:
+    @staticmethod
+    def _diff_tag(line: str) -> str | None:
         if line.startswith("@@"):
             return "diff_hunk"
         if line.startswith("+") and not line.startswith("+++"):
