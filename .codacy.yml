@@ -3,5 +3,5 @@ engines:
   bandit:
     exclude_paths:
       - "tests/**"
-  pylint:
+  pylintpython3:
     python_version: 3

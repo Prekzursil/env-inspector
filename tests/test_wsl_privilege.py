@@ -8,13 +8,15 @@ from env_inspector_core.providers import WslProvider
 
 from tests.assertions import ensure
 
+
 def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> CompletedProcess:
     return CompletedProcess(args=["wsl"], returncode=returncode, stdout=stdout, stderr=stderr)
 
-def test_write_file_with_privilege_root_success():
+
+def test_write_file_with_privilege_root_success() -> None:
     calls: list[list[str]] = []
 
-    def runner(cmd, **kwargs):
+    def runner(cmd, **kwargs) -> CompletedProcess:
         calls.append(cmd)
         return _proc(0)
 
@@ -28,11 +30,12 @@ def test_write_file_with_privilege_root_success():
     ensure("cat > '/etc/my env'" in calls[0][-1])
     ensure(len(calls) == 1)
 
-def test_write_file_with_privilege_falls_back_to_sudo():
+
+def test_write_file_with_privilege_falls_back_to_sudo() -> None:
     calls: list[list[str]] = []
     inputs: list[bytes | None] = []
 
-    def runner(cmd, **kwargs):
+    def runner(cmd, **kwargs) -> CompletedProcess:
         calls.append(cmd)
         inputs.append(kwargs.get("input"))
         if "-u" in cmd and "root" in cmd:
@@ -49,8 +52,9 @@ def test_write_file_with_privilege_falls_back_to_sudo():
     ensure("sudo tee /etc/environment >/dev/null" in calls[1][-1])
     ensure(inputs[1] == b"A=1\n")
 
-def test_write_file_with_privilege_raises_when_root_and_sudo_fail():
-    def runner(cmd, **kwargs):
+
+def test_write_file_with_privilege_raises_when_root_and_sudo_fail() -> None:
+    def runner(cmd, **kwargs) -> CompletedProcess:
         return _proc(1, stderr=b"fail")
 
     provider = WslProvider(runner=runner)
@@ -62,12 +66,13 @@ def test_write_file_with_privilege_raises_when_root_and_sudo_fail():
 
     ensure("root and sudo fallback" in str(exc.value))
 
-def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: Path):
+
+def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: Path) -> None:
     calls: list[list[str]] = []
     fake_wsl = tmp_path / "wsl.exe"
     fake_wsl.write_text("", encoding="utf-8")
 
-    def runner(cmd, **kwargs):
+    def runner(cmd, **kwargs) -> CompletedProcess:
         calls.append(cmd)
         return _proc(1, stderr=b"not working")
 

@@ -607,32 +607,8 @@ class EnvInspectorService:
         return backup_path
 
 
-    def _operation_result(
-        self,
-        *,
-        operation_id: str,
-        target: str,
-        action: str,
-        success: bool,
-        backup_path: str | None,
-        preview_only: bool,
-        diff_preview: str,
-        error_message: str | None,
-        value_masked: str | None,
-    ) -> OperationResult:
-        return _operation_result_helper(
-            OperationResultInput(
-                operation_id=operation_id,
-                target=target,
-                action=action,
-                success=success,
-                backup_path=backup_path,
-                preview_only=preview_only,
-                diff_preview=diff_preview,
-                error_message=error_message,
-                value_masked=value_masked,
-            )
-        )
+    def _operation_result(self, payload: OperationResultInput) -> OperationResult:
+        return _operation_result_helper(payload)
 
     def _execute_target_operation(
         self,
@@ -654,27 +630,31 @@ class EnvInspectorService:
             if not preview_only:
                 backup_path = self._apply_target_operation(target=target, key=key, value=value, action=action, before=before, resolved_scope_roots=resolved_scope_roots)
             return self._operation_result(
-                operation_id=operation_id,
-                target=target,
-                action=action,
-                success=True,
-                backup_path=backup_path,
-                preview_only=preview_only,
-                diff_preview=diff_preview,
-                error_message=None,
-                value_masked=value_masked,
+                OperationResultInput(
+                    operation_id=operation_id,
+                    target=target,
+                    action=action,
+                    success=True,
+                    backup_path=backup_path,
+                    preview_only=preview_only,
+                    diff_preview=diff_preview,
+                    error_message=None,
+                    value_masked=value_masked,
+                )
             )
         except self._operation_error_types() as exc:
             return self._operation_result(
-                operation_id=operation_id,
-                target=target,
-                action=action,
-                success=False,
-                backup_path=backup_path,
-                preview_only=False,
-                diff_preview=diff_preview,
-                error_message=str(exc),
-                value_masked=value_masked,
+                OperationResultInput(
+                    operation_id=operation_id,
+                    target=target,
+                    action=action,
+                    success=False,
+                    backup_path=backup_path,
+                    preview_only=False,
+                    diff_preview=diff_preview,
+                    error_message=str(exc),
+                    value_masked=value_masked,
+                )
             )
 
     def _apply(

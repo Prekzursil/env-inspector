@@ -4,9 +4,10 @@ import argparse
 import json
 import sys
 import urllib.error
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
@@ -40,7 +41,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _request_project_issues(org: str, project: str, token: str) -> Tuple[List[Any], Dict[str, str]]:
+def _request_project_issues(org: str, project: str, token: str) -> tuple[list[Any], dict[str, str]]:
     org_slug = encode_identifier(org, field_name="Sentry org")
     project_slug = encode_identifier(project, field_name="Sentry project")
     payload, headers = request_json_https(
@@ -59,7 +60,7 @@ def _request_project_issues(org: str, project: str, token: str) -> Tuple[List[An
     return payload, headers
 
 
-def _hits_from_headers(headers: Dict[str, str]) -> int | None:
+def _hits_from_headers(headers: dict[str, str]) -> int | None:
     raw = headers.get("x-hits")
     if not raw:
         return None
@@ -69,12 +70,12 @@ def _hits_from_headers(headers: Dict[str, str]) -> int | None:
         return None
 
 
-def _collect_projects(args: argparse.Namespace, env: Dict[str, str]) -> List[str]:
+def _collect_projects(args: argparse.Namespace, env: Mapping[str, str]) -> list[str]:
     projects = [p for p in args.project if p]
     if projects:
         return projects
 
-    resolved: List[str] = []
+    resolved: list[str] = []
     for env_name in ("SENTRY_PROJECT_BACKEND", "SENTRY_PROJECT_WEB"):
         value = str(env.get(env_name, "")).strip()
         if value:
@@ -82,8 +83,8 @@ def _collect_projects(args: argparse.Namespace, env: Dict[str, str]) -> List[str
     return resolved
 
 
-def _missing_config_findings(token: str, org: str, projects: List[str]) -> List[str]:
-    findings: List[str] = []
+def _missing_config_findings(token: str, org: str, projects: list[str]) -> list[str]:
+    findings: list[str] = []
     if not token:
         findings.append("SENTRY_AUTH_TOKEN is missing.")
     if not org:
@@ -93,11 +94,15 @@ def _missing_config_findings(token: str, org: str, projects: List[str]) -> List[
     return findings
 
 
-def _scan_projects(org: str, projects: List[str], token: str) -> Tuple[str, List[Dict[str, Any]], List[str], List[str]]:
+def _scan_projects(
+    org: str,
+    projects: list[str],
+    token: str,
+) -> tuple[str, list[dict[str, Any]], list[str], list[str]]:
     mode = "strict"
-    project_results: List[Dict[str, Any]] = []
-    findings: List[str] = []
-    failures: List[str] = []
+    project_results: list[dict[str, Any]] = []
+    findings: list[str] = []
+    failures: list[str] = []
 
     for project in projects:
         try:
@@ -165,7 +170,7 @@ def main() -> int:
     projects = _collect_projects(args, os.environ)
 
     findings = _missing_config_findings(token, org, projects)
-    project_results: List[Dict[str, Any]] = []
+    project_results: list[dict[str, Any]] = []
     mode = "strict"
 
     if findings:

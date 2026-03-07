@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division
 
+from email.message import Message
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import TestCase
@@ -18,6 +19,17 @@ def _empty_token() -> str:
 def _fixture_token() -> str:
     return "-".join(("fixture", "token"))
 
+
+def _http_error(code: int, msg: str) -> urllib.error.HTTPError:
+    return urllib.error.HTTPError(
+        url="https://sentry.io",
+        code=code,
+        msg=msg,
+        hdrs=Message(),
+        fp=None,
+    )
+
+
 def test_codacy_extract_total_open_handles_nested_and_missing_counts():
     payload = {"outer": [{"nested": {"open_issues": 7}}, {"other": "x"}]}
     case = TestCase()
@@ -25,6 +37,7 @@ def test_codacy_extract_total_open_handles_nested_and_missing_counts():
     case.assertEqual(codacy_mod.extract_total_open(payload), 7)
     case.assertEqual(codacy_mod.extract_total_open({"pagination": {"total": 4}}), 4)
     case.assertIsNone(codacy_mod.extract_total_open({"outer": [{"nested": "value"}]}))
+
 
 def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
@@ -43,6 +56,7 @@ def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monke
     ensure(rc == 1)
     ensure("escapes workspace root" in capsys.readouterr().err)
 
+
 def test_sentry_collect_projects_prefers_args_and_env_fallback():
     args_with_projects = SimpleNamespace(project=["backend", "web"])
     args_without_projects = SimpleNamespace(project=[])
@@ -55,6 +69,7 @@ def test_sentry_collect_projects_prefers_args_and_env_fallback():
         )
         == ["backend", "web"]
     )
+
 
 def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
     def _fake_request_project_issues(org: str, project: str, token: str):
@@ -70,9 +85,10 @@ def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
     ensure(any("no X-Hits" in item for item in failures))
     ensure(any("expected 0" in item for item in failures))
 
+
 def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     def _raise_404(org: str, project: str, token: str):
-        raise urllib.error.HTTPError(url="https://sentry.io", code=404, msg="Not Found", hdrs=None, fp=None)
+        raise _http_error(404, "Not Found")
 
     monkeypatch.setattr(sentry_mod, "_request_project_issues", _raise_404)
     mode_404, project_results_404, findings_404, failures_404 = sentry_mod._scan_projects("org", ["proj"], "token")
@@ -83,7 +99,7 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     ensure(findings_404 and "HTTP 404" in findings_404[0])
 
     def _raise_500(org: str, project: str, token: str):
-        raise urllib.error.HTTPError(url="https://sentry.io", code=500, msg="Err", hdrs=None, fp=None)
+        raise _http_error(500, "Err")
 
     monkeypatch.setattr(sentry_mod, "_request_project_issues", _raise_500)
     mode_500, project_results_500, findings_500, failures_500 = sentry_mod._scan_projects("org", ["proj"], "token")
@@ -92,6 +108,7 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     ensure(project_results_500 == [])
     ensure(findings_500 == [])
     ensure(failures_500 and "HTTP 500" in failures_500[0])
+
 
 def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)

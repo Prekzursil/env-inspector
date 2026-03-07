@@ -1,32 +1,45 @@
 from __future__ import absolute_import, division
 
-from typing import Dict, List
 from dataclasses import asdict, dataclass, field
 
 from env_inspector_core.models import EnvRecord
 
 
-def _coerce_text(payload: Dict[str, object], key: str, default: str) -> str:
+def _coerce_text(payload: dict[str, object], key: str, default: str) -> str:
     value = payload.get(key, default)
     return str(value or default)
 
 
-def _coerce_flag(payload: Dict[str, object], key: str, default: bool = False) -> bool:
+def _coerce_flag(payload: dict[str, object], key: str, default: bool = False) -> bool:
     return bool(payload.get(key, default))
 
 
-def _coerce_items(payload: Dict[str, object], key: str) -> List[str]:
+def _coerce_items(payload: dict[str, object], key: str) -> list[str]:
     value = payload.get(key) or []
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if isinstance(item, str)]
 
 
-def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
+def _coerce_number(payload: dict[str, object], key: str, default: int) -> int:
     value = payload.get(key, default)
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return default
+        try:
+            return int(text)
+        except ValueError:
+            return default
     try:
-        return int(value or default)
-    except Exception:
+        return int(value)
+    except (TypeError, ValueError):
         return default
 
 
@@ -45,18 +58,18 @@ class PersistedUiState:
     show_secrets: bool = False
     only_secrets: bool = False
     filter_text: str = ""
-    selected_targets: List[str] = field(default_factory=list)
+    selected_targets: list[str] = field(default_factory=list)
     sort_column: str = "name"
     sort_descending: bool = False
     wsl_distro: str = ""
     wsl_path: str = ""
     scan_depth: int = 5
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, payload: Dict[str, object]) -> "PersistedUiState":
+    def from_dict(cls, payload: dict[str, object]) -> "PersistedUiState":
         return cls(
             version=_coerce_number(payload, "version", 1),
             window_geometry=_coerce_text(payload, "window_geometry", "1480x860"),
