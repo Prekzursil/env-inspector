@@ -474,14 +474,14 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _safe_preview(self, action: str, key: str, value: str, targets: List[str]) -> List[Dict[str, Any]] | None:
         try:
             return self._preview_operation(action, key, value, targets)
-        except (OSError, PathPolicyError, RuntimeError, ValueError) as exc:
+        except (OSError, PathPolicyError, RuntimeError) as exc:
             self.messagebox.showerror(APP_NAME, f"Failed to compute preview: {exc}")
             return None
 
     def _safe_apply(self, action: str, key: str, value: str, targets: List[str]) -> Dict[str, Any] | None:
         try:
             return self._apply_operation(action, key, value, targets)
-        except (OSError, PathPolicyError, RuntimeError, ValueError) as exc:
+        except (OSError, PathPolicyError, RuntimeError) as exc:
             self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {exc}")
             return None
 
