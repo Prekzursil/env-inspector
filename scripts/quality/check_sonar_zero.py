@@ -60,19 +60,19 @@ def _build_issue_query(project_key: str, *, branch: str, pull_request: str) -> D
         "resolved": "false",
         "ps": "1",
     }
-    if branch:
-        query["branch"] = branch
     if pull_request:
         query["pullRequest"] = pull_request
+    elif branch:
+        query["branch"] = branch
     return query
 
 
 def _build_quality_gate_query(project_key: str, *, branch: str, pull_request: str) -> dict:
     query = {"projectKey": project_key}
-    if branch:
-        query["branch"] = branch
     if pull_request:
         query["pullRequest"] = pull_request
+    elif branch:
+        query["branch"] = branch
     return query
 
 
@@ -82,10 +82,10 @@ def _build_hotspot_query(project_key: str, *, branch: str, pull_request: str) ->
         "status": "TO_REVIEW",
         "ps": "1",
     }
-    if branch:
-        query["branch"] = branch
     if pull_request:
         query["pullRequest"] = pull_request
+    elif branch:
+        query["branch"] = branch
     return query
 
 
