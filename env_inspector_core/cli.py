@@ -28,7 +28,17 @@ _SAFE_EXPORT_KEYS = (
 
 
 class SupportsListRecords(Protocol):
-    def list_records(self, **kwargs: Any) -> List[Dict[str, Any]]:
+    def list_records(
+        self,
+        *,
+        root: str | Path | None = None,
+        context: str | None = None,
+        source: List[str] | None = None,
+        wsl_path: str | None = None,
+        distro: str | None = None,
+        scan_depth: int = DEFAULT_SCAN_DEPTH,
+        include_raw_secrets: bool = False,
+    ) -> List[Dict[str, Any]]:
         ...
 
 
