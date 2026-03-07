@@ -14,6 +14,7 @@ from urllib.parse import urlparse, urlunparse
 
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+_LOCAL_IP_FLAGS = ("is_private", "is_loopback", "is_link_local", "is_reserved", "is_multicast")
 
 
 def _parse_https_url(raw_url: str):
@@ -58,13 +59,7 @@ def _is_local_or_private_ip(hostname: str) -> bool:
     except ValueError:
         return False
 
-    return (
-        ip_value.is_private
-        or ip_value.is_loopback
-        or ip_value.is_link_local
-        or ip_value.is_reserved
-        or ip_value.is_multicast
-    )
+    return any(bool(getattr(ip_value, flag)) for flag in _LOCAL_IP_FLAGS)
 
 
 def _reject_local_targets(hostname: str) -> None:

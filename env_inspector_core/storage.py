@@ -83,7 +83,7 @@ class BackupManager:
     def _load_backup_payload(backup_path: Path) -> dict | None:
         try:
             payload = json.loads(_read_text(backup_path))
-        except Exception:
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
             return None
         return payload if isinstance(payload, dict) else None
 

@@ -44,7 +44,7 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
     try:
         payload = json.loads(_read_text(cfg))
-    except Exception:
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
         return PersistedUiState()
 
     if not isinstance(payload, dict):
@@ -52,7 +52,7 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
     try:
         state = PersistedUiState.from_dict(payload)
-    except Exception:
+    except (TypeError, ValueError, KeyError):
         return PersistedUiState()
 
     if state.sort_column not in SUPPORTED_SORT_COLUMNS:
