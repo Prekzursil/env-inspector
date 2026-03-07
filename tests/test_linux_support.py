@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -47,10 +48,10 @@ def _patch_linux_etc_environment_reads(monkeypatch: pytest.MonkeyPatch, etc_env:
     monkeypatch.setattr(service_module, "_read_text_if_exists", fake_read_text)
     return target
 
-def _patch_linux_etc_environment_denied(monkeypatch: pytest.MonkeyPatch, etc_env: Path) -> list[str]:
+def _patch_linux_etc_environment_denied(monkeypatch: pytest.MonkeyPatch, etc_env: Path) -> List[str]:
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
     real_write_text_file = EnvInspectorService._write_text_file
-    writes: list[str] = []
+    writes: List[str] = []
 
     def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
         if path == target:
@@ -104,7 +105,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
             return True
 
         @staticmethod
-        def list_distros_for_ui() -> list[str]:
+        def list_distros_for_ui() -> List[str]:
             return ["Ubuntu", "Debian"]
 
     svc.wsl = _FakeWsl()  # type: ignore[assignment]

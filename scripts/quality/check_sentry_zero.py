@@ -7,24 +7,24 @@ import json
 import os
 import sys
 import urllib.error
-from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = _SCRIPT_DIR if os.path.exists(_SCRIPT_DIR / "security_helpers.py") else _SCRIPT_DIR.parent
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
+from security_helpers import (
+    encode_identifier as _encode_identifier,
+    request_json_https as _request_json_https,
+    safe_output_path_in_workspace as _safe_output_path_in_workspace,
+)
 
-def _load_security_helpers():
-    from security_helpers import encode_identifier, request_json_https, safe_output_path_in_workspace
-
-    return encode_identifier, request_json_https, safe_output_path_in_workspace
-
-
-encode_identifier, request_json_https, safe_output_path_in_workspace = _load_security_helpers()
+encode_identifier = _encode_identifier
+request_json_https = _request_json_https
+safe_output_path_in_workspace = _safe_output_path_in_workspace
 
 SENTRY_API_HOST = "sentry.io"
 
@@ -165,8 +165,6 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org = (args.org or os.environ.get("SENTRY_ORG", "")).strip()

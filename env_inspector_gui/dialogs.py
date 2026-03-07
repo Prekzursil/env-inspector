@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division
 
-from collections.abc import Callable
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple
 
 
 class TargetPickerDialog:

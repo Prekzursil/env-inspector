@@ -5,8 +5,7 @@ import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
-from typing_extensions import Protocol
+from typing import Any, Dict, List, Protocol, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -40,7 +39,7 @@ class SupportsListRecords(Protocol):
         scan_depth: int = DEFAULT_SCAN_DEPTH,
         include_raw_secrets: bool = False,
     ) -> List[Dict[str, Any]]:
-        pass
+        ...
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -167,18 +166,16 @@ def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> i
 
 def _set_key(service: EnvInspectorService, args: argparse.Namespace) -> int:
     if args.preview_only:
-        payload = service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
-    else:
-        payload = service.set_key(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
-    return _emit_payload(payload)
+        return _emit_payload(
+            service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
+        )
+    return _emit_payload(service.set_key(key=args.key, value=args.value, targets=args.target, scope_roots=args.root))
 
 
 def _remove_key(service: EnvInspectorService, args: argparse.Namespace) -> int:
     if args.preview_only:
-        payload = service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root)
-    else:
-        payload = service.remove_key(key=args.key, targets=args.target, scope_roots=args.root)
-    return _emit_payload(payload)
+        return _emit_payload(service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root))
+    return _emit_payload(service.remove_key(key=args.key, targets=args.target, scope_roots=args.root))
 
 
 def _list_backups(service: EnvInspectorService, args: argparse.Namespace) -> int:
