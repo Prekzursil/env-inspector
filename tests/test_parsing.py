@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division
 from env_inspector_core.parsing import (
     parse_dotenv_text,
     parse_bash_exports,
@@ -19,7 +20,7 @@ def _case() -> unittest.TestCase:
 def test_parse_dotenv_text_supports_export_comments_and_quotes():
     text = """
 # comment
-export API_TOKEN='abc123'
+export API_TOKEN='fixture-value'
 PLAIN=value
 QUOTED="hello world"
 INVALID_LINE
@@ -28,7 +29,7 @@ INVALID_LINE
     names = [r[0] for r in records]
     case = _case()
     case.assertEqual(names, ["API_TOKEN", "PLAIN", "QUOTED"])
-    case.assertEqual(dict(records)["API_TOKEN"], "abc123")
+    case.assertEqual(dict(records)["API_TOKEN"], "fixture-value")
     case.assertEqual(dict(records)["QUOTED"], "hello world")
 
 

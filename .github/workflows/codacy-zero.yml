@@ -28,7 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Assert Codacy PR analysis context is green
+        id: codacy_provider_context
         if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
         run: |
           python3 scripts/quality/check_required_checks.py \
             --repo "${GITHUB_REPOSITORY}" \
@@ -39,7 +41,6 @@ jobs:
             --out-json "codacy-zero/codacy.json" \
             --out-md "codacy-zero/codacy.md"
       - name: Assert Codacy open issue count is zero
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           python3 scripts/quality/check_codacy_zero.py \
             --provider gh \
@@ -48,6 +49,11 @@ jobs:
             --branch "${CODACY_BRANCH}" \
             --out-json "codacy-zero/codacy.json" \
             --out-md "codacy-zero/codacy.md"
+      - name: Fail when Codacy provider context is not green
+        if: ${{ github.event_name == 'pull_request' && steps.codacy_provider_context.outcome != 'success' }}
+        run: |
+          echo "Codacy Static Code Analysis did not conclude successfully." >&2
+          exit 1
       - name: Upload Codacy artifacts
         if: always()
         uses: actions/upload-artifact@v4

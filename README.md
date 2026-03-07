@@ -120,16 +120,35 @@ dist/env-inspector.exe
 ### Verify from source
 
 ```bash
-python3 -m py_compile env_inspector.py env_inspector_core/*.py env_inspector_gui/*.py tests/*.py scripts/quality/*.py
-pytest -q -s
+make verify
+bash scripts/verify
 ```
 
-### Enforce coverage gate locally
+### Enforce owned production coverage gate locally
 
 ```bash
-python3 -m pytest -q -s --cov=tests --cov-report=xml:coverage/python-coverage.xml
+python3 -m pytest -q -s \
+  --cov=env_inspector \
+  --cov=env_inspector_core.service \
+  --cov=env_inspector_core.service_listing \
+  --cov=env_inspector_core.service_ops \
+  --cov=env_inspector_core.service_privileged \
+  --cov=env_inspector_core.service_restore \
+  --cov=env_inspector_core.service_paths \
+  --cov=scripts.quality.assert_coverage_100 \
+  --cov=scripts.quality.check_sentry_zero \
+  --cov-report=xml:coverage/python-coverage.xml
 python3 scripts/quality/assert_coverage_100.py \
   --xml "python=coverage/python-coverage.xml" \
+  --require-source env_inspector.py \
+  --require-source env_inspector_core/service.py \
+  --require-source env_inspector_core/service_listing.py \
+  --require-source env_inspector_core/service_ops.py \
+  --require-source env_inspector_core/service_privileged.py \
+  --require-source env_inspector_core/service_restore.py \
+  --require-source env_inspector_core/service_paths.py \
+  --require-source scripts/quality/assert_coverage_100.py \
+  --require-source scripts/quality/check_sentry_zero.py \
   --min-percent 100
 ```
 
@@ -143,7 +162,8 @@ python3 scripts/quality/assert_coverage_100.py \
 
 1. Open Actions and run `.github/workflows/env-inspector-exe-release.yml` on your branch.
 2. Download the `env-inspector-exe` artifact from the run summary.
-3. Verify checksum with `env-inspector.exe.sha256` before testing.
+3. Push a `v*` tag when you want the workflow to publish or update the GitHub release entry.
+4. Verify checksum with `env-inspector.exe.sha256` before testing.
 
 ## CI, reviews, and merges
 

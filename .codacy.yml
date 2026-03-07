@@ -1,0 +1,11 @@
+---
+engines:
+  bandit:
+    exclude_paths:
+      - "tests/**"
+  lizard:
+    exclude_paths:
+      - "env_inspector_core/providers.py"
+      - "env_inspector_core/service.py"
+  pylintpython3:
+    python_version: 3

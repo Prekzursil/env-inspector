@@ -4,9 +4,9 @@ import os
 import re
 import shlex
 import shutil
-import subprocess
+from subprocess import PIPE, CompletedProcess, run  # nosec B404
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple
 
 from .constants import (
     SOURCE_DOTENV,
@@ -213,10 +213,10 @@ def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]
 class WslProvider:
     def __init__(
         self,
-        runner: Callable[..., subprocess.CompletedProcess[bytes]] | None = None,
+        runner: Callable[..., CompletedProcess] | None = None,
         wsl_exe: str | None = None,
     ) -> None:
-        self.runner = runner or subprocess.run
+        self.runner = runner or run
         self.wsl_exe = wsl_exe or self._discover_wsl_exe()
         self._available_cache: bool | None = None
 
@@ -253,8 +253,8 @@ class WslProvider:
         try:
             proc = self.runner(
                 [str(self.wsl_exe), "-l", "-q"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=PIPE,
+                stderr=PIPE,
                 check=False,
             )
             self._available_cache = proc.returncode == 0
@@ -280,8 +280,8 @@ class WslProvider:
         proc = self.runner(
             [str(self.wsl_exe), *args],
             input=(input_text.encode("utf-8") if input_text is not None else None),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=PIPE,
+            stderr=PIPE,
             check=False,
         )
         out = self._decode(proc.stdout)
@@ -298,7 +298,7 @@ class WslProvider:
             if name:
                 distros.append(name)
         deduped: List[str] = []
-        seen: set[str] = set()
+        seen: Set[str] = set()
         for d in distros:
             if d not in seen:
                 deduped.append(d)
@@ -319,21 +319,24 @@ class WslProvider:
     def write_file_with_privilege(self, distro: str, path: str, content: str) -> None:
         quoted_path = shlex.quote(path)
 
+        root_error: RuntimeError | None = None
+
         # 1) Try direct root user execution.
         try:
             self._run(["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
             return
-        except Exception:
-            pass
+        except RuntimeError as exc:
+            root_error = exc
 
         # 2) Fallback to sudo.
         try:
             self._run(["-d", distro, "-e", "bash", "-lc", f"sudo tee {quoted_path} >/dev/null"], input_text=content)
             return
-        except Exception as exc:
+        except RuntimeError as exc:
+            cause = exc if root_error is None else root_error
             raise RuntimeError(
                 "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
-            ) from exc
+            ) from cause
 
     def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
         quoted_root = shlex.quote(root_path)
@@ -549,7 +552,7 @@ def _append_wsl_records(
 def collect_wsl_records(
     wsl: WslClient,
     include_etc: bool = True,
-    exclude_distros: set[str] | None = None,
+    exclude_distros: Set[str] | None = None,
 ) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
     if not wsl.available():

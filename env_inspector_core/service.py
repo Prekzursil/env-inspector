@@ -1,25 +1,14 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
-import csv
-import difflib
-import io
 import json
 import os
-import subprocess
 import uuid
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple, Type
 
 from .constants import (
     DEFAULT_BACKUP_RETENTION,
     DEFAULT_SCAN_DEPTH,
-    SOURCE_DOTENV,
-    SOURCE_LINUX_BASHRC,
-    SOURCE_LINUX_ETC_ENV,
-    SOURCE_POWERSHELL_PROFILE,
-    SOURCE_WSL_BASHRC,
-    SOURCE_WSL_DOTENV,
-    SOURCE_WSL_ETC_ENV,
 )
 from .models import EnvRecord, OperationResult
 from .path_policy import (
@@ -41,19 +30,68 @@ from .parsing import (
 from .providers import (
     WindowsRegistryProvider,
     WslProvider,
+    build_registry_records,
     collect_dotenv_records,
     collect_linux_records,
     collect_powershell_profile_records,
     collect_process_records,
     collect_wsl_dotenv_records,
     collect_wsl_records,
-    build_registry_records,
     current_wsl_distro_name,
     get_runtime_context,
     is_windows,
 )
+from .rendering import audit_safe_result, export_rows
 from .resolver import resolve_effective_value
-from .secrets import looks_secret, mask_value
+from .secrets import looks_secret
+from .service_listing import (
+    HostCollectionRequest,
+    HostRowCollectors,
+    apply_row_filters as _apply_row_filters_helper,
+    available_targets as _available_targets_helper,
+    collect_host_rows as _collect_host_rows_helper,
+    collect_wsl_rows as _collect_wsl_rows_helper,
+    powershell_target_for_path as _powershell_target_for_path_helper,
+    record_target as _record_target_helper,
+    rows_to_payload as _rows_to_payload_helper,
+)
+from .service_ops import (
+    diff_text as _diff_text_helper,
+    make_operation_result as _make_operation_result_helper,
+    masked_value as _masked_value_helper,
+    OperationResultInput,
+    operation_error_types as _operation_error_types_helper,
+    operation_result as _operation_result_helper,
+)
+from .service_privileged import (
+    run as _privileged_run,
+    which as _privileged_which,
+    write_linux_etc_environment_with_privilege as _write_linux_etc_environment_with_privilege_helper,
+)
+from .service_restore import (
+    restore_dotenv_target as _restore_dotenv_target_helper,
+    restore_linux_target as _restore_linux_target_helper,
+    restore_powershell_target as _restore_powershell_target_helper,
+    restore_target as _restore_target_helper,
+    restore_windows_registry_target as _restore_windows_registry_target_helper,
+    restore_wsl_target as _restore_wsl_target_helper,
+)
+from .service_wsl import (
+    parse_wsl_dotenv_target as _parse_wsl_dotenv_target_helper,
+    resolve_wsl_target as _resolve_wsl_target_helper,
+    validate_wsl_distro_name as _validate_wsl_distro_name_helper,
+    validate_wsl_dotenv_path as _validate_wsl_dotenv_path_helper,
+)
+from .service_paths import (
+    get_powershell_profile_paths as _get_powershell_profile_paths,
+    is_path_within as _is_path_within,
+    linux_etc_environment_path as _linux_etc_environment_path,
+    powershell_target_path_and_roots as _powershell_target_path_and_roots,
+    validate_path_in_roots as _validate_path_in_roots,
+    validated_powershell_restore_path as _validated_powershell_restore_path,
+    write_scoped_text_file as _write_scoped_text_file,
+    write_text_file as _write_text_file,
+)
 from .storage import AuditLogger, BackupManager
 
 TARGET_WINDOWS_USER = "windows:user"
@@ -66,6 +104,19 @@ DOTENV_TARGET_PREFIX = "dotenv:"
 WSL_DOTENV_TARGET_PREFIX = "wsl_dotenv:"
 WSL_DOTENV_PATH_ERROR = "Unsupported WSL dotenv target path"
 LINUX_ETC_ENV_PATH = "/etc/environment"
+which = _privileged_which
+run = _privileged_run
+
+
+def _path_exists(path: Path) -> bool:
+    return os.path.exists(path)
+
+
+def _read_text_if_exists(path: Path) -> str:
+    if not _path_exists(path):
+        return ""
+    with open(path, encoding="utf-8", errors="ignore") as handle:
+        return handle.read()
 
 
 class EnvInspectorService:
@@ -84,7 +135,7 @@ class EnvInspectorService:
         if is_windows():
             try:
                 self.win_provider = WindowsRegistryProvider()
-            except Exception:
+            except RuntimeError:
                 self.win_provider = None
 
     def _effective_scope_roots(self, scope_roots: List[str | Path] | None = None) -> List[Path]:
@@ -95,66 +146,54 @@ class EnvInspectorService:
 
     @staticmethod
     def get_powershell_profile_paths() -> List[Path]:
-        docs = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Documents"
-        current = docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
-        all_users = Path(r"C:\\Program Files\\PowerShell\\7\\profile.ps1")
-        return [current, all_users]
+        return _get_powershell_profile_paths()
 
     @staticmethod
     def _is_path_within(path: Path, root: Path) -> bool:
-        try:
-            path.relative_to(root)
-            return True
-        except ValueError:
-            return False
+        return _is_path_within(path, root)
 
     @classmethod
     def _validate_path_in_roots(cls, path: Path, roots: Sequence[Path], *, label: str) -> Path:
-        resolved_path = path.resolve(strict=False)
-        resolved_roots = [root.resolve(strict=False) for root in roots]
-        for root in resolved_roots:
-            if cls._is_path_within(resolved_path, root):
-                return resolved_path
-        raise RuntimeError(f"{label} is outside approved roots: {resolved_path}")
+        return _validate_path_in_roots(path, roots, label=label)
 
     @staticmethod
     def _write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
-        if ensure_parent:
-            path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8", newline="") as handle:
-            handle.write(text)
+        _write_text_file(path, text, ensure_parent=ensure_parent)
 
+    @staticmethod
     def _write_scoped_text_file(
-        self,
         *,
         candidate_path: Path,
         allowed_roots: Sequence[Path],
         text: str,
         label: str,
     ) -> Path:
-        safe_path = self._validate_path_in_roots(candidate_path, list(allowed_roots), label=label)
-        self._write_text_file(safe_path, text, ensure_parent=True)
-        return safe_path
+        return _write_scoped_text_file(
+            candidate_path=candidate_path,
+            allowed_roots=allowed_roots,
+            text=text,
+            label=label,
+        )
 
     def _powershell_target_path_and_roots(self, target: str) -> Tuple[Path, List[Path], bool]:
-        if target == TARGET_POWERSHELL_CURRENT_USER:
-            profile = self._powershell_profile_path(TARGET_POWERSHELL_CURRENT_USER).resolve(strict=False)
-            return profile, [Path.home().resolve(strict=False)], False
-        if target == TARGET_POWERSHELL_ALL_USERS:
-            profile = self._powershell_profile_path(TARGET_POWERSHELL_ALL_USERS).resolve(strict=False)
-            return profile, [Path(r"C:\\Program Files").resolve(strict=False)], True
-        raise RuntimeError(f"Unsupported PowerShell target: {target}")
+        return _powershell_target_path_and_roots(
+            target,
+            profile_resolver=self._powershell_profile_path,
+            current_user_target=TARGET_POWERSHELL_CURRENT_USER,
+            all_users_target=TARGET_POWERSHELL_ALL_USERS,
+        )
 
     def _validated_powershell_restore_path(self, target: str) -> Path:
-        profile, allowed_roots, _requires_priv = self._powershell_target_path_and_roots(target)
-        return self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
+        return _validated_powershell_restore_path(
+            target,
+            profile_resolver=self._powershell_profile_path,
+            current_user_target=TARGET_POWERSHELL_CURRENT_USER,
+            all_users_target=TARGET_POWERSHELL_ALL_USERS,
+        )
 
     @classmethod
     def _linux_etc_environment_path(cls) -> Path:
-        path = Path(cls._LINUX_ETC_ENV_PATH)
-        if path.as_posix() != cls._LINUX_ETC_ENV_PATH:
-            raise RuntimeError(f"Unexpected /etc/environment resolution: {path}")
-        return path
+        return _linux_etc_environment_path(cls._LINUX_ETC_ENV_PATH)
 
     def list_contexts(self) -> List[str]:
         contexts = [self.runtime_context]
@@ -173,22 +212,22 @@ class EnvInspectorService:
         return distros
 
     def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
-        rows: List[EnvRecord] = []
-        rows.extend(collect_process_records(context=self.runtime_context))
-        rows.extend(collect_dotenv_records(root_path, max_depth=scan_depth, context=self.runtime_context))
-
-        if self.win_provider is not None:
-            try:
-                rows.extend(build_registry_records(self.win_provider))
-            except Exception:
-                pass
-
-        if self.runtime_context == "windows":
-            rows.extend(collect_powershell_profile_records(self.get_powershell_profile_paths()))
-        else:
-            rows.extend(collect_linux_records(context=self.runtime_context))
-
-        return rows
+        return _collect_host_rows_helper(
+            request=HostCollectionRequest(
+                runtime_context=self.runtime_context,
+                root_path=root_path,
+                scan_depth=scan_depth,
+                win_provider=self.win_provider,
+                powershell_profile_paths=self.get_powershell_profile_paths(),
+            ),
+            collectors=HostRowCollectors(
+                collect_process_records_fn=collect_process_records,
+                collect_dotenv_records_fn=collect_dotenv_records,
+                build_registry_records_fn=build_registry_records,
+                collect_powershell_profile_records_fn=collect_powershell_profile_records,
+                collect_linux_records_fn=collect_linux_records,
+            ),
+        )
 
     def _collect_wsl_rows(
         self,
@@ -197,25 +236,16 @@ class EnvInspectorService:
         distro: str | None,
         wsl_path: str | None,
     ) -> List[EnvRecord]:
-        rows: List[EnvRecord] = []
-        if not self.wsl.available():
-            return rows
-
-        try:
-            exclude_distros: set[str] | None = None
-            if self.runtime_context == "linux" and self.current_wsl_distro:
-                exclude_distros = {self.current_wsl_distro}
-            rows.extend(collect_wsl_records(self.wsl, include_etc=True, exclude_distros=exclude_distros))
-        except Exception:
-            pass
-
-        if distro and wsl_path:
-            try:
-                rows.extend(collect_wsl_dotenv_records(self.wsl, distro=distro, root_path=wsl_path, max_depth=scan_depth))
-            except Exception:
-                pass
-
-        return rows
+        return _collect_wsl_rows_helper(
+            runtime_context=self.runtime_context,
+            current_wsl_distro=self.current_wsl_distro,
+            wsl=self.wsl,
+            scan_depth=scan_depth,
+            distro=distro,
+            wsl_path=wsl_path,
+            collect_wsl_records_fn=collect_wsl_records,
+            collect_wsl_dotenv_records_fn=collect_wsl_dotenv_records,
+        )
 
     @staticmethod
     def _apply_row_filters(
@@ -224,12 +254,7 @@ class EnvInspectorService:
         source: List[str] | None,
         context: str | None,
     ) -> List[EnvRecord]:
-        if source:
-            source_set = set(source)
-            rows = [r for r in rows if r.source_type in source_set]
-        if context:
-            rows = [r for r in rows if r.context == context]
-        return rows
+        return _apply_row_filters_helper(rows, source=source, context=context)
 
     def list_records(
         self,
@@ -248,104 +273,45 @@ class EnvInspectorService:
         rows = self._apply_row_filters(rows, source=source, context=context)
         rows.sort(key=lambda r: (r.name.lower(), r.context, r.source_type, r.source_path))
 
-        payload: List[Dict[str, Any]] = []
-        for rec in rows:
-            item = rec.to_dict(include_value=True)
-            if rec.is_secret and not include_raw_secrets:
-                item["value"] = mask_value(rec.value)
-            payload.append(item)
-        return payload
+        return _rows_to_payload_helper(rows, include_raw_secrets=include_raw_secrets)
 
     def list_records_raw(self, **kwargs: Any) -> List[EnvRecord]:
         payload = self.list_records(include_raw_secrets=True, **kwargs)
-        rows: List[EnvRecord] = []
-        for item in payload:
-            rows.append(EnvRecord(**item))
-        return rows
+        return [EnvRecord(**item) for item in payload]
 
-    def resolve_effective(self, key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
+    @staticmethod
+    def resolve_effective(key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
         return resolve_effective_value(records, key, context)
 
     @staticmethod
     def _diff(before: str, after: str, target: str) -> str:
-        diff = difflib.unified_diff(
-            before.splitlines(),
-            after.splitlines(),
-            fromfile=f"{target} (before)",
-            tofile=f"{target} (after)",
-            lineterm="",
-        )
-        return "\n".join(diff)
+        return _diff_text_helper(before, after, target)
 
-    def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
-        if self._LINUX_ETC_ENV_PATH != LINUX_ETC_ENV_PATH:
-            raise RuntimeError(f"Unexpected /etc/environment resolution: {self._LINUX_ETC_ENV_PATH}")
-        path = Path(LINUX_ETC_ENV_PATH)
-        try:
-            self._write_text_file(path, text, ensure_parent=False)
-            return
-        except PermissionError:
-            pass
-        except OSError:
-            # Non-POSIX hosts can raise FileNotFoundError for this fixed path; still attempt sudo fallback.
-            pass
-
-        proc = subprocess.run(
-            ["sudo", "-n", "tee", self._LINUX_ETC_ENV_PATH],
-            input=text.encode("utf-8"),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-        if proc.returncode == 0:
-            return
-
-        err = proc.stderr.decode(errors="ignore").strip()
-        raise RuntimeError(
-            "Failed to write /etc/environment using direct write and sudo fallback. "
-            "Run with elevated privileges or configure passwordless sudo for this command."
-            + (f" Details: {err}" if err else "")
+    @classmethod
+    def _write_linux_etc_environment_with_privilege(cls, text: str) -> None:
+        _write_linux_etc_environment_with_privilege_helper(
+            fixed_path=cls._LINUX_ETC_ENV_PATH,
+            expected_path=LINUX_ETC_ENV_PATH,
+            text=text,
+            write_text_file=lambda path, payload: cls._write_text_file(path, payload, ensure_parent=False),
+            which_fn=which,
+            run_fn=run,
         )
 
     def available_targets(self, records: List[EnvRecord], context: str | None = None) -> List[str]:
-        targets: set[str] = set()
-        for record in records:
-            if context and record.context != context:
-                continue
-            mapped_target = self._record_target(record)
-            if mapped_target:
-                targets.add(mapped_target)
-        if self.win_provider is not None:
-            targets.add(TARGET_WINDOWS_USER)
-            targets.add(TARGET_WINDOWS_MACHINE)
-        if context == "linux":
-            targets.add(TARGET_LINUX_BASHRC)
-            targets.add(TARGET_LINUX_ETC_ENV)
-        return sorted(targets)
+        return _available_targets_helper(
+            records,
+            context=context,
+            win_provider_present=self.win_provider is not None,
+        )
 
     @staticmethod
     def _powershell_target_for_path(source_path: str) -> str:
-        return TARGET_POWERSHELL_ALL_USERS if "Program Files" in source_path else TARGET_POWERSHELL_CURRENT_USER
+        return _powershell_target_for_path_helper(source_path)
 
     @classmethod
     def _record_target(cls, record: EnvRecord) -> str | None:
-        static_targets = {
-            SOURCE_LINUX_BASHRC: TARGET_LINUX_BASHRC,
-            SOURCE_LINUX_ETC_ENV: TARGET_LINUX_ETC_ENV,
-        }
-        dynamic_targets = {
-            SOURCE_DOTENV: lambda rec: f"dotenv:{rec.source_path}",
-            SOURCE_WSL_DOTENV: lambda rec: f"wsl_dotenv:{rec.source_path}",
-            SOURCE_WSL_BASHRC: lambda rec: f"wsl:{rec.source_id}:bashrc",
-            SOURCE_WSL_ETC_ENV: lambda rec: f"wsl:{rec.source_id}:etc_environment",
-            SOURCE_POWERSHELL_PROFILE: lambda rec: cls._powershell_target_for_path(rec.source_path),
-        }
-
-        static_target = static_targets.get(record.source_type)
-        if static_target is not None:
-            return static_target
-        builder = dynamic_targets.get(record.source_type)
-        return builder(record) if builder is not None else None
+        return _record_target_helper(record)
 
     def _registry_write(
         self,
@@ -393,7 +359,7 @@ class EnvInspectorService:
     ) -> Tuple[str, str, str | None, bool, str | None]:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
         path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="dotenv target path")
-        before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+        before = _read_text_if_exists(path)
         after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
         if apply_changes:
             self._write_scoped_text_file(
@@ -423,16 +389,15 @@ class EnvInspectorService:
     ) -> Tuple[str, str, str | None, bool, str | None]:
         if target == TARGET_LINUX_BASHRC:
             bashrc_path = Path.home() / ".bashrc"
-            before = bashrc_path.read_text(encoding="utf-8", errors="ignore") if bashrc_path.exists() else ""
+            before = _read_text_if_exists(bashrc_path)
             after = self._mutate_shell_content(before, key=key, value=value, action=action, style="export")
             if apply_changes:
-                bashrc_path.parent.mkdir(parents=True, exist_ok=True)
-                bashrc_path.write_text(after, encoding="utf-8")
+                self._write_text_file(bashrc_path, after, ensure_parent=True)
             return before, after, str(bashrc_path), False, None
 
         if target == TARGET_LINUX_ETC_ENV:
             etc_path = self._linux_etc_environment_path()
-            before = etc_path.read_text(encoding="utf-8", errors="ignore") if etc_path.exists() else ""
+            before = _read_text_if_exists(etc_path)
             after = self._mutate_shell_content(before, key=key, value=value, action=action, style="key_value")
             if apply_changes:
                 self._write_linux_etc_environment_with_privilege(after)
@@ -442,50 +407,28 @@ class EnvInspectorService:
 
     @staticmethod
     def _validate_wsl_distro_name(raw: str) -> str:
-        distro = (raw or "").strip()
-        if not distro or ":" in distro or "\x00" in distro:
-            raise RuntimeError(f"Unsupported WSL distro name: {raw!r}")
-        return distro
+        return _validate_wsl_distro_name_helper(raw)
 
     @staticmethod
     def _validate_wsl_dotenv_path(raw: str) -> str:
-        candidate = (raw or "").strip()
-        if not candidate or "\x00" in candidate:
-            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
-        path = PurePosixPath(candidate)
-        if ".." in path.parts or not str(path).startswith("/"):
-            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
-        if path.name != ".env" and not path.name.startswith(".env."):
-            raise RuntimeError(WSL_DOTENV_PATH_ERROR)
-        return str(path)
+        return _validate_wsl_dotenv_path_helper(raw, path_error=WSL_DOTENV_PATH_ERROR)
 
     def _parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
-        raw = target[len(WSL_DOTENV_TARGET_PREFIX) :]
-        try:
-            distro, path = raw.split(":", 1)
-        except ValueError as exc:
-            raise RuntimeError(f"Unsupported WSL target: {target}") from exc
-        return self._validate_wsl_distro_name(distro), self._validate_wsl_dotenv_path(path)
+        return _parse_wsl_dotenv_target_helper(
+            target,
+            prefix=WSL_DOTENV_TARGET_PREFIX,
+            validate_distro_name_fn=self._validate_wsl_distro_name,
+            validate_dotenv_path_fn=self._validate_wsl_dotenv_path,
+        )
 
     def _resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
-        if target.startswith(WSL_DOTENV_TARGET_PREFIX):
-            distro, path = self._parse_wsl_dotenv_target(target)
-            return distro, path, "key_value", False
-
-        if not target.startswith("wsl:"):
-            raise RuntimeError(f"Unsupported WSL target: {target}")
-
-        parts = target.split(":", 2)
-        if len(parts) != 3:
-            raise RuntimeError(f"Unsupported WSL target: {target}")
-
-        _prefix, distro, suffix = parts
-        distro_name = self._validate_wsl_distro_name(distro)
-        if suffix == "bashrc":
-            return distro_name, "~/.bashrc", "export", False
-        if suffix == "etc_environment":
-            return distro_name, self._LINUX_ETC_ENV_PATH, "key_value", True
-        raise RuntimeError(f"Unsupported WSL target: {target}")
+        return _resolve_wsl_target_helper(
+            target,
+            dotenv_prefix=WSL_DOTENV_TARGET_PREFIX,
+            validate_distro_name_fn=self._validate_wsl_distro_name,
+            parse_wsl_dotenv_target_fn=self._parse_wsl_dotenv_target,
+            linux_etc_env_path=self._LINUX_ETC_ENV_PATH,
+        )
 
     def _update_wsl_file(
         self,
@@ -514,10 +457,10 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         apply_changes: bool,
-    ) -> Tuple[str, str, str | None, bool, str | None]:
+        ) -> Tuple[str, str, str | None, bool, str | None]:
         profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(target)
         safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
-        before = safe_profile.read_text(encoding="utf-8", errors="ignore") if safe_profile.exists() else ""
+        before = _read_text_if_exists(safe_profile)
         after = (
             upsert_powershell_env(before, key, value or "")
             if action == "set"
@@ -609,9 +552,7 @@ class EnvInspectorService:
 
     @staticmethod
     def _masked_value(*, secret_operation: bool, value: str | None) -> str | None:
-        if not secret_operation or value is None:
-            return None
-        return mask_value(value)
+        return _masked_value_helper(secret_operation=secret_operation, value=value)
 
     @staticmethod
     def _make_operation_result(
@@ -625,7 +566,7 @@ class EnvInspectorService:
         error_message: str | None,
         value_masked: str | None,
     ) -> OperationResult:
-        return OperationResult(
+        return _make_operation_result_helper(
             operation_id=operation_id,
             target=target,
             action=action,
@@ -637,14 +578,7 @@ class EnvInspectorService:
         )
     @staticmethod
     def _operation_error_types() -> Tuple[Type[BaseException], ...]:
-        return (
-            RuntimeError,
-            ValueError,
-            TypeError,
-            OSError,
-            PermissionError,
-            subprocess.SubprocessError,
-        )
+        return _operation_error_types_helper()
 
     def _preview_target_diff(
         self,
@@ -688,29 +622,9 @@ class EnvInspectorService:
         return backup_path
 
 
-    def _operation_result(
-        self,
-        *,
-        operation_id: str,
-        target: str,
-        action: str,
-        success: bool,
-        backup_path: str | None,
-        preview_only: bool,
-        diff_preview: str,
-        error_message: str | None,
-        value_masked: str | None,
-    ) -> OperationResult:
-        return self._make_operation_result(
-            operation_id=operation_id,
-            target=target,
-            action=action,
-            success=success,
-            backup_path=(None if preview_only and success else backup_path),
-            diff_preview=diff_preview,
-            error_message=error_message,
-            value_masked=value_masked,
-        )
+    @staticmethod
+    def _operation_result(payload: OperationResultInput) -> OperationResult:
+        return _operation_result_helper(payload)
 
     def _execute_target_operation(
         self,
@@ -732,27 +646,31 @@ class EnvInspectorService:
             if not preview_only:
                 backup_path = self._apply_target_operation(target=target, key=key, value=value, action=action, before=before, resolved_scope_roots=resolved_scope_roots)
             return self._operation_result(
-                operation_id=operation_id,
-                target=target,
-                action=action,
-                success=True,
-                backup_path=backup_path,
-                preview_only=preview_only,
-                diff_preview=diff_preview,
-                error_message=None,
-                value_masked=value_masked,
+                OperationResultInput(
+                    operation_id=operation_id,
+                    target=target,
+                    action=action,
+                    success=True,
+                    backup_path=backup_path,
+                    preview_only=preview_only,
+                    diff_preview=diff_preview,
+                    error_message=None,
+                    value_masked=value_masked,
+                )
             )
         except self._operation_error_types() as exc:
             return self._operation_result(
-                operation_id=operation_id,
-                target=target,
-                action=action,
-                success=False,
-                backup_path=backup_path,
-                preview_only=False,
-                diff_preview=diff_preview,
-                error_message=str(exc),
-                value_masked=value_masked,
+                OperationResultInput(
+                    operation_id=operation_id,
+                    target=target,
+                    action=action,
+                    success=False,
+                    backup_path=backup_path,
+                    preview_only=False,
+                    diff_preview=diff_preview,
+                    error_message=str(exc),
+                    value_masked=value_masked,
+                )
             )
 
     def _apply(
@@ -782,24 +700,9 @@ class EnvInspectorService:
                 resolved_scope_roots=resolved_scope_roots,
                 secret_operation=secret_operation,
             )
-            self.audit.log(self._audit_safe_result(result, redact=secret_operation))
+            self.audit.log(audit_safe_result(result, redact=secret_operation))
             results.append(result)
         return results
-
-    @staticmethod
-    def _audit_safe_result(result: OperationResult, *, redact: bool) -> OperationResult:
-        if not redact:
-            return result
-        return OperationResult(
-            operation_id=result.operation_id,
-            target=result.target,
-            action=result.action,
-            success=result.success,
-            backup_path=result.backup_path,
-            diff_preview="[secret diff masked]",
-            error_message=result.error_message,
-            value_masked=result.value_masked,
-        )
 
     def preview_set(
         self,
@@ -866,23 +769,7 @@ class EnvInspectorService:
         **list_kwargs: Any,
     ) -> str:
         rows = self.list_records(include_raw_secrets=include_raw_secrets, **list_kwargs)
-        if output == "json":
-            return json.dumps(rows, ensure_ascii=True, indent=2)
-        if output == "csv":
-            if not rows:
-                return ""
-            keys = sorted(rows[0].keys())
-            buf = io.StringIO()
-            writer = csv.DictWriter(buf, fieldnames=keys)
-            writer.writeheader()
-            writer.writerows(rows)
-            return buf.getvalue()
-
-        # table
-        lines = []
-        for row in rows:
-            lines.append(f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}")
-        return "\n".join(lines) + ("\n" if lines else "")
+        return export_rows(rows, output=output)
 
     def list_backups(self, *, target: str | None = None) -> List[str]:
         if target:
@@ -890,73 +777,58 @@ class EnvInspectorService:
         return [str(p) for p in self.backup_mgr.list_all_backups()]
 
     def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
-        scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
-        self._write_scoped_text_file(
-            candidate_path=scoped.path,
-            allowed_roots=scoped.roots,
+        _restore_dotenv_target_helper(
+            target=target,
             text=text,
-            label="restore dotenv path",
+            scope_roots=scope_roots,
+            parse_scoped_dotenv_target_fn=parse_scoped_dotenv_target,
+            write_scoped_text_file_fn=self._write_scoped_text_file,
         )
 
     def _restore_linux_target(self, *, target: str, text: str) -> None:
-        if target == TARGET_LINUX_BASHRC:
-            path_out = Path.home() / ".bashrc"
-            path_out.parent.mkdir(parents=True, exist_ok=True)
-            path_out.write_text(text, encoding="utf-8")
-            return
-        if target == TARGET_LINUX_ETC_ENV:
-            self._write_linux_etc_environment_with_privilege(text)
-            return
-        raise RuntimeError(f"Unsupported Linux restore target: {target}")
+        _restore_linux_target_helper(
+            target=target,
+            text=text,
+            write_linux_etc_environment_with_privilege_fn=self._write_linux_etc_environment_with_privilege,
+        )
 
     def _restore_wsl_target(self, *, target: str, text: str) -> None:
-        if target.startswith(WSL_DOTENV_TARGET_PREFIX):
-            distro, pth = self._parse_wsl_dotenv_target(target)
-            self.wsl.write_file(distro, pth, text)
-            return
-        if target.startswith("wsl:") and target.endswith(":bashrc"):
-            distro = self._validate_wsl_distro_name(target.split(":", 2)[1])
-            self.wsl.write_file(distro, "~/.bashrc", text)
-            return
-        if target.startswith("wsl:") and target.endswith(":etc_environment"):
-            distro = self._validate_wsl_distro_name(target.split(":", 2)[1])
-            self.wsl.write_file_with_privilege(distro, self._LINUX_ETC_ENV_PATH, text)
-            return
-        raise RuntimeError(f"Unsupported WSL restore target: {target}")
+        _restore_wsl_target_helper(
+            target=target,
+            text=text,
+            wsl=self.wsl,
+            parse_wsl_dotenv_target_fn=self._parse_wsl_dotenv_target,
+            validate_wsl_distro_name_fn=self._validate_wsl_distro_name,
+            linux_etc_env_path=self._LINUX_ETC_ENV_PATH,
+        )
 
     def _restore_powershell_target(self, *, target: str, text: str) -> None:
-        safe_profile = self._validated_powershell_restore_path(target)
-        self._write_text_file(safe_profile, text, ensure_parent=True)
+        _restore_powershell_target_helper(
+            target=target,
+            text=text,
+            validated_powershell_restore_path_fn=self._validated_powershell_restore_path,
+            write_text_file_fn=lambda path, content: self._write_text_file(path, content, ensure_parent=True),
+        )
 
     def _restore_windows_registry_target(self, *, target: str, text: str) -> None:
-        if self.win_provider is None:
-            raise RuntimeError("Windows provider unavailable for registry restore")
-        data = json.loads(text)
-        scope = WindowsRegistryProvider.USER_SCOPE if target == TARGET_WINDOWS_USER else WindowsRegistryProvider.MACHINE_SCOPE
-        current = self.win_provider.list_scope(scope)
-        for key in tuple(current):
-            if key not in data:
-                self.win_provider.remove_scope_value(scope, key)
-        for key, value in data.items():
-            self.win_provider.set_scope_value(scope, key, str(value))
+        _restore_windows_registry_target_helper(
+            target=target,
+            text=text,
+            win_provider=self.win_provider,
+            windows_registry_provider_cls=WindowsRegistryProvider,
+        )
 
     def _restore_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
-        if target.startswith(DOTENV_TARGET_PREFIX):
-            self._restore_dotenv_target(target=target, text=text, scope_roots=scope_roots)
-            return
-        if target in {TARGET_LINUX_BASHRC, TARGET_LINUX_ETC_ENV}:
-            self._restore_linux_target(target=target, text=text)
-            return
-        if target.startswith("wsl"):
-            self._restore_wsl_target(target=target, text=text)
-            return
-        if target in {TARGET_POWERSHELL_CURRENT_USER, TARGET_POWERSHELL_ALL_USERS}:
-            self._restore_powershell_target(target=target, text=text)
-            return
-        if target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
-            self._restore_windows_registry_target(target=target, text=text)
-            return
-        raise RuntimeError(f"Unsupported restore target: {target}")
+        _restore_target_helper(
+            target=target,
+            text=text,
+            scope_roots=scope_roots,
+            restore_dotenv_target_fn=self._restore_dotenv_target,
+            restore_linux_target_fn=self._restore_linux_target,
+            restore_wsl_target_fn=self._restore_wsl_target,
+            restore_powershell_target_fn=self._restore_powershell_target,
+            restore_windows_registry_target_fn=self._restore_windows_registry_target,
+        )
 
     def restore_backup(
         self,
@@ -985,7 +857,7 @@ class EnvInspectorService:
                 error_message=None,
                 value_masked=None,
             )
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError, OSError, KeyError) as exc:
             result = OperationResult(
                 operation_id=operation_id,
                 target="restore",
@@ -999,7 +871,3 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
-
-
-
-

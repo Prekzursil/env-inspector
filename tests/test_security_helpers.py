@@ -1,15 +1,19 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
+import io
+from email.message import Message
+from typing import Any, Dict
 import urllib.error
 
 import pytest
 
 from scripts import security_helpers as sec
 
+from tests.assertions import ensure
 
 def test_identifier_and_url_helpers():
-    assert sec.require_identifier("owner.repo-1", field_name="owner") == "owner.repo-1"
-    assert sec.encode_identifier("owner.repo-1", field_name="owner") == "owner.repo-1"
+    ensure(sec.require_identifier("owner.repo-1", field_name="owner") == "owner.repo-1")
+    ensure(sec.encode_identifier("owner.repo-1", field_name="owner") == "owner.repo-1")
 
     with pytest.raises(ValueError, match="unsupported characters"):
         sec.require_identifier("owner/repo", field_name="owner")
@@ -18,42 +22,54 @@ def test_identifier_and_url_helpers():
         "https://api.codacy.com/api/v3/resource?limit=1&query=x",
         allowed_host_suffixes={"codacy.com"},
     )
-    assert host == "api.codacy.com"
-    assert path == "/api/v3/resource"
-    assert query == {"limit": "1", "query": "x"}
-
+    ensure(host == "api.codacy.com")
+    ensure(path == "/api/v3/resource")
+    ensure(query == {"limit": "1", "query": "x"})
 
 def test_request_json_https_success(monkeypatch):
-    recorded: dict[str, object] = {}
+    recorded: Dict[str, Any] = {}
+    captured_context: Dict[str, sec.ssl.SSLContext] = {}
 
     class _Response:
         status = 200
         reason = "OK"
+        headers = {"X-Hits": "1"}
 
         def read(self):
             return b'{"ok":true}'
 
-        def getheaders(self):
-            return [("X-Hits", "1")]
+        def __enter__(self):
+            recorded["entered"] = True
+            return self
 
-    class _Connection:
-        def __init__(self, host: str, timeout: int):
-            recorded["host"] = host
+        def __exit__(self, exc_type, exc, tb):
+            recorded["closed"] = True
+            return False
+
+        def getcode(self):
+            return self.status
+
+    class _FakeOpener:
+        @staticmethod
+        def open(request, timeout=0):
+            recorded["url"] = request.full_url
+            recorded["host"] = sec.urllib.parse.urlparse(request.full_url).hostname
             recorded["timeout"] = timeout
-
-        def request(self, method, path, body=None, headers=None):
-            recorded["method"] = method
-            recorded["path"] = path
-            recorded["body"] = body
-            recorded["headers"] = headers
-
-        def getresponse(self):
+            recorded["method"] = request.get_method()
+            recorded["headers"] = dict(request.header_items())
+            recorded["body"] = request.data.decode("utf-8") if request.data is not None else None
             return _Response()
 
-        def close(self):
-            recorded["closed"] = True
+    monkeypatch.setattr(sec.urllib.request, "build_opener", lambda _handler: _FakeOpener())
+    monkeypatch.setattr(sec.urllib.request, "HTTPSHandler", lambda context=None: context)
+    real_secure_context = sec._secure_ssl_context
 
-    monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
+    def _fake_secure_context():
+        context = real_secure_context()
+        captured_context["value"] = context
+        return context
+
+    monkeypatch.setattr(sec, "_secure_ssl_context", _fake_secure_context)
 
     payload, headers = sec.request_json_https(
         host="api.codacy.com",
@@ -64,41 +80,30 @@ def test_request_json_https_success(monkeypatch):
         data={"x": 1},
     )
 
-    assert payload == {"ok": True}
-    assert headers["x-hits"] == "1"
-    assert recorded["host"] == "api.codacy.com"
-    assert recorded["method"] == "POST"
-    assert recorded["path"] == "/api/v3/issues/search?limit=1"
-    assert recorded["body"] == '{"x": 1}'
-    assert recorded["closed"] is True
-
+    ensure(payload == {"ok": True})
+    ensure(headers["x-hits"] == "1")
+    ensure(recorded["host"] == "api.codacy.com")
+    ensure(recorded["url"] == "https://api.codacy.com/api/v3/issues/search?limit=1")
+    ensure(recorded["method"] == "POST")
+    ensure(recorded["body"] == '{"x": 1}')
+    ensure(recorded["closed"] is True)
+    ensure("value" in captured_context)
+    ensure(getattr(captured_context["value"], "protocol", None) == sec.ssl.PROTOCOL_TLSv1_2)
 
 def test_request_json_https_http_error(monkeypatch):
-    class _Response:
-        status = 403
-        reason = "Forbidden"
+    class _FakeOpener:
+        def open(self, request, timeout=0):
+            headers = Message()
+            raise urllib.error.HTTPError(
+                request.full_url,
+                403,
+                "Forbidden",
+                hdrs=headers,
+                fp=io.BytesIO(b'{"error":"denied"}'),
+            )
 
-        def read(self):
-            return b'{"message":"nope"}'
-
-        def getheaders(self):
-            return []
-
-    class _Connection:
-        def __init__(self, host: str, timeout: int):
-            self.host = host
-            self.timeout = timeout
-
-        def request(self, method, path, body=None, headers=None):
-            self.request_args = (method, path, body, headers)
-
-        def getresponse(self):
-            return _Response()
-
-        def close(self):
-            self.closed = True
-
-    monkeypatch.setattr(sec.http.client, "HTTPSConnection", _Connection)
+    monkeypatch.setattr(sec.urllib.request, "build_opener", lambda _handler: _FakeOpener())
+    monkeypatch.setattr(sec.urllib.request, "HTTPSHandler", lambda context=None: context)
 
     with pytest.raises(urllib.error.HTTPError, match="Forbidden") as exc_info:
         sec.request_json_https(
@@ -106,16 +111,21 @@ def test_request_json_https_http_error(monkeypatch):
             path="/api/0/projects/org/proj/issues/",
             headers={"Accept": "application/json"},
         )
-    assert exc_info.value.code == 403
+    ensure(exc_info.value.code == 403)
 
+def test_secure_ssl_context_uses_tls_client_defaults():
+    context = sec._secure_ssl_context()
+
+    ensure(context.verify_mode == sec.ssl.CERT_REQUIRED)
+    ensure(context.check_hostname is True)
+    ensure(getattr(context, "protocol", None) == sec.ssl.PROTOCOL_TLSv1_2)
 
 def test_safe_output_path_in_workspace_allows_relative_path(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     resolved = sec.safe_output_path_in_workspace("reports/out.json", "fallback.json")
 
-    assert resolved == (tmp_path / "reports" / "out.json").resolve(strict=False)
-
+    ensure(resolved == (tmp_path / "reports" / "out.json").resolve(strict=False))
 
 def test_safe_output_path_in_workspace_rejects_workspace_escape(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -124,10 +134,8 @@ def test_safe_output_path_in_workspace_rejects_workspace_escape(tmp_path, monkey
     with pytest.raises(ValueError, match="escapes workspace root"):
         sec.safe_output_path_in_workspace(str(outside), "fallback.json")
 
-
 def test_validate_hostname_allowlists_accepts_none_suffixes():
     sec._validate_hostname_allowlists("api.codacy.com", allowed_host_suffixes=None)
-
 
 def test_validate_hostname_allowlists_rejects_mismatched_suffix():
     with pytest.raises(ValueError, match="suffix allowlist"):

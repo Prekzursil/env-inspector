@@ -1,6 +1,8 @@
+from __future__ import absolute_import, division
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 
+from tests.assertions import ensure
 
 def rec(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
     return EnvRecord(
@@ -19,7 +21,6 @@ def rec(source_type: str, context: str, name: str, value: str, precedence: int) 
         last_error=None,
     )
 
-
 def test_resolve_effective_windows_prefers_lower_precedence_rank():
     rows = [
         rec("windows_machine", "windows", "API_TOKEN", "machine", 30),
@@ -27,9 +28,8 @@ def test_resolve_effective_windows_prefers_lower_precedence_rank():
         rec("powershell_profile", "windows", "API_TOKEN", "profile", 25),
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "windows")
-    assert chosen is not None
-    assert chosen.value == "user"
-
+    ensure(chosen is not None)
+    ensure(chosen.value == "user")
 
 def test_resolve_effective_wsl_context_isolated_by_distro():
     rows = [
@@ -38,9 +38,8 @@ def test_resolve_effective_wsl_context_isolated_by_distro():
         rec("wsl_bashrc", "wsl:Ubuntu", "API_TOKEN", "ubuntu-bash", 20),
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "wsl:Ubuntu")
-    assert chosen is not None
-    assert chosen.value == "ubuntu-etc"
-
+    ensure(chosen is not None)
+    ensure(chosen.value == "ubuntu-etc")
 
 def test_resolve_effective_windows_does_not_leak_linux_context():
     rows = [
@@ -48,9 +47,8 @@ def test_resolve_effective_windows_does_not_leak_linux_context():
         rec("windows_user", "windows", "API_TOKEN", "windows-value", 20),
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "windows")
-    assert chosen is not None
-    assert chosen.value == "windows-value"
-
+    ensure(chosen is not None)
+    ensure(chosen.value == "windows-value")
 
 def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
     rows = [
@@ -60,5 +58,5 @@ def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
         rec("dotenv", "linux", "PATH", "dotenv", 90),
     ]
     chosen = resolve_effective_value(rows, "PATH", "linux")
-    assert chosen is not None
-    assert chosen.value == "process"
+    ensure(chosen is not None)
+    ensure(chosen.value == "process")

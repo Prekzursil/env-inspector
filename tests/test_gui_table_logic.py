@@ -1,32 +1,39 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
+
+from typing import Dict
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import SortState
 from env_inspector_gui.table_logic import build_display_rows, sort_display_rows, toggle_sort
 
+from tests.assertions import ensure
 
-def _rec(
-    name: str,
-    value: str,
-    *,
-    context: str = "windows",
-    source_type: str = "dotenv",
-    source_path: str = "/workspace/.env",
-    is_secret: bool = False,
-    is_persistent: bool = False,
-    is_mutable: bool = True,
-    precedence_rank: int = 50,
-) -> EnvRecord:
+
+def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
+    payload: Dict[str, object] = {
+        "source_type": "dotenv",
+        "source_path": "/workspace/.env",
+        "context": "windows",
+        "is_secret": False,
+        "is_persistent": False,
+        "is_mutable": True,
+        "precedence_rank": 50,
+    }
+    payload.update(overrides)
+    source_type = str(payload["source_type"])
+    source_path = str(payload["source_path"])
+    raw_rank = payload["precedence_rank"]
+    precedence_rank = raw_rank if isinstance(raw_rank, int) and not isinstance(raw_rank, bool) else 50
     return EnvRecord(
         source_type=source_type,
         source_id=f"{source_type}:{source_path}",
         source_path=source_path,
-        context=context,
+        context=str(payload["context"]),
         name=name,
         value=value,
-        is_secret=is_secret,
-        is_persistent=is_persistent,
-        is_mutable=is_mutable,
+        is_secret=bool(payload["is_secret"]),
+        is_persistent=bool(payload["is_persistent"]),
+        is_mutable=bool(payload["is_mutable"]),
         precedence_rank=precedence_rank,
         writable=True,
         requires_privilege=False,
@@ -46,8 +53,8 @@ def test_build_display_rows_filters_context_and_only_secrets():
         show_secrets=False,
     )
 
-    assert [row.record.name for row in rows] == ["TOKEN"]
-    assert rows[0].visible_value != "supersecretvalue"
+    ensure([row.record.name for row in rows] == ["TOKEN"])
+    ensure(rows[0].visible_value != "supersecretvalue")
 
 
 def test_hidden_secret_search_uses_masked_value_not_raw_secret():
@@ -60,7 +67,7 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
         only_secrets=False,
         show_secrets=False,
     )
-    assert hidden_rows == []
+    ensure(hidden_rows == [])
 
     shown_rows = build_display_rows(
         [record],
@@ -69,7 +76,7 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
         only_secrets=False,
         show_secrets=True,
     )
-    assert len(shown_rows) == 1
+    ensure(len(shown_rows) == 1)
 
 
 def test_sort_toggle_and_stable_sort_behavior():
@@ -87,11 +94,11 @@ def test_sort_toggle_and_stable_sort_behavior():
 
     state = SortState(column="name", descending=False)
     ordered = sort_display_rows(rows, state)
-    assert [row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"]
+    ensure([row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"])
 
     toggled = toggle_sort(state, "name")
-    assert toggled.column == "name"
-    assert toggled.descending is True
+    ensure(toggled.column == "name")
+    ensure(toggled.descending is True)
 
 
 def test_bool_sort_columns_use_yes_no_semantics():
@@ -107,4 +114,4 @@ def test_bool_sort_columns_use_yes_no_semantics():
     )
 
     ordered = sort_display_rows(rows, SortState(column="secret", descending=False))
-    assert [row.record.name for row in ordered] == ["B", "A"]
+    ensure([row.record.name for row in ordered] == ["B", "A"])

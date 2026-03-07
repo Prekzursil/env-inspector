@@ -1,18 +1,17 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
-from collections.abc import Callable
-from typing import Any
+from typing import Any, Callable, Dict, List, Set, Tuple
 
 
 class TargetPickerDialog:
-    def __init__(self, parent: Any, targets: list[str], selected: list[str] | None = None) -> None:
+    def __init__(self, parent: Any, targets: List[str], selected: List[str] | None = None) -> None:
         import tkinter as tk
         from tkinter import ttk
 
-        self.result: list[str] | None = None
+        self.result: List[str] | None = None
         self._targets = list(targets)
-        self._vars: dict[str, tk.BooleanVar] = {}
-        self._checks: dict[str, Any] = {}
+        self._vars: Dict[str, tk.BooleanVar] = {}
+        self._checks: Dict[str, Any] = {}
         selected_set = set(selected or [])
 
         self.win = tk.Toplevel(parent)
@@ -32,8 +31,9 @@ class TargetPickerDialog:
         canvas = tk.Canvas(frame, highlightthickness=0)
         scroll = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
         body = ttk.Frame(canvas)
+        self._scroll_canvas = canvas
 
-        body.bind("<Configure>", lambda _e: canvas.configure(scrollregion=canvas.bbox("all")))
+        body.bind("<Configure>", self._sync_scrollregion)
         canvas.create_window((0, 0), window=body, anchor="nw")
         canvas.configure(yscrollcommand=scroll.set)
 
@@ -45,7 +45,7 @@ class TargetPickerDialog:
         self.selected_count_label.pack(anchor="w", pady=(8, 0))
         self._build_buttons(frame, ttk)
 
-        self.win.bind("<Escape>", lambda _e: self._cancel())
+        self.win.bind("<Escape>", self._on_escape)
 
         self._apply_filter()
         self._update_selected_count()
@@ -58,7 +58,7 @@ class TargetPickerDialog:
         self.search_var = tk.StringVar(value="")
         self.search_entry = ttk.Entry(search_row, textvariable=self.search_var)
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(6, 0))
-        self.search_entry.bind("<KeyRelease>", lambda _e: self._apply_filter())
+        self.search_entry.bind("<KeyRelease>", self._on_search_keyrelease)
 
     def _build_preset_row(self, frame: Any, ttk: Any) -> None:
         preset_row = ttk.Frame(frame)
@@ -69,7 +69,7 @@ class TargetPickerDialog:
         ttk.Button(preset_row, text="Select Windows Only", command=self._select_windows).pack(side="left", padx=(0, 6))
         ttk.Button(preset_row, text="Select WSL Only", command=self._select_wsl).pack(side="left", padx=(0, 6))
 
-    def _build_target_checks(self, body: Any, selected_set: set[str], has_selected: bool, tk: Any, ttk: Any) -> None:
+    def _build_target_checks(self, body: Any, selected_set: Set[str], has_selected: bool, tk: Any, ttk: Any) -> None:
         for target in self._targets:
             default = target in selected_set if has_selected else True
             var = tk.BooleanVar(value=default)
@@ -84,6 +84,15 @@ class TargetPickerDialog:
         btns.pack(fill="x", pady=(10, 0))
         ttk.Button(btns, text="Cancel", command=self._cancel).pack(side="right", padx=(6, 0))
         ttk.Button(btns, text="Apply", command=self._apply).pack(side="right")
+
+    def _sync_scrollregion(self, _event: Any) -> None:
+        self._scroll_canvas.configure(scrollregion=self._scroll_canvas.bbox("all"))
+
+    def _on_escape(self, _event: Any) -> None:
+        self._cancel()
+
+    def _on_search_keyrelease(self, _event: Any) -> None:
+        self._apply_filter()
 
     def _apply_filter(self) -> None:
         text = self.search_var.get().strip().lower()
@@ -130,12 +139,12 @@ class TargetPickerDialog:
 
 
 class DotenvTargetDialog:
-    def __init__(self, parent: Any, key: str, targets: list[str]) -> None:
+    def __init__(self, parent: Any, key: str, targets: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
 
-        self.result: list[str] | None = None
-        self._vars: list[tuple[str, tk.BooleanVar]] = []
+        self.result: List[str] | None = None
+        self._vars: List[Tuple[str, tk.BooleanVar]] = []
 
         self.win = tk.Toplevel(parent)
         self.win.title("Select .env Targets")
@@ -175,7 +184,7 @@ class DiffPreviewDialog:
         parent: Any,
         *,
         action: str,
-        previews: list[dict[str, Any]],
+        previews: List[Dict[str, Any]],
         preview_only: bool = False,
     ) -> None:
         import tkinter as tk
@@ -203,9 +212,16 @@ class DiffPreviewDialog:
         btns.pack(fill="x", pady=(10, 0))
         self._build_buttons(btns, preview_only, ttk)
 
-        self.win.bind("<Escape>", lambda _e: self._cancel())
+        self.win.bind("<Escape>", self._on_escape)
 
-    def _build_preview_tabs(self, notebook: Any, previews: list[dict[str, Any]], mono: Any, ttk: Any, scrolledtext: Any) -> None:
+    def _build_preview_tabs(
+        self,
+        notebook: Any,
+        previews: List[Dict[str, Any]],
+        mono: Any,
+        ttk: Any,
+        scrolledtext: Any,
+    ) -> None:
         for idx, preview in enumerate(previews):
             self._build_preview_tab(notebook, idx, preview, mono, ttk, scrolledtext)
 
@@ -213,7 +229,7 @@ class DiffPreviewDialog:
         self,
         notebook: Any,
         idx: int,
-        preview: dict[str, Any],
+        preview: Dict[str, Any],
         mono: Any,
         ttk: Any,
         scrolledtext: Any,
@@ -231,7 +247,8 @@ class DiffPreviewDialog:
         self._render_diff_text(txt, str(preview.get("diff_preview") or "(no textual diff)"))
         txt.configure(state="disabled")
 
-    def _build_summary(self, tab: Any, preview: dict[str, Any], target: str, ttk: Any) -> None:
+    @staticmethod
+    def _build_summary(tab: Any, preview: Dict[str, Any], target: str, ttk: Any) -> None:
         summary = ttk.Frame(tab)
         summary.pack(fill="x", pady=(0, 6))
         ttk.Label(summary, text=f"Target: {target}").pack(anchor="w")
@@ -248,7 +265,8 @@ class DiffPreviewDialog:
             else:
                 widget.insert("end", line + "\n", (tag,))
 
-    def _diff_tag(self, line: str) -> str | None:
+    @staticmethod
+    def _diff_tag(line: str) -> str | None:
         if line.startswith("@@"):
             return "diff_hunk"
         if line.startswith("+") and not line.startswith("+++"):
@@ -272,9 +290,12 @@ class DiffPreviewDialog:
         self.confirmed = False
         self.win.destroy()
 
+    def _on_escape(self, _event: Any) -> None:
+        self._cancel()
+
 
 class BackupPickerDialog:
-    def __init__(self, parent: Any, backups: list[str]) -> None:
+    def __init__(self, parent: Any, backups: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
 

@@ -1,6 +1,6 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 
 class EnvInspectorView:
@@ -14,7 +14,7 @@ class EnvInspectorView:
         self.filter_entry = None
         self.details_value_text = None
         self.details_value_scroll_x = None
-        self.details_vars: dict[str, Any] = {}
+        self.details_vars: Dict[str, Any] = {}
 
         self.context_combo = None
         self.wsl_distro_combo = None
@@ -40,8 +40,15 @@ class EnvInspectorView:
         self._build_ui()
 
     def _build_ui(self) -> None:
-        ttk = self.ttk
+        self._build_top_controls()
+        self._build_scan_section()
+        self._build_mutation_section()
+        detail_wrap = self._build_mid_section()
+        self._build_details_section(detail_wrap)
+        self._build_bottom_bar()
 
+    def _build_top_controls(self) -> None:
+        ttk = self.ttk
         top = ttk.Frame(self.tk, padding=10)
         top.pack(fill="x")
 
@@ -71,6 +78,8 @@ class EnvInspectorView:
         self.filter_entry.bind("<Escape>", lambda _e: self.controller.on_filter_escape())
         top.columnconfigure(3, weight=1)
 
+    def _build_scan_section(self) -> None:
+        ttk = self.ttk
         scan = ttk.LabelFrame(self.tk, text="WSL Dotenv Scan", padding=10)
         scan.pack(fill="x", padx=10, pady=(0, 8))
 
@@ -89,6 +98,8 @@ class EnvInspectorView:
         self.wsl_scan_button = ttk.Button(scan, text="Apply WSL Scan", command=self.controller.refresh_data)
         self.wsl_scan_button.grid(row=0, column=6, sticky="w")
 
+    def _build_mutation_section(self) -> None:
+        ttk = self.ttk
         mutate = ttk.LabelFrame(self.tk, text="Set / Remove", padding=10)
         mutate.pack(fill="x", padx=10, pady=(0, 8))
 
@@ -112,6 +123,8 @@ class EnvInspectorView:
         ttk.Label(mutate, textvariable=self.controller.targets_summary_var).grid(row=1, column=0, columnspan=8, sticky="w", pady=(8, 0))
         ttk.Label(mutate, textvariable=self.controller.effective_value_var).grid(row=2, column=0, columnspan=8, sticky="w", pady=(6, 0))
 
+    def _build_mid_section(self) -> Any:
+        ttk = self.ttk
         mid = ttk.PanedWindow(self.tk, orient="horizontal")
         mid.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -120,6 +133,11 @@ class EnvInspectorView:
         mid.add(table_wrap, weight=5)
         mid.add(detail_wrap, weight=3)
 
+        self._build_table(table_wrap)
+        return detail_wrap
+
+    def _build_table(self, table_wrap: Any) -> None:
+        ttk = self.ttk
         cols = (
             "context",
             "source",
@@ -153,9 +171,10 @@ class EnvInspectorView:
         xscroll.grid(row=1, column=0, sticky="ew")
         table_wrap.columnconfigure(0, weight=1)
         table_wrap.rowconfigure(0, weight=1)
-
         self.tree.bind("<<TreeviewSelect>>", lambda _e: self.controller.on_tree_selected())
 
+    def _build_details_section(self, detail_wrap: Any) -> None:
+        ttk = self.ttk
         self.details_vars = {
             "name": self.tkmod.StringVar(value=""),
             "context": self.tkmod.StringVar(value=""),
@@ -217,6 +236,8 @@ class EnvInspectorView:
         detail_wrap.columnconfigure(1, weight=1)
         detail_wrap.rowconfigure(1, weight=1)
 
+    def _build_bottom_bar(self) -> None:
+        ttk = self.ttk
         bottom = ttk.Frame(self.tk, padding=10)
         bottom.pack(fill="x")
 
@@ -230,10 +251,10 @@ class EnvInspectorView:
         self.status = ttk.Label(bottom, text="")
         self.status.pack(side="right")
 
-    def set_context_values(self, contexts: list[str]) -> None:
+    def set_context_values(self, contexts: List[str]) -> None:
         self.context_combo.configure(values=contexts)
 
-    def set_wsl_distros(self, distros: list[str], *, enabled: bool) -> None:
+    def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
         self.wsl_distro_combo.configure(values=distros)
         self.wsl_distro_combo.configure(state=("readonly" if enabled else "disabled"))
         state = "normal" if enabled else "disabled"
@@ -261,7 +282,7 @@ class EnvInspectorView:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-    def insert_table_row(self, values: tuple[Any, ...], *, striped: bool) -> str:
+    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
         tag = "row_even" if striped else "row_odd"
         return str(self.tree.insert("", "end", values=values, tags=(tag,)))
 

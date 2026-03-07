@@ -1,11 +1,33 @@
+from __future__ import absolute_import, division
 import argparse
+import csv
+import io
 import json
 import sys
 from pathlib import Path
-from typing import List, Sequence
+from typing import Any, Dict, List, Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
+
+_SAFE_EXPORT_KEYS = (
+    "source_type",
+    "source_id",
+    "source_path",
+    "context",
+    "name",
+    "value",
+    "is_secret",
+    "is_persistent",
+    "is_mutable",
+    "precedence_rank",
+    "writable",
+    "requires_privilege",
+    "last_error",
+)
+
+
+SupportsListRecords = Any
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,62 +90,80 @@ def _emit_payload(payload: object) -> int:
     return 1
 
 
-def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
+def _reject_raw_secret_stdout(args: argparse.Namespace) -> None:
+    if args.include_raw_secrets:
+        raise ValueError("--include-raw-secrets is not supported for stdout-rendered CLI output.")
+
+
+def _sanitize_stdout_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    safe_row: Dict[str, Any] = {}
+    for key in _SAFE_EXPORT_KEYS:
+        if key == "value":
+            safe_row[key] = "[secret masked]" if row.get("is_secret") else row.get("value", "")
+            continue
+        safe_row[key] = row.get(key)
+    return safe_row
+
+
+def _stdout_safe_rows(service: SupportsListRecords, args: argparse.Namespace) -> List[Dict[str, Any]]:
     rows = service.list_records(
+        include_raw_secrets=False,
         root=args.root,
         context=args.context,
         source=args.source,
         wsl_path=args.wsl_path,
         distro=args.distro,
         scan_depth=args.scan_depth,
-        include_raw_secrets=args.include_raw_secrets,
     )
-    if args.output == "json":
-        print(json.dumps(rows, ensure_ascii=True, indent=2))
+    safe_rows: List[Dict[str, Any]] = []
+    for row in rows:
+        safe_rows.append(_sanitize_stdout_row(row))
+    return safe_rows
+
+
+def _emit_stdout_rows(rows: List[Dict[str, Any]], *, output: str) -> None:
+    if output == "json":
+        sys.stdout.write(json.dumps(rows, ensure_ascii=True, indent=2))
+        return
+    if output == "csv":
+        if not rows:
+            return
+        keys = sorted(rows[0].keys())
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=keys)
+        writer.writeheader()
+        writer.writerows(rows)
+        sys.stdout.write(buffer.getvalue())
         return
 
-    rendered = service.export_records(
-        output=args.output,
-        include_raw_secrets=args.include_raw_secrets,
-        root=args.root,
-        context=args.context,
-        source=args.source,
-        wsl_path=args.wsl_path,
-        distro=args.distro,
-        scan_depth=args.scan_depth,
-    )
-    print(rendered, end="")
+    lines = [f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}" for row in rows]
+    if lines:
+        sys.stdout.write("\n".join(lines) + "\n")
+
+
+def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
+    _reject_raw_secret_stdout(args)
+    _emit_stdout_rows(_stdout_safe_rows(service, args), output=args.output)
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
-    rendered = service.export_records(
-        output=args.output,
-        include_raw_secrets=args.include_raw_secrets,
-        root=args.root,
-        context=args.context,
-        source=args.source,
-        wsl_path=args.wsl_path,
-        distro=args.distro,
-        scan_depth=args.scan_depth,
-    )
-    print(rendered, end="")
+    _reject_raw_secret_stdout(args)
+    _emit_stdout_rows(_stdout_safe_rows(service, args), output=args.output)
     return 0
 
 
 def _set_key(service: EnvInspectorService, args: argparse.Namespace) -> int:
     if args.preview_only:
-        payload = service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
-    else:
-        payload = service.set_key(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
-    return _emit_payload(payload)
+        return _emit_payload(
+            service.preview_set(key=args.key, value=args.value, targets=args.target, scope_roots=args.root)
+        )
+    return _emit_payload(service.set_key(key=args.key, value=args.value, targets=args.target, scope_roots=args.root))
 
 
 def _remove_key(service: EnvInspectorService, args: argparse.Namespace) -> int:
     if args.preview_only:
-        payload = service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root)
-    else:
-        payload = service.remove_key(key=args.key, targets=args.target, scope_roots=args.root)
-    return _emit_payload(payload)
+        return _emit_payload(service.preview_remove(key=args.key, targets=args.target, scope_roots=args.root))
+    return _emit_payload(service.remove_key(key=args.key, targets=args.target, scope_roots=args.root))
 
 
 def _list_backups(service: EnvInspectorService, args: argparse.Namespace) -> int:
@@ -145,7 +185,11 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
 
     active_service = service or EnvInspectorService()
     if args.command == "list":
-        _list_records(active_service, args)
+        try:
+            _list_records(active_service, args)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         return 0
 
     handlers = {
@@ -159,4 +203,8 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
     if handler is None:
         print(f"Unknown command: {args.command}", file=sys.stderr)
         return 2
-    return handler(active_service, args)
+    try:
+        return handler(active_service, args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2

@@ -1,7 +1,7 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
-import os
 import webbrowser
+from typing import Callable, Tuple
 from pathlib import Path
 
 
@@ -27,41 +27,22 @@ def is_openable_local_path(source_path: str) -> bool:
 def open_source_path(
     source_path: str,
     *,
-    platform: str | None = None,
-    run_command=None,
-) -> tuple[bool, str | None]:
+    open_uri: Callable[[str], bool] | None = None,
+) -> Tuple[bool, str | None]:
     if not is_openable_local_path(source_path):
         return False, "Cannot open non-local source path"
 
     try:
-        _open_path(source_path, platform=platform, run_command=run_command)
+        _open_path(source_path, open_uri=open_uri)
     except Exception as exc:
         return False, str(exc)
 
     return True, None
 
 
-def _open_path(source_path: str, *, platform: str | None = None, run_command=None) -> None:
-    system = (platform or _platform_name()).lower()
-    if system in {"windows", "win32", "nt"}:
-        if run_command is not None:
-            run_command(["cmd", "/c", "start", "", source_path])
-            return
-        os.startfile(source_path)  # type: ignore[attr-defined]
-        return
-
-    if run_command is not None:
-        cmd = ["open", source_path] if system == "darwin" else ["xdg-open", source_path]
-        run_command(cmd)
-        return
-
+def _open_path(source_path: str, *, open_uri: Callable[[str], bool] | None = None) -> None:
     uri = Path(source_path).resolve().as_uri()
-    opened = webbrowser.open(uri)
+    opener = open_uri or webbrowser.open
+    opened = opener(uri)
     if not opened:
         raise RuntimeError("Failed to open source path")
-
-
-def _platform_name() -> str:
-    if os.name == "nt":
-        return "windows"
-    return os.uname().sysname.lower() if hasattr(os, "uname") else "linux"

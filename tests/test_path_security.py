@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division
 from pathlib import Path
 
 import pytest
@@ -9,12 +10,12 @@ from env_inspector_core.path_policy import (
     resolve_scan_root,
 )
 
+from tests.assertions import ensure
 
 def test_resolve_scan_root_rejects_null_byte(tmp_path: Path):
     bad = str(tmp_path) + "\x00suffix"
     with pytest.raises(PathPolicyError):
         resolve_scan_root(bad)
-
 
 def test_parse_scoped_dotenv_target_allows_path_inside_scope(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -26,8 +27,7 @@ def test_parse_scoped_dotenv_target_allows_path_inside_scope(tmp_path: Path, mon
     roots = normalize_scope_roots([tmp_path])
     scoped = parse_scoped_dotenv_target(f"dotenv:{env_file}", roots=roots)
 
-    assert scoped.path == env_file.resolve()
-
+    ensure(scoped.path == env_file.resolve())
 
 def test_parse_scoped_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -41,7 +41,6 @@ def test_parse_scoped_dotenv_target_rejects_outside_scope(tmp_path: Path, monkey
     roots = normalize_scope_roots([allowed])
     with pytest.raises(PathPolicyError):
         parse_scoped_dotenv_target(f"dotenv:{env_file}", roots=roots)
-
 
 def test_parse_scoped_dotenv_target_rejects_non_dotenv_filename(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)

@@ -1,5 +1,6 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
+from typing import List
 from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
@@ -34,8 +35,8 @@ def build_display_rows(
     query: str,
     only_secrets: bool,
     show_secrets: bool,
-) -> list[DisplayedRow]:
-    rows: list[DisplayedRow] = []
+) -> List[DisplayedRow]:
+    rows: List[DisplayedRow] = []
     query_text = query.strip().lower()
 
     for idx, rec in enumerate(records):
@@ -84,7 +85,7 @@ def _sort_key(row: DisplayedRow, column: str):
     return str_map["name"]
 
 
-def sort_display_rows(rows: list[DisplayedRow], sort_state: SortState) -> list[DisplayedRow]:
+def sort_display_rows(rows: List[DisplayedRow], sort_state: SortState) -> List[DisplayedRow]:
     column = sort_state.column or "name"
     return sorted(
         rows,

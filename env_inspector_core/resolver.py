@@ -1,5 +1,6 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
+from typing import List, Tuple
 from .models import EnvRecord
 
 
@@ -27,7 +28,7 @@ LINUX_PRECEDENCE = {
 }
 
 
-def resolve_effective_value(records: list[EnvRecord], key: str, context: str) -> EnvRecord | None:
+def resolve_effective_value(records: List[EnvRecord], key: str, context: str) -> EnvRecord | None:
     key_norm = key.strip().lower()
     candidates = [r for r in records if r.name.lower() == key_norm and (r.context == context or r.context == "global")]
     if not candidates:
@@ -40,7 +41,7 @@ def resolve_effective_value(records: list[EnvRecord], key: str, context: str) ->
     else:
         table = WINDOWS_PRECEDENCE
 
-    def rank(rec: EnvRecord) -> tuple[int, int, str]:
+    def rank(rec: EnvRecord) -> Tuple[int, int, str]:
         source_rank = table.get(rec.source_type, rec.precedence_rank)
         return (source_rank, rec.precedence_rank, rec.source_path)
 

@@ -1,6 +1,8 @@
-from __future__ import annotations
+from __future__ import absolute_import, division
 
+from typing import List
 import json
+import os
 from pathlib import Path
 
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
@@ -21,14 +23,28 @@ SUPPORTED_SORT_COLUMNS = {
 }
 
 
+def _path_exists(path: Path) -> bool:
+    return os.path.exists(path)
+
+
+def _read_text(path: Path) -> str:
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
+
+
+def _write_text(path: Path, text: str) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
 def load_ui_state(state_dir: Path) -> PersistedUiState:
     cfg = Path(state_dir) / CONFIG_FILENAME
-    if not cfg.exists():
+    if not _path_exists(cfg):
         return PersistedUiState()
 
     try:
-        payload = json.loads(cfg.read_text(encoding="utf-8"))
-    except Exception:
+        payload = json.loads(_read_text(cfg))
+    except (OSError, TypeError, ValueError):
         return PersistedUiState()
 
     if not isinstance(payload, dict):
@@ -36,7 +52,7 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
     try:
         state = PersistedUiState.from_dict(payload)
-    except Exception:
+    except (TypeError, ValueError, KeyError):
         return PersistedUiState()
 
     if state.sort_column not in SUPPORTED_SORT_COLUMNS:
@@ -47,20 +63,20 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
 def save_ui_state(state_dir: Path, state: PersistedUiState) -> Path:
     base = Path(state_dir)
-    base.mkdir(parents=True, exist_ok=True)
+    os.makedirs(base, exist_ok=True)
     cfg = base / CONFIG_FILENAME
-    cfg.write_text(json.dumps(state.to_dict(), ensure_ascii=True, indent=2), encoding="utf-8")
+    _write_text(cfg, json.dumps(state.to_dict(), ensure_ascii=True, indent=2))
     return cfg
 
 
 def sanitize_loaded_state(
     state: PersistedUiState,
     *,
-    available_contexts: list[str],
-    available_targets: list[str],
+    available_contexts: List[str],
+    available_targets: List[str],
     fallback_root: Path,
 ) -> PersistedUiState:
-    clean = PersistedUiState(**state.to_dict())
+    clean = PersistedUiState.from_dict(state.to_dict())
     clean.root_path = str(_sanitize_root(clean.root_path, fallback_root))
     clean.context = _sanitize_context(clean.context, available_contexts)
     clean.selected_targets = _sanitize_targets(clean.selected_targets, available_targets)
@@ -84,7 +100,7 @@ def _sanitize_root(root_path: str, fallback_root: Path) -> Path:
     return Path(fallback_root)
 
 
-def _sanitize_context(context: str, available_contexts: list[str]) -> str:
+def _sanitize_context(context: str, available_contexts: List[str]) -> str:
     if not available_contexts:
         return ""
     if context in available_contexts:
@@ -92,7 +108,7 @@ def _sanitize_context(context: str, available_contexts: list[str]) -> str:
     return available_contexts[0]
 
 
-def _sanitize_targets(selected_targets: list[str], available_targets: list[str]) -> list[str]:
+def _sanitize_targets(selected_targets: List[str], available_targets: List[str]) -> List[str]:
     available_set = set(available_targets)
     return [target for target in selected_targets if target in available_set]
 

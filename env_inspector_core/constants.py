@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division
 SOURCE_PROCESS = "process"
 SOURCE_WINDOWS_USER = "windows_user"
 SOURCE_WINDOWS_MACHINE = "windows_machine"
