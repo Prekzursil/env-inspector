@@ -39,7 +39,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.refresh_data()
         self.tk.after_idle(self.view.focus_filter)
 
-    def _load_tk_modules(self):
+    @staticmethod
+    def _load_tk_modules():
         try:
             import tkinter as tk
             from tkinter import filedialog, messagebox, ttk
@@ -90,7 +91,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.effective_value_var = tk.StringVar(value="Effective: (select key)")
         self.targets_summary_var = tk.StringVar(value="Targets: (none selected)")
 
-    def _resolve_root_path(self, boot_state: PersistedUiState, fallback_root: Path) -> Path:
+    @staticmethod
+    def _resolve_root_path(boot_state: PersistedUiState, fallback_root: Path) -> Path:
         try:
             return resolve_scan_root(boot_state.root_path or fallback_root)
         except PathPolicyError:
@@ -206,15 +208,18 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return
 
         rec = row.record
+        is_secret = self._record_flag(rec, "is_secret")
+        is_persistent = self._record_flag(rec, "is_persistent")
+        is_mutable = self._record_flag(rec, "is_mutable")
         self._set_detail_pairs(
             (
                 ("name", rec.name),
                 ("context", rec.context),
                 ("source", rec.source_type),
                 ("source_path", rec.source_path),
-                ("secret", "yes" if rec.is_secret else "no"),
-                ("persistent", "yes" if rec.is_persistent else "no"),
-                ("mutable", "yes" if rec.is_mutable else "no"),
+                ("secret", "yes" if is_secret else "no"),
+                ("persistent", "yes" if is_persistent else "no"),
+                ("mutable", "yes" if is_mutable else "no"),
                 ("writable", "yes" if rec.writable else "no"),
                 ("requires_privilege", "yes" if rec.requires_privilege else "no"),
                 ("precedence_rank", str(rec.precedence_rank)),
@@ -223,6 +228,10 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.view.update_details_value(row.visible_value)
         self.view.set_details_enabled(True)
         self.view.detail_open_button.configure(state=("normal" if is_openable_local_path(rec.source_path) else "disabled"))
+
+    @staticmethod
+    def _record_flag(record: EnvRecord, name: str) -> bool:
+        return bool(getattr(record, name, False))
 
     def _clear_details(self) -> None:
         self._set_detail_values(dict.fromkeys(self.view.details_vars, ""))

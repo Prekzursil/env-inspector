@@ -22,6 +22,8 @@ def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
     payload.update(overrides)
     source_type = str(payload["source_type"])
     source_path = str(payload["source_path"])
+    raw_rank = payload["precedence_rank"]
+    precedence_rank = raw_rank if isinstance(raw_rank, int) and not isinstance(raw_rank, bool) else 50
     return EnvRecord(
         source_type=source_type,
         source_id=f"{source_type}:{source_path}",
@@ -32,7 +34,7 @@ def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
         is_secret=bool(payload["is_secret"]),
         is_persistent=bool(payload["is_persistent"]),
         is_mutable=bool(payload["is_mutable"]),
-        precedence_rank=int(payload["precedence_rank"]),
+        precedence_rank=precedence_rank,
         writable=True,
         requires_privilege=False,
     )

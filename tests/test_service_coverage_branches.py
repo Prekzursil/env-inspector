@@ -123,7 +123,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     with pytest.raises(RuntimeError, match="Unsupported Linux target"):
         svc._update_linux_file(target="linux:unknown", key="A", value="1", action="set", apply_changes=False)
 
-    wsl_writes: List[Tuple[str, str, str]] = []
+    wsl_writes: List[tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "")
     monkeypatch.setattr(
         svc.wsl,
@@ -171,7 +171,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     ensure(svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps")
 
 
-def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch):
+def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch) -> None:
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
     fake_home.mkdir(parents=True, exist_ok=True)
@@ -188,7 +188,7 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     with pytest.raises(RuntimeError, match="Unsupported Linux restore target"):
         svc._restore_linux_target(target="linux:unknown", text="x")
 
-    wsl_calls: List[Tuple[str, str, str]] = []
+    wsl_calls: List[tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file_with_privilege",
@@ -200,6 +200,9 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     with pytest.raises(RuntimeError, match="Unsupported WSL restore target"):
         svc._restore_wsl_target(target="wsl:Ubuntu:unknown", text="x")
 
+
+def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypatch) -> None:
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
     fake_home.mkdir(parents=True, exist_ok=True)
     profile = fake_home / "Documents" / "PowerShell" / "ps-profile.ps1"
@@ -214,8 +217,8 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
 
     class _FakeWinProvider:
         def __init__(self) -> None:
-            self.removed: List[Tuple[str, str]] = []
-            self.sets: List[Tuple[str, str, str]] = []
+            self.removed: List[tuple[str, str]] = []
+            self.sets: List[tuple[str, str, str]] = []
 
         def list_scope(self, scope: str) -> Dict[str, str]:
             return {"KEEP": "1", "DROP": "2"}
@@ -232,6 +235,9 @@ def test_restore_helpers_cover_dispatch_and_registry(tmp_path: Path, monkeypatch
     ensure(fake.removed and fake.removed[0][1] == "DROP")
     ensure(any(key == "NEW" for _scope, key, _value in fake.sets))
 
+
+def test_restore_helpers_cover_dispatch(tmp_path: Path, monkeypatch) -> None:
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
     calls: List[str] = []
     monkeypatch.setattr(svc, "_restore_linux_target", lambda **kwargs: calls.append("linux"))
     monkeypatch.setattr(svc, "_restore_powershell_target", lambda **kwargs: calls.append("powershell"))

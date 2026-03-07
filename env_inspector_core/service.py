@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple, Type
@@ -103,6 +104,17 @@ WSL_DOTENV_PATH_ERROR = "Unsupported WSL dotenv target path"
 LINUX_ETC_ENV_PATH = "/etc/environment"
 which = _privileged_which
 run = _privileged_run
+
+
+def _path_exists(path: Path) -> bool:
+    return os.path.exists(path)
+
+
+def _read_text_if_exists(path: Path) -> str:
+    if not _path_exists(path):
+        return ""
+    with open(path, encoding="utf-8", errors="ignore") as handle:
+        return handle.read()
 
 
 class EnvInspectorService:
@@ -343,7 +355,7 @@ class EnvInspectorService:
     ) -> Tuple[str, str, str | None, bool, str | None]:
         scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
         path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="dotenv target path")
-        before = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+        before = _read_text_if_exists(path)
         after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
         if apply_changes:
             self._write_scoped_text_file(
@@ -373,16 +385,15 @@ class EnvInspectorService:
     ) -> Tuple[str, str, str | None, bool, str | None]:
         if target == TARGET_LINUX_BASHRC:
             bashrc_path = Path.home() / ".bashrc"
-            before = bashrc_path.read_text(encoding="utf-8", errors="ignore") if bashrc_path.exists() else ""
+            before = _read_text_if_exists(bashrc_path)
             after = self._mutate_shell_content(before, key=key, value=value, action=action, style="export")
             if apply_changes:
-                bashrc_path.parent.mkdir(parents=True, exist_ok=True)
-                bashrc_path.write_text(after, encoding="utf-8")
+                self._write_text_file(bashrc_path, after, ensure_parent=True)
             return before, after, str(bashrc_path), False, None
 
         if target == TARGET_LINUX_ETC_ENV:
             etc_path = self._linux_etc_environment_path()
-            before = etc_path.read_text(encoding="utf-8", errors="ignore") if etc_path.exists() else ""
+            before = _read_text_if_exists(etc_path)
             after = self._mutate_shell_content(before, key=key, value=value, action=action, style="key_value")
             if apply_changes:
                 self._write_linux_etc_environment_with_privilege(after)
@@ -442,10 +453,10 @@ class EnvInspectorService:
         value: str | None,
         action: str,
         apply_changes: bool,
-    ) -> Tuple[str, str, str | None, bool, str | None]:
+        ) -> Tuple[str, str, str | None, bool, str | None]:
         profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(target)
         safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
-        before = safe_profile.read_text(encoding="utf-8", errors="ignore") if safe_profile.exists() else ""
+        before = _read_text_if_exists(safe_profile)
         after = (
             upsert_powershell_env(before, key, value or "")
             if action == "set"

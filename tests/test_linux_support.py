@@ -29,36 +29,36 @@ def _record(source_type: str, context: str, name: str, value: str, precedence: i
     )
 
 def _patch_linux_etc_environment_reads(monkeypatch: pytest.MonkeyPatch, etc_env: Path) -> Path:
-    real_exists = Path.exists
-    real_read_text = Path.read_text
+    real_exists = service_module._path_exists
+    real_read_text = service_module._read_text_if_exists
     target = Path("/etc/environment")
 
-    def fake_read_text(self: Path, *args, **kwargs):
-        if self == target:
+    def fake_read_text(path: Path) -> str:
+        if path == target:
             return etc_env.read_text(encoding="utf-8")
-        return real_read_text(self, *args, **kwargs)
+        return real_read_text(path)
 
-    def fake_exists(self: Path):
-        if self == target:
+    def fake_exists(path: Path) -> bool:
+        if path == target:
             return True
-        return real_exists(self)
+        return real_exists(path)
 
-    monkeypatch.setattr(Path, "exists", fake_exists)
-    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    monkeypatch.setattr(service_module, "_path_exists", fake_exists)
+    monkeypatch.setattr(service_module, "_read_text_if_exists", fake_read_text)
     return target
 
 def _patch_linux_etc_environment_denied(monkeypatch: pytest.MonkeyPatch, etc_env: Path) -> list[str]:
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
-    real_open = Path.open
+    real_write_text_file = EnvInspectorService._write_text_file
     writes: list[str] = []
 
-    def fake_open(self: Path, *args, **kwargs):
-        if self == target:
+    def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
+        if path == target:
             raise PermissionError("denied")
-        writes.append(str(self))
-        return real_open(self, *args, **kwargs)
+        writes.append(str(path))
+        real_write_text_file(path, text, ensure_parent=ensure_parent)
 
-    monkeypatch.setattr(Path, "open", fake_open)
+    monkeypatch.setattr(EnvInspectorService, "_write_text_file", staticmethod(fake_write_text_file))
     return writes
 
 def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):

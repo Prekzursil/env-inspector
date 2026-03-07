@@ -2,6 +2,7 @@ from __future__ import absolute_import, division
 
 from typing import List
 import json
+import os
 from pathlib import Path
 
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
@@ -22,13 +23,27 @@ SUPPORTED_SORT_COLUMNS = {
 }
 
 
+def _path_exists(path: Path) -> bool:
+    return os.path.exists(path)
+
+
+def _read_text(path: Path) -> str:
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
+
+
+def _write_text(path: Path, text: str) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
 def load_ui_state(state_dir: Path) -> PersistedUiState:
     cfg = Path(state_dir) / CONFIG_FILENAME
-    if not cfg.exists():
+    if not _path_exists(cfg):
         return PersistedUiState()
 
     try:
-        payload = json.loads(cfg.read_text(encoding="utf-8"))
+        payload = json.loads(_read_text(cfg))
     except Exception:
         return PersistedUiState()
 
@@ -48,9 +63,9 @@ def load_ui_state(state_dir: Path) -> PersistedUiState:
 
 def save_ui_state(state_dir: Path, state: PersistedUiState) -> Path:
     base = Path(state_dir)
-    base.mkdir(parents=True, exist_ok=True)
+    os.makedirs(base, exist_ok=True)
     cfg = base / CONFIG_FILENAME
-    cfg.write_text(json.dumps(state.to_dict(), ensure_ascii=True, indent=2), encoding="utf-8")
+    _write_text(cfg, json.dumps(state.to_dict(), ensure_ascii=True, indent=2))
     return cfg
 
 

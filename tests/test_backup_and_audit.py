@@ -62,15 +62,15 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Pat
     monkeypatch.setattr(storage_mod, "datetime", _FixedDateTime)
 
     mgr = BackupManager(tmp_path, retention=5)
-    original_exists = Path.exists
+    original_exists = storage_mod._path_exists
 
     def _always_exists(path: Path) -> bool:
         if str(path).endswith(".backup.json"):
             return True
         return original_exists(path)
 
-    monkeypatch.setattr(Path, "exists", _always_exists)
-    ensure(Path.exists(tmp_path))
+    monkeypatch.setattr(storage_mod, "_path_exists", _always_exists)
+    ensure(storage_mod._path_exists(tmp_path))
 
     with pytest.raises(RuntimeError, match="Could not allocate unique backup file name"):
         mgr._next_backup_path()
@@ -148,4 +148,3 @@ def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch
 
     ensure(result["success"] is False)
     ensure("outside approved roots" in (result["error_message"] or ""))
-

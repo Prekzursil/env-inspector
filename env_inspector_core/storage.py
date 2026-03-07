@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division
 
 from typing import Dict, List, Tuple
+import glob
 import json
+import os
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,17 +11,35 @@ from pathlib import Path
 from .models import OperationResult
 
 
+def _mkdirp(path: Path) -> None:
+    os.makedirs(path, exist_ok=True)
+
+
+def _path_exists(path: Path) -> bool:
+    return os.path.exists(path)
+
+
+def _read_text(path: Path) -> str:
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
+
+
+def _write_text(path: Path, text: str) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
 class BackupManager:
     def __init__(self, base_dir: Path, retention: int = 20) -> None:
         self.base_dir = Path(base_dir).resolve()
         self.retention = retention
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        _mkdirp(self.base_dir)
 
     def backup_text(self, target: str, text: str) -> Path:
         now, path = self._next_backup_path()
         path = self._normalize_backup_path(path)
         payload = {"target": target, "created_at": now, "text": text}
-        path.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")  # NOSONAR
+        _write_text(path, json.dumps(payload, ensure_ascii=True, indent=2))  # NOSONAR
         self._enforce_retention(target)
         return path
 
@@ -28,7 +48,7 @@ class BackupManager:
 
         for sequence in range(10000):
             candidate = self.base_dir / f"{timestamp}-{sequence:04d}.backup.json"
-            if not candidate.exists():
+            if not _path_exists(candidate):
                 return timestamp, candidate
 
         raise RuntimeError("Could not allocate unique backup file name")
@@ -57,34 +77,34 @@ class BackupManager:
         return sorted(backups, reverse=True)
 
     def list_all_backups(self) -> List[Path]:
-        return sorted(self.base_dir.glob("**/*.backup.json"), reverse=True)
+        return sorted((Path(path) for path in glob.glob(str(self.base_dir / "**" / "*.backup.json"), recursive=True)), reverse=True)
 
     def _load_backup_payload(self, backup_path: Path) -> dict | None:
         try:
-            payload = json.loads(backup_path.read_text(encoding="utf-8"))
+            payload = json.loads(_read_text(backup_path))
         except Exception:
             return None
         return payload if isinstance(payload, dict) else None
 
     def restore_text(self, backup_path: Path) -> str:
-        payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))
+        payload = json.loads(_read_text(Path(backup_path)))
         return str(payload["text"])
 
     @staticmethod
     def read_backup_payload(backup_path: Path) -> Dict[str, str]:
-        payload = json.loads(Path(backup_path).read_text(encoding="utf-8"))
+        payload = json.loads(_read_text(Path(backup_path)))
         return {"target": str(payload["target"]), "text": str(payload["text"])}
 
 
 class AuditLogger:
     def __init__(self, base_dir: Path) -> None:
         self.base_dir = Path(base_dir)
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        _mkdirp(self.base_dir)
         self.path = self.base_dir / "audit.log"
 
     def log(self, result: OperationResult) -> None:
         payload = asdict(result)
         payload["logged_at"] = datetime.now(timezone.utc).isoformat()
         line = json.dumps(payload, ensure_ascii=True)
-        with self.path.open("a", encoding="utf-8") as f:
+        with open(self.path, "a", encoding="utf-8") as f:
             f.write(line + "\n")

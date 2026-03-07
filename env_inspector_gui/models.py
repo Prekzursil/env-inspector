@@ -38,10 +38,7 @@ def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
             return int(text)
         except ValueError:
             return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
+    return default
 
 
 @dataclass(frozen=True)

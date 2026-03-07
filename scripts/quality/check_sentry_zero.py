@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 from collections.abc import Mapping
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
+_HELPER_ROOT = _SCRIPT_DIR if os.path.exists(_SCRIPT_DIR / "security_helpers.py") else _SCRIPT_DIR.parent
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
@@ -198,11 +199,14 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
-    print(out_md.read_text(encoding="utf-8"), end="")
+    os.makedirs(out_json.parent, exist_ok=True)
+    os.makedirs(out_md.parent, exist_ok=True)
+    with open(out_json, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    rendered = _render_md(payload)
+    with open(out_md, "w", encoding="utf-8") as handle:
+        handle.write(rendered)
+    print(rendered, end="")
     return 0 if status == "pass" else 1
 
 
