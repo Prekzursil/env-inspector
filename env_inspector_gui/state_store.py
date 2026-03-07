@@ -76,7 +76,7 @@ def sanitize_loaded_state(
     available_targets: List[str],
     fallback_root: Path,
 ) -> PersistedUiState:
-    clean = PersistedUiState(**state.to_dict())
+    clean = PersistedUiState.from_dict(state.to_dict())
     clean.root_path = str(_sanitize_root(clean.root_path, fallback_root))
     clean.context = _sanitize_context(clean.context, available_contexts)
     clean.selected_targets = _sanitize_targets(clean.selected_targets, available_targets)

@@ -268,6 +268,38 @@ def _render_md(payload: Dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _build_payload(stats: List[CoverageStats], covered_sources: Set[str], min_percent: float, findings: List[str], status: str) -> Dict[str, Any]:
+    return {
+        "status": status,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "min_percent": min_percent,
+        "components": [
+            {
+                "name": item.name,
+                "path": item.path,
+                "covered": item.covered,
+                "total": item.total,
+                "percent": item.percent,
+            }
+            for item in stats
+        ],
+        "covered_sources": sorted(covered_sources),
+        "findings": findings,
+    }
+
+
+def _write_outputs(payload: Dict[str, Any], *, out_json: Path, out_md: Path) -> str:
+    os.makedirs(out_json.parent, exist_ok=True)
+    os.makedirs(out_md.parent, exist_ok=True)
+    with open(out_json, "w", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    rendered = _render_md(payload)
+    with open(out_md, "w", encoding="utf-8") as handle:
+        handle.write(rendered)
+    print(rendered, end="")
+    return rendered
+
+
 def main() -> int:
     args = _parse_args()
 
@@ -292,23 +324,7 @@ def main() -> int:
         required_sources=list(args.require_source),
         reported_sources=covered_sources,
     )
-    payload = {
-        "status": status,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "min_percent": min_percent,
-        "components": [
-            {
-                "name": item.name,
-                "path": item.path,
-                "covered": item.covered,
-                "total": item.total,
-                "percent": item.percent,
-            }
-            for item in stats
-        ],
-        "covered_sources": sorted(covered_sources),
-        "findings": findings,
-    }
+    payload = _build_payload(stats, covered_sources, min_percent, findings, status)
 
     try:
         out_json = SAFE_OUTPUT_PATH_IN_WORKSPACE(args.out_json, "coverage-100/coverage.json")
@@ -317,14 +333,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    os.makedirs(out_json.parent, exist_ok=True)
-    os.makedirs(out_md.parent, exist_ok=True)
-    with open(out_json, "w", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-    rendered = _render_md(payload)
-    with open(out_md, "w", encoding="utf-8") as handle:
-        handle.write(rendered)
-    print(rendered, end="")
+    _write_outputs(payload, out_json=out_json, out_md=out_md)
 
     return 0 if status == "pass" else 1
 

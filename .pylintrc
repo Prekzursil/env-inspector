@@ -1,2 +1,10 @@
 [MAIN]
 py-version = 3.12
+
+[MESSAGES CONTROL]
+disable =
+    E0611,
+    R0201,
+    W0104,
+    W1618,
+    W1619
