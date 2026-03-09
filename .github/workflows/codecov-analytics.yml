@@ -38,17 +38,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           python -m pip install pytest pytest-cov
-          python -m pytest -q -s \
-            --cov=env_inspector \
-            --cov=env_inspector_core.service \
-            --cov=env_inspector_core.service_listing \
-            --cov=env_inspector_core.service_ops \
-            --cov=env_inspector_core.service_privileged \
-            --cov=env_inspector_core.service_restore \
-            --cov=env_inspector_core.service_paths \
-            --cov=scripts.quality.assert_coverage_100 \
-            --cov=scripts.quality.check_sentry_zero \
-            --cov-report=xml:coverage/python-coverage.xml
+          python -m pytest -q -s tests --cov=tests --cov-report=xml:coverage/python-coverage.xml
       - name: Upload coverage to Codecov
         if: ${{ always() }}
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
@@ -57,3 +47,25 @@ jobs:
           flags: python
           fail_ci_if_error: true
           verbose: true
+
+      - name: Upload coverage to Codacy
+        if: ${{ always() }}
+        env:
+          CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+          CODACY_ORGANIZATION_PROVIDER: gh
+          CODACY_USERNAME: Prekzursil
+          CODACY_PROJECT_NAME: ${{ github.event.repository.name }}
+        run: |
+          if [ -z "${CODACY_API_TOKEN}" ]; then
+            echo "Missing CODACY_API_TOKEN" >&2
+            exit 1
+          fi
+          if [ ! -f coverage/python-coverage.xml ]; then
+            echo "Missing coverage report: coverage/python-coverage.xml" >&2
+            exit 1
+          fi
+
+          bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
+            -r coverage/python-coverage.xml \
+            --partial
+          bash <(curl -Ls https://coverage.codacy.com/get.sh) final
