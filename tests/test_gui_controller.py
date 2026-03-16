@@ -1,8 +1,12 @@
 from __future__ import absolute_import, division
 
+from typing import Any, cast
+
+from env_inspector_core.models import EnvRecord
 from env_inspector_gui.controller import EnvInspectorController
 
 from tests.assertions import ensure
+
 
 class _Var:
     def __init__(self, value: str = "") -> None:
@@ -13,6 +17,7 @@ class _Var:
 
     def set(self, value: str) -> None:
         self._value = value
+
 
 class _View:
     def __init__(self) -> None:
@@ -25,71 +30,135 @@ class _View:
     def set_refresh_busy(self, busy: bool) -> None:
         self.busy_states.append(busy)
 
+
+class _ControllerHarness(EnvInspectorController):
+    def __init__(self) -> None:
+        # Tests bypass the real GUI/service bootstrap and provide only the
+        # attributes required by the controller path under test.
+        pass
+
+
+class _ContextSelectionHarness(_ControllerHarness):
+    def __init__(self) -> None:
+        super().__init__()
+        self.calls: list[str] = []
+
+    def refresh_data(self) -> None:
+        self.calls.append("refresh")
+
+
+class _BusyStateHarness(_ControllerHarness):
+    def __init__(self) -> None:
+        super().__init__()
+        self.busy_view = _View()
+        self.view = cast(Any, self.busy_view)
+
+
+class _RefreshHarness(_ControllerHarness):
+    def __init__(self) -> None:
+        super().__init__()
+        self.key_text = _Var("API_TOKEN")
+        self.effective_value_var = _Var("")
+        self.events: list[tuple[str, object | None]] = []
+
+    def _set_busy(self, busy: bool) -> None:
+        self.events.append(("busy", busy))
+
+    def _set_status(self, text: str) -> None:
+        self.events.append(("status", text))
+
+    def _update_context_values(self) -> None:
+        self.events.append(("contexts", None))
+
+    def _fetch_records(self) -> None:
+        self.events.append(("fetch", None))
+
+    def _reconcile_targets(self) -> None:
+        self.events.append(("targets", None))
+
+    def _render_table(self) -> None:
+        self.events.append(("render", None))
+
+    def _update_effective(self, key: str) -> None:
+        self.events.append(("effective", key))
+
+
+class _OperationHarness(_ControllerHarness):
+    def __init__(self) -> None:
+        super().__init__()
+        self.key_text = _Var("API_TOKEN")
+        self.value_text = _Var("abc")
+        self.selected_targets = ["windows:user"]
+        self.records_raw: list[EnvRecord] = []
+        self.calls: list[tuple[str, object | None]] = []
+
+    def _set_status(self, _text: str) -> None:
+        return None
+
+    def _preview_operation(
+        self, action: str, key: str, value: str, targets: list[str]
+    ) -> list[dict[str, object]]:
+        self.calls.append(("preview", action))
+        return [{"target": "windows:user", "success": True, "diff_preview": ""}]
+
+    def _confirm_diff(
+        self, action: str, previews: list[dict[str, object]], preview_only: bool = False
+    ) -> bool:
+        self.calls.append(("confirm", preview_only))
+        return True
+
+    def _apply_operation(
+        self, action: str, key: str, value: str, targets: list[str]
+    ) -> dict[str, object]:
+        self.calls.append(("apply", action))
+        return {"success": True, "operation_id": "op-1"}
+
+    def refresh_data(self) -> None:
+        self.calls.append(("refresh", None))
+
+
 def test_var_roundtrip_set_get():
     var = _Var("initial")
     var.set("updated")
     ensure(var.get() == "updated")
 
+
 def test_context_change_triggers_full_refresh():
-    ctrl = EnvInspectorController.__new__(EnvInspectorController)
-    calls: list[str] = []
-    ctrl.refresh_data = lambda: calls.append("refresh")
+    ctrl = _ContextSelectionHarness()
 
     EnvInspectorController.on_context_selected(ctrl)
 
-    ensure(calls == ["refresh"])
+    ensure(ctrl.calls == ["refresh"])
+
 
 def test_busy_state_disable_enable_around_refresh():
-    ctrl = EnvInspectorController.__new__(EnvInspectorController)
-    ctrl.view = _View()
+    ctrl = _BusyStateHarness()
 
     EnvInspectorController._set_busy(ctrl, True)
     EnvInspectorController._set_busy(ctrl, False)
 
-    ensure(ctrl.view.enabled_states == [False, True])
-    ensure(ctrl.view.busy_states == [True, False])
+    ensure(ctrl.busy_view.enabled_states == [False, True])
+    ensure(ctrl.busy_view.busy_states == [True, False])
+
 
 def test_refresh_updates_effective_value_when_key_present():
-    ctrl = EnvInspectorController.__new__(EnvInspectorController)
-    ctrl.key_text = _Var("API_TOKEN")
-
-    events: list[tuple[str, object]] = []
-    ctrl._set_busy = lambda busy: events.append(("busy", busy))
-    ctrl._update_context_values = lambda: events.append(("contexts", None))
-    ctrl._fetch_records = lambda: events.append(("fetch", None))
-    ctrl._reconcile_targets = lambda: events.append(("targets", None))
-    ctrl._render_table = lambda: events.append(("render", None))
-    ctrl._update_effective = lambda key: events.append(("effective", key))
+    ctrl = _RefreshHarness()
 
     EnvInspectorController.refresh_data(ctrl)
 
-    ensure(("effective", "API_TOKEN") in events)
-    ensure(next(((kind, value) for kind, value in events if kind == "busy"), None) == ("busy", True))
-    ensure(next(((kind, value) for kind, value in reversed(events) if kind == "busy"), None) == ("busy", False))
+    ensure(("effective", "API_TOKEN") in ctrl.events)
+    ensure(next(((kind, value) for kind, value in ctrl.events if kind == "busy"), None) == ("busy", True))
+    ensure(next(((kind, value) for kind, value in reversed(ctrl.events) if kind == "busy"), None) == ("busy", False))
+
 
 def test_set_remove_operations_always_preview_before_apply():
-    ctrl = EnvInspectorController.__new__(EnvInspectorController)
-    ctrl.key_text = _Var("API_TOKEN")
-    ctrl.value_text = _Var("abc")
-    ctrl.selected_targets = ["windows:user"]
-    ctrl._set_status = lambda _text: None
-
-    calls: list[tuple[str, object]] = []
-    ctrl._preview_operation = lambda action, key, value, targets: calls.append(("preview", action)) or [
-        {"target": "windows:user", "success": True, "diff_preview": ""}
-    ]
-    ctrl._confirm_diff = lambda action, previews, preview_only=False: calls.append(("confirm", preview_only)) or True
-    ctrl._apply_operation = lambda action, key, value, targets: calls.append(("apply", action)) or {
-        "success": True,
-        "operation_id": "op-1",
-    }
-    ctrl.refresh_data = lambda: calls.append(("refresh", None))
+    ctrl = _OperationHarness()
 
     EnvInspectorController._run_operation(ctrl, "set")
     EnvInspectorController._run_operation(ctrl, "remove")
 
-    ensure(next(((kind, value) for kind, value in calls if kind == "preview"), None) == ("preview", "set"))
-    ensure(("confirm", False) in calls)
-    ensure(("apply", "set") in calls)
-    ensure(("preview", "remove") in calls)
-    ensure(("apply", "remove") in calls)
+    ensure(next(((kind, value) for kind, value in ctrl.calls if kind == "preview"), None) == ("preview", "set"))
+    ensure(("confirm", False) in ctrl.calls)
+    ensure(("apply", "set") in ctrl.calls)
+    ensure(("preview", "remove") in ctrl.calls)
+    ensure(("apply", "remove") in ctrl.calls)

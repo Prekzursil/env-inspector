@@ -2,19 +2,43 @@
 from __future__ import absolute_import, division
 
 import argparse
+import importlib
 import json
 import os
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
-
-try:
-    from ._security_imports import request_json_https, safe_output_path_in_workspace, split_validated_https_url
-except ImportError:  # pragma: no cover - direct script execution
-    from _security_imports import request_json_https, safe_output_path_in_workspace, split_validated_https_url
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Tuple, cast
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
+
+RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
+SafeOutputPathInWorkspace = Callable[..., Path]
+SplitValidatedHttpsUrl = Callable[..., Tuple[str, str, Dict[str, str]]]
+
+
+def _load_security_imports() -> Any:
+    try:
+        return importlib.import_module("scripts.quality._security_imports")
+    except ModuleNotFoundError:  # pragma: no cover - direct script execution
+        helper_root = Path(__file__).resolve().parent
+        helper_root_str = str(helper_root)
+        if helper_root_str not in sys.path:
+            sys.path.insert(0, helper_root_str)
+        return importlib.import_module("_security_imports")
+
+
+_security_imports = _load_security_imports()
+request_json_https = cast(RequestJsonHttps, _security_imports.request_json_https)
+safe_output_path_in_workspace = cast(
+    SafeOutputPathInWorkspace,
+    _security_imports.safe_output_path_in_workspace,
+)
+split_validated_https_url = cast(
+    SplitValidatedHttpsUrl,
+    _security_imports.split_validated_https_url,
+)
 
 
 def _parse_args() -> argparse.Namespace:

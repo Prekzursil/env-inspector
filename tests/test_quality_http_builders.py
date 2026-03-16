@@ -12,10 +12,11 @@ from tests.assertions import ensure
 def _fixture_token() -> str:
     return "-".join(("fixture", "token"))
 
+
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
     captured: dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs):
+    def _fake_request_json_https(**kwargs: object) -> tuple[dict[str, int], dict[str, str]]:
         captured.update(kwargs)
         return {"total": 0}, {}
 
@@ -34,6 +35,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
     ensure(captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search")
     ensure(captured["query"] == {"limit": "1"})
 
+
 def test_codacy_request_json_rejects_unsafe_identifier():
     with pytest.raises(ValueError, match="unsupported characters"):
         codacy_mod._request_json(
@@ -45,10 +47,11 @@ def test_codacy_request_json_rejects_unsafe_identifier():
             data={},
         )
 
+
 def test_deepscan_request_json_uses_fixed_host(monkeypatch):
     captured: dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs):
+    def _fake_request_json_https(**kwargs: object) -> tuple[dict[str, int], dict[str, str]]:
         captured.update(kwargs)
         return {"open_issues": 0}, {}
 
@@ -65,10 +68,11 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
     ensure(captured["path"] == "/api/projects/123/issues/open")
     ensure(captured["query"] == {"limit": "1"})
 
+
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     captured: dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs):
+    def _fake_request_json_https(**kwargs: object) -> tuple[list[object], dict[str, str]]:
         captured.update(kwargs)
         return [], {"x-hits": "0"}
 

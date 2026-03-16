@@ -2,20 +2,42 @@
 from __future__ import absolute_import, division
 
 import argparse
+import importlib
 import json
+import os
 import sys
 import urllib.error
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
-
-try:
-    from ._security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
-except ImportError:  # pragma: no cover - direct script execution
-    from _security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Tuple, cast
 
 TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
 CODACY_API_HOST = "api.codacy.com"
 CODACY_REQUEST_EXCEPTIONS = (urllib.error.URLError, ValueError, TypeError, RuntimeError)
+
+RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
+EncodeIdentifier = Callable[..., str]
+SafeOutputPathInWorkspace = Callable[..., Path]
+
+
+def _load_security_imports() -> Any:
+    try:
+        return importlib.import_module("scripts.quality._security_imports")
+    except ModuleNotFoundError:  # pragma: no cover - direct script execution
+        helper_root = Path(__file__).resolve().parent
+        helper_root_str = str(helper_root)
+        if helper_root_str not in sys.path:
+            sys.path.insert(0, helper_root_str)
+        return importlib.import_module("_security_imports")
+
+
+_security_imports = _load_security_imports()
+encode_identifier = cast(EncodeIdentifier, _security_imports.encode_identifier)
+request_json_https = cast(RequestJsonHttps, _security_imports.request_json_https)
+safe_output_path_in_workspace = cast(
+    SafeOutputPathInWorkspace,
+    _security_imports.safe_output_path_in_workspace,
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -135,7 +157,7 @@ def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
     if not isinstance(data, list):
         return []
 
-    findings: list = []
+    findings: list[str] = []
     for item in data:
         if not isinstance(item, dict):
             continue
@@ -200,7 +222,6 @@ def _fetch_open_issues_for_provider(
     return True, open_issues, findings, None
 
 
-
 def _query_open_issues(
     *,
     provider: str,
@@ -231,7 +252,6 @@ def _query_open_issues(
     return None, findings
 
 
-
 def _render_md(payload: dict) -> str:
     lines = [
         "# Codacy Zero Gate",
@@ -253,8 +273,6 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     branch = getattr(args, "branch", "")
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
