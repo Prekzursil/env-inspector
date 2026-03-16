@@ -37,36 +37,17 @@ if TYPE_CHECKING:
         KEY_WOW64_64KEY: int
         REG_EXPAND_SZ: int
         REG_SZ: int
-
-        def OpenKey(
-            self, key: Any, sub_key: str, reserved: int = ..., access: int = ...
-        ) -> Any:
-            ...
-
-        def EnumValue(self, key: Any, index: int) -> Tuple[str, Any, Any]:
-            ...
-
-        def SetValueEx(
-            self, key: Any, value_name: str, reserved: int, reg_type: int, value: str
-        ) -> None:
-            ...
-
-        def DeleteValue(self, key: Any, value_name: str) -> None:
-            ...
+        OpenKey: Callable[[Any, str, int, int], Any]
+        EnumValue: Callable[[Any, int], Tuple[str, Any, Any]]
+        SetValueEx: Callable[[Any, str, int, int, str], None]
+        DeleteValue: Callable[[Any, str], None]
 
 
     class WslClient(Protocol):
-        def available(self) -> bool:
-            ...
-
-        def list_distros(self) -> List[str]:
-            ...
-
-        def read_file(self, distro: str, path: str) -> str:
-            ...
-
-        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-            ...
+        available: Callable[[], bool]
+        list_distros: Callable[[], List[str]]
+        read_file: Callable[[str, str], str]
+        scan_dotenv_files: Callable[[str, str, int], List[str]]
 else:
     WinregModule = Any
     WslClient = Any
