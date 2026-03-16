@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
 
+from typing import Dict, List, Tuple
+
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
@@ -14,9 +16,9 @@ def _fixture_token() -> str:
 
 
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs: object) -> tuple[dict[str, int], dict[str, str]]:
+    def _fake_request_json_https(**kwargs: object) -> Tuple[Dict[str, int], Dict[str, str]]:
         captured.update(kwargs)
         return {"total": 0}, {}
 
@@ -49,9 +51,9 @@ def test_codacy_request_json_rejects_unsafe_identifier():
 
 
 def test_deepscan_request_json_uses_fixed_host(monkeypatch):
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs: object) -> tuple[dict[str, int], dict[str, str]]:
+    def _fake_request_json_https(**kwargs: object) -> Tuple[Dict[str, int], Dict[str, str]]:
         captured.update(kwargs)
         return {"open_issues": 0}, {}
 
@@ -70,9 +72,9 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
 
 
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs: object) -> tuple[list[object], dict[str, str]]:
+    def _fake_request_json_https(**kwargs: object) -> Tuple[List[object], Dict[str, str]]:
         captured.update(kwargs)
         return [], {"x-hits": "0"}
 

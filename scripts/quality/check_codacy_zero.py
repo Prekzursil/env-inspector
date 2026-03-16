@@ -157,7 +157,7 @@ def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
     if not isinstance(data, list):
         return []
 
-    findings: list[str] = []
+    findings: List[str] = []
     for item in data:
         if not isinstance(item, dict):
             continue

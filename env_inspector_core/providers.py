@@ -7,7 +7,7 @@ import shlex
 import shutil
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from .constants import (
     SOURCE_DOTENV,
@@ -26,22 +26,50 @@ from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environmen
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
 
-class WinregModule(Protocol):
-    HKEY_CURRENT_USER: Any
-    HKEY_LOCAL_MACHINE: Any
-    KEY_READ: int
-    KEY_SET_VALUE: int
-    KEY_WOW64_64KEY: int
-    REG_EXPAND_SZ: int
-    REG_SZ: int
+if TYPE_CHECKING:
+    from typing_extensions import Protocol
 
-    def OpenKey(self, key: Any, sub_key: str, reserved: int = ..., access: int = ...) -> Any: ...
+    class WinregModule(Protocol):
+        HKEY_CURRENT_USER: Any
+        HKEY_LOCAL_MACHINE: Any
+        KEY_READ: int
+        KEY_SET_VALUE: int
+        KEY_WOW64_64KEY: int
+        REG_EXPAND_SZ: int
+        REG_SZ: int
 
-    def EnumValue(self, key: Any, index: int) -> Tuple[str, Any, Any]: ...
+        def OpenKey(
+            self, key: Any, sub_key: str, reserved: int = ..., access: int = ...
+        ) -> Any:
+            ...
 
-    def SetValueEx(self, key: Any, value_name: str, reserved: int, reg_type: int, value: str) -> None: ...
+        def EnumValue(self, key: Any, index: int) -> Tuple[str, Any, Any]:
+            ...
 
-    def DeleteValue(self, key: Any, value_name: str) -> None: ...
+        def SetValueEx(
+            self, key: Any, value_name: str, reserved: int, reg_type: int, value: str
+        ) -> None:
+            ...
+
+        def DeleteValue(self, key: Any, value_name: str) -> None:
+            ...
+
+
+    class WslClient(Protocol):
+        def available(self) -> bool:
+            ...
+
+        def list_distros(self) -> List[str]:
+            ...
+
+        def read_file(self, distro: str, path: str) -> str:
+            ...
+
+        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+            ...
+else:
+    WinregModule = Any
+    WslClient = Any
 
 
 _winreg: WinregModule | None
@@ -378,19 +406,6 @@ class WslProvider:
         text = self._run(["-d", distro, "-e", "bash", "-lc", command])
         return [line.strip() for line in text.splitlines() if line.strip()]
 
-
-class WslClient(Protocol):
-    def available(self) -> bool:
-        ...
-
-    def list_distros(self) -> List[str]:
-        ...
-
-    def read_file(self, distro: str, path: str) -> str:
-        ...
-
-    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-        ...
 
 
 def _normalize_powershell_assignment_value(raw_value: str) -> str:

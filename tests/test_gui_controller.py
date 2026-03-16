@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division
 
-from typing import Any, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.controller import EnvInspectorController
@@ -41,7 +41,7 @@ class _ControllerHarness(EnvInspectorController):
 class _ContextSelectionHarness(_ControllerHarness):
     def __init__(self) -> None:
         super().__init__()
-        self.calls: list[str] = []
+        self.calls: List[str] = []
 
     def refresh_data(self) -> None:
         self.calls.append("refresh")
@@ -59,7 +59,7 @@ class _RefreshHarness(_ControllerHarness):
         super().__init__()
         self.key_text = _Var("API_TOKEN")
         self.effective_value_var = _Var("")
-        self.events: list[tuple[str, object | None]] = []
+        self.events: List[Tuple[str, Optional[object]]] = []
 
     def _set_busy(self, busy: bool) -> None:
         self.events.append(("busy", busy))
@@ -89,27 +89,27 @@ class _OperationHarness(_ControllerHarness):
         self.key_text = _Var("API_TOKEN")
         self.value_text = _Var("abc")
         self.selected_targets = ["windows:user"]
-        self.records_raw: list[EnvRecord] = []
-        self.calls: list[tuple[str, object | None]] = []
+        self.records_raw: List[EnvRecord] = []
+        self.calls: List[Tuple[str, Optional[object]]] = []
 
     def _set_status(self, _text: str) -> None:
         return None
 
     def _preview_operation(
-        self, action: str, key: str, value: str, targets: list[str]
-    ) -> list[dict[str, object]]:
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> List[Dict[str, object]]:
         self.calls.append(("preview", action))
         return [{"target": "windows:user", "success": True, "diff_preview": ""}]
 
     def _confirm_diff(
-        self, action: str, previews: list[dict[str, object]], preview_only: bool = False
+        self, action: str, previews: List[Dict[str, object]], preview_only: bool = False
     ) -> bool:
         self.calls.append(("confirm", preview_only))
         return True
 
     def _apply_operation(
-        self, action: str, key: str, value: str, targets: list[str]
-    ) -> dict[str, object]:
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> Dict[str, object]:
         self.calls.append(("apply", action))
         return {"success": True, "operation_id": "op-1"}
 
