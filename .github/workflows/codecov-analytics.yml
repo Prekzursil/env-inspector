@@ -10,10 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   codecov-analytics:
     name: Codecov Analytics
@@ -21,51 +17,34 @@ jobs:
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '20'
 
-      - name: Run python coverage
-        continue-on-error: true
+      - name: Validate Codecov token
         run: |
-          mkdir -p coverage
-          mkdir -p .tmp
-          export TMPDIR="$PWD/.tmp"
+          if [ -z "${CODECOV_TOKEN}" ]; then
+            echo "Missing CODECOV_TOKEN" >&2
+            exit 1
+          fi
+
+      - name: Install test dependencies
+        run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           python -m pip install pytest pytest-cov
-          python -m pytest -q -s tests --cov=tests --cov-report=xml:coverage/python-coverage.xml
+
+      - name: Run tests with coverage
+        run: |
+          pytest -q --cov=env_inspector --cov=env_inspector_core --cov=env_inspector_gui --cov-report=xml:coverage.xml
+
       - name: Upload coverage to Codecov
-        if: ${{ always() }}
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
         with:
-          files: coverage/python-coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
           flags: python
           fail_ci_if_error: true
           verbose: true
-
-      - name: Upload coverage to Codacy
-        if: ${{ always() }}
-        env:
-          CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
-          CODACY_ORGANIZATION_PROVIDER: gh
-          CODACY_USERNAME: Prekzursil
-          CODACY_PROJECT_NAME: ${{ github.event.repository.name }}
-        run: |
-          if [ -z "${CODACY_API_TOKEN}" ]; then
-            echo "Missing CODACY_API_TOKEN" >&2
-            exit 1
-          fi
-          if [ ! -f coverage/python-coverage.xml ]; then
-            echo "Missing coverage report: coverage/python-coverage.xml" >&2
-            exit 1
-          fi
-
-          bash <(curl -Ls https://coverage.codacy.com/get.sh) report \
-            -r coverage/python-coverage.xml \
-            --partial
-          bash <(curl -Ls https://coverage.codacy.com/get.sh) final
