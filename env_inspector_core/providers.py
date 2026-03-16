@@ -150,10 +150,11 @@ class WindowsRegistryProvider:
 
     @staticmethod
     def _scope_to_key(scope: str) -> Tuple[Any, str]:
-        registry = _require_winreg()
         if scope == WindowsRegistryProvider.USER_SCOPE:
+            registry = _require_winreg()
             return registry.HKEY_CURRENT_USER, r"Environment"
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
+            registry = _require_winreg()
             return registry.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
         raise ValueError(f"Unsupported scope: {scope}")
 
