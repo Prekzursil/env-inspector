@@ -1,12 +1,13 @@
 from __future__ import absolute_import, division
 
+import importlib
 import os
 import re
 import shlex
 import shutil
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from .constants import (
     SOURCE_DOTENV,
@@ -25,10 +26,44 @@ from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environmen
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
 
+if TYPE_CHECKING:
+    from typing_extensions import Protocol
+
+    class WinregModule(Protocol):
+        HKEY_CURRENT_USER: Any
+        HKEY_LOCAL_MACHINE: Any
+        KEY_READ: int
+        KEY_SET_VALUE: int
+        KEY_WOW64_64KEY: int
+        REG_EXPAND_SZ: int
+        REG_SZ: int
+        OpenKey: Callable[[Any, str, int, int], Any]
+        EnumValue: Callable[[Any, int], Tuple[str, Any, Any]]
+        SetValueEx: Callable[[Any, str, int, int, str], None]
+        DeleteValue: Callable[[Any, str], None]
+
+
+    class WslClient(Protocol):
+        available: Callable[[], bool]
+        list_distros: Callable[[], List[str]]
+        read_file: Callable[[str, str], str]
+        scan_dotenv_files: Callable[[str, str, int], List[str]]
+else:
+    WinregModule = Any
+    WslClient = Any
+
+
+_winreg: WinregModule | None
 try:
-    import winreg  # type: ignore[attr-defined]
-except ImportError:  # pragma: no cover - non-Windows
-    winreg = None
+    _winreg = cast(WinregModule, importlib.import_module("winreg"))
+except ModuleNotFoundError:  # pragma: no cover - non-Windows
+    _winreg = None
+
+
+def _require_winreg() -> WinregModule:
+    if _winreg is None:
+        raise RuntimeError("Windows registry provider only available on Windows.")
+    return _winreg
 
 
 SKIP_DIRS = {
@@ -119,29 +154,32 @@ class WindowsRegistryProvider:
     MACHINE_SCOPE = "Machine"
 
     def __init__(self) -> None:
-        if not is_windows() or winreg is None:
+        if not is_windows() or _winreg is None:
             raise RuntimeError("Windows registry provider only available on Windows.")
 
     @staticmethod
     def _scope_to_key(scope: str) -> Tuple[Any, str]:
         if scope == WindowsRegistryProvider.USER_SCOPE:
-            return winreg.HKEY_CURRENT_USER, r"Environment"
+            registry = _require_winreg()
+            return registry.HKEY_CURRENT_USER, r"Environment"
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            return winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+            registry = _require_winreg()
+            return registry.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
         raise ValueError(f"Unsupported scope: {scope}")
 
     def list_scope(self, scope: str) -> Dict[str, str]:
+        registry = _require_winreg()
         root, path = self._scope_to_key(scope)
-        access = winreg.KEY_READ
+        access = registry.KEY_READ
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
+            access |= getattr(registry, "KEY_WOW64_64KEY", 0)
 
         values: Dict[str, str] = {}
-        with winreg.OpenKey(root, path, 0, access) as regkey:
+        with registry.OpenKey(root, path, 0, access) as regkey:
             index = 0
             while True:
                 try:
-                    name, value, _ = winreg.EnumValue(regkey, index)
+                    name, value, _ = registry.EnumValue(regkey, index)
                 except OSError:
                     break
                 values[name] = value if isinstance(value, str) else str(value)
@@ -149,22 +187,24 @@ class WindowsRegistryProvider:
         return values
 
     def set_scope_value(self, scope: str, key: str, value: str) -> None:
+        registry = _require_winreg()
         root, path = self._scope_to_key(scope)
-        access = winreg.KEY_SET_VALUE
+        access = registry.KEY_SET_VALUE
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
-        reg_type = winreg.REG_EXPAND_SZ if "%" in value else winreg.REG_SZ
-        with winreg.OpenKey(root, path, 0, access) as regkey:
-            winreg.SetValueEx(regkey, key, 0, reg_type, value)
+            access |= getattr(registry, "KEY_WOW64_64KEY", 0)
+        reg_type = registry.REG_EXPAND_SZ if "%" in value else registry.REG_SZ
+        with registry.OpenKey(root, path, 0, access) as regkey:
+            registry.SetValueEx(regkey, key, 0, reg_type, value)
 
     def remove_scope_value(self, scope: str, key: str) -> None:
+        registry = _require_winreg()
         root, path = self._scope_to_key(scope)
-        access = winreg.KEY_SET_VALUE
+        access = registry.KEY_SET_VALUE
         if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(winreg, "KEY_WOW64_64KEY", 0)
-        with winreg.OpenKey(root, path, 0, access) as regkey:
+            access |= getattr(registry, "KEY_WOW64_64KEY", 0)
+        with registry.OpenKey(root, path, 0, access) as regkey:
             try:
-                winreg.DeleteValue(regkey, key)
+                registry.DeleteValue(regkey, key)
             except FileNotFoundError:
                 pass
 
@@ -347,19 +387,6 @@ class WslProvider:
         text = self._run(["-d", distro, "-e", "bash", "-lc", command])
         return [line.strip() for line in text.splitlines() if line.strip()]
 
-
-class WslClient(Protocol):
-    def available(self) -> bool:
-        ...
-
-    def list_distros(self) -> List[str]:
-        ...
-
-    def read_file(self, distro: str, path: str) -> str:
-        ...
-
-    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-        ...
 
 
 def _normalize_powershell_assignment_value(raw_value: str) -> str:
@@ -616,3 +643,5 @@ def collect_wsl_dotenv_records(wsl: WslClient, distro: str, root_path: str, max_
                 )
             )
     return rows
+
+

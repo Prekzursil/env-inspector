@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
+from typing import Any
 
 from env_inspector_core.models import EnvRecord
 
@@ -14,6 +15,31 @@ COPY_PROMPT_TITLE = "Confirm Sensitive Value"
 
 
 class EnvInspectorControllerActionsMixin:
+    tk: Any
+    messagebox: Any
+    filedialog: Any
+    service: Any
+    show_secrets: Any
+    key_text: Any
+    value_text: Any
+    context_var: Any
+    wsl_distro_var: Any
+    wsl_path_var: Any
+    scan_depth_var: Any
+    root_path: Path
+
+    def _selected_row(self) -> Any:
+        raise NotImplementedError
+
+    def _set_status(self, text: str) -> None:
+        raise NotImplementedError
+
+    def _update_effective(self, key: str) -> None:
+        raise NotImplementedError
+
+    def refresh_data(self) -> None:
+        raise NotImplementedError
+
     def load_selected(self) -> None:
         row = self._selected_row()
         if not row:
