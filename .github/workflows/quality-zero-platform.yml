@@ -5,8 +5,10 @@ permissions:
   id-token: write
 
 on:
+  push:
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -14,7 +16,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@cb067b5a04b596deef983f93eac95f227b9dc09c
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@d3aabc77c858e27cb7ade824e9fbf3dd9203f256
     with:
       repo_slug: ${{ github.repository }}
       event_name: ${{ github.event_name }}
@@ -27,3 +29,4 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       DEEPSCAN_API_TOKEN: ${{ secrets.DEEPSCAN_API_TOKEN }}
+
