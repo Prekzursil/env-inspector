@@ -34,7 +34,7 @@ def open_source_path(
 
     try:
         _open_path(source_path, open_uri=open_uri)
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         return False, str(exc)
 
     return True, None
