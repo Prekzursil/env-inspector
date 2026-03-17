@@ -4,7 +4,7 @@ from email.message import Message
 import secrets
 import sys
 import unittest
-from typing import NoReturn
+from typing import List, NoReturn, Optional, Tuple
 import urllib.error
 
 import pytest
@@ -212,7 +212,7 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
 def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
     monkeypatch.setattr(codacy_mod, "_provider_candidates", lambda _preferred: ["gh", "github"])
 
-    responses = [
+    responses: List[Tuple[bool, Optional[int], List[str], Optional[Exception]]] = [
         (False, None, [], _http_error(404)),
         (True, 0, [], None),
     ]
@@ -263,7 +263,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     case.assertEqual(path, "/api/projects/1/issues/open")
     case.assertEqual(query, {"scope": "pull-request"})
 
-    findings = []
+    findings: List[str] = []
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",

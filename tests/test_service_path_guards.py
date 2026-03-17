@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import pytest
 
@@ -91,7 +92,7 @@ def test_restore_wsl_dotenv_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: list[tuple[str, str, str]] = []
+    calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "write_file", lambda distro, path, text: calls.append((distro, path, text)))
 
     backup_path = svc.backup_mgr.backup_text("wsl_dotenv:Ubuntu:/home/user/.env", "A=1\n")
@@ -104,7 +105,7 @@ def test_restore_wsl_bashrc_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: list[tuple[str, str, str]] = []
+    calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "write_file", lambda distro, path, text: calls.append((distro, path, text)))
 
     backup_path = svc.backup_mgr.backup_text("wsl:Ubuntu:bashrc", "export A='1'\n")
@@ -126,7 +127,7 @@ def test_restore_wsl_dotenv_backup_rejects_path_traversal(tmp_path: Path, monkey
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: list[tuple[str, str, str]] = []
+    calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "write_file", lambda distro, path, text: calls.append((distro, path, text)))
 
     backup_path = svc.backup_mgr.backup_text("wsl_dotenv:Ubuntu:/home/user/../outside.env", "A=1\n")
@@ -162,7 +163,7 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     profile = tmp_path / "program_files" / "PowerShell" / "7" / "profile.ps1"
 
-    writes: dict[str, object] = {}
+    writes: Dict[str, object] = {}
     monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
     monkeypatch.setattr(
         svc,

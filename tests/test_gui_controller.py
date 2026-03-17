@@ -21,8 +21,8 @@ class _Var:
 
 class _View:
     def __init__(self) -> None:
-        self.enabled_states: list[bool] = []
-        self.busy_states: list[bool] = []
+        self.enabled_states: List[bool] = []
+        self.busy_states: List[bool] = []
 
     def set_mutation_actions_enabled(self, enabled: bool) -> None:
         self.enabled_states.append(enabled)

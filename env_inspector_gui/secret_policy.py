@@ -1,14 +1,18 @@
 from __future__ import absolute_import, division
 
-from typing import Tuple
-from collections.abc import Callable
+from typing import Callable, Optional, Tuple
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.secrets import mask_value
 
 
+def is_record_secret(record: EnvRecord) -> bool:
+    return bool(getattr(record, "is_secret", False))
+
+
 def build_visible_value(record: EnvRecord, *, show_secrets: bool) -> str:
-    if show_secrets or not record.is_secret:
+    record_is_secret = is_record_secret(record)
+    if show_secrets or not record_is_secret:
         return record.value
     return mask_value(record.value)
 
@@ -33,8 +37,9 @@ def resolve_copy_payload(
     confirm_raw: Callable[[], bool],
     as_pair: bool,
 ) -> Tuple[str, bool]:
-    use_raw = show_secrets or not record.is_secret
-    if record.is_secret and not show_secrets:
+    record_is_secret = is_record_secret(record)
+    use_raw = show_secrets or not record_is_secret
+    if record_is_secret and not show_secrets:
         use_raw = confirm_raw()
 
     value = record.value if use_raw else mask_value(record.value)
@@ -47,8 +52,9 @@ def resolve_load_value(
     *,
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
-) -> Tuple[str | None, bool]:
-    if show_secrets or not record.is_secret:
+) -> Tuple[Optional[str], bool]:
+    record_is_secret = is_record_secret(record)
+    if show_secrets or not record_is_secret:
         return record.value, True
 
     if confirm_raw():
