@@ -122,6 +122,7 @@ def _normalize_source_path(raw_path: str) -> str:
 
 
 def normalize_source_path(raw_path: str) -> str:
+    """Return a workspace-relative normalized source path when possible."""
     return _normalize_source_path(raw_path)
 
 

@@ -80,6 +80,7 @@ def test_normalize_source_path_handles_empty_normpath_result(monkeypatch):
 
 
 def test_assert_coverage_uses_shared_security_import_helpers():
+    """Keep the coverage script aligned with the shared security import surface."""
     ensure(
         coverage_mod.SAFE_INPUT_FILE_PATH_IN_WORKSPACE
         is security_imports.safe_input_file_path_in_workspace
