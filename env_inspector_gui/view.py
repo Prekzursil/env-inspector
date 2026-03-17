@@ -178,8 +178,7 @@ class EnvInspectorView:
         table_wrap.rowconfigure(0, weight=1)
         self.tree.bind("<<TreeviewSelect>>", lambda _e: self.controller.on_tree_selected())
 
-    def _build_details_section(self, detail_wrap: Any) -> None:
-        ttk = self.ttk
+    def _create_details_var_map(self) -> Dict[str, Any]:
         self.details_vars = {
             "name": self.tkmod.StringVar(value=""),
             "context": self.tkmod.StringVar(value=""),
@@ -192,6 +191,10 @@ class EnvInspectorView:
             "requires_privilege": self.tkmod.StringVar(value=""),
             "precedence_rank": self.tkmod.StringVar(value=""),
         }
+        return self.details_vars
+
+    def _build_details_value_widgets(self, detail_wrap: Any) -> None:
+        ttk = self.ttk
 
         ttk.Label(detail_wrap, text="Name:").grid(row=0, column=0, sticky="nw")
         ttk.Label(detail_wrap, textvariable=self.details_vars["name"]).grid(row=0, column=1, sticky="nw", padx=(6, 0))
@@ -204,7 +207,9 @@ class EnvInspectorView:
         self.details_value_text.configure(xscrollcommand=self.details_value_scroll_x.set)
         self.details_value_scroll_x.grid(row=2, column=1, sticky="ew", padx=(6, 0))
 
-        meta_fields = [
+    def _build_details_metadata_rows(self, detail_wrap: Any, *, start_row: int) -> int:
+        ttk = self.ttk
+        meta_fields = (
             ("Context", "context"),
             ("Source", "source"),
             ("Source Path", "source_path"),
@@ -214,16 +219,17 @@ class EnvInspectorView:
             ("Writable", "writable"),
             ("Requires Privilege", "requires_privilege"),
             ("Precedence Rank", "precedence_rank"),
-        ]
-
-        start_row = 3
+        )
         for idx, (label, key) in enumerate(meta_fields):
             row = start_row + idx
             ttk.Label(detail_wrap, text=f"{label}:").grid(row=row, column=0, sticky="nw", pady=(4, 0))
             ttk.Label(detail_wrap, textvariable=self.details_vars[key]).grid(row=row, column=1, sticky="nw", padx=(6, 0), pady=(4, 0))
+        return start_row + len(meta_fields)
 
+    def _build_details_action_rows(self, detail_wrap: Any, *, start_row: int) -> None:
+        ttk = self.ttk
         btn_row = ttk.Frame(detail_wrap)
-        btn_row.grid(row=start_row + len(meta_fields), column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        btn_row.grid(row=start_row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         self.copy_name_button = ttk.Button(btn_row, text="Copy Name", command=self.controller.copy_selected_name)
         self.copy_name_button.pack(side="left", padx=(0, 6))
         self.copy_value_button = ttk.Button(btn_row, text="Copy Value", command=self.controller.copy_selected_value)
@@ -232,12 +238,17 @@ class EnvInspectorView:
         self.copy_pair_button.pack(side="left", padx=(0, 6))
 
         btn_row_2 = ttk.Frame(detail_wrap)
-        btn_row_2.grid(row=start_row + len(meta_fields) + 1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        btn_row_2.grid(row=start_row + 1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         self.copy_source_path_button = ttk.Button(btn_row_2, text="Copy Source Path", command=self.controller.copy_selected_source_path)
         self.copy_source_path_button.pack(side="left", padx=(0, 6))
         self.detail_open_button = ttk.Button(btn_row_2, text="Open Source", command=self.controller.open_selected_source)
         self.detail_open_button.pack(side="left")
 
+    def _build_details_section(self, detail_wrap: Any) -> None:
+        self._create_details_var_map()
+        self._build_details_value_widgets(detail_wrap)
+        next_row = self._build_details_metadata_rows(detail_wrap, start_row=3)
+        self._build_details_action_rows(detail_wrap, start_row=next_row)
         detail_wrap.columnconfigure(1, weight=1)
         detail_wrap.rowconfigure(1, weight=1)
 
