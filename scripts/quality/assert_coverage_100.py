@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division
 
 import argparse
+import importlib
 import json
 import os
 import posixpath
@@ -13,19 +14,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if os.path.exists(_SCRIPT_DIR / "security_helpers.py") else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
-
-
 def _load_security_helpers():
-    from security_helpers import (
-        safe_input_file_path_in_workspace as _safe_input_helper,
-        safe_output_path_in_workspace as _safe_output_helper,
-    )
+    try:
+        security_imports = importlib.import_module("scripts.quality._security_imports")
+    except ModuleNotFoundError:  # pragma: no cover - direct script execution
+        helper_root = Path(__file__).resolve().parent
+        helper_root_str = str(helper_root)
+        if helper_root_str not in sys.path:
+            sys.path.insert(0, helper_root_str)
+        security_imports = importlib.import_module("_security_imports")
 
-    return _safe_input_helper, _safe_output_helper
+    return (
+        security_imports.safe_input_file_path_in_workspace,
+        security_imports.safe_output_path_in_workspace,
+    )
 
 
 SAFE_INPUT_FILE_PATH_IN_WORKSPACE, SAFE_OUTPUT_PATH_IN_WORKSPACE = _load_security_helpers()
@@ -117,6 +119,11 @@ def _normalize_source_path(raw_path: str) -> str:
     if text.startswith(f"{workspace_root}/"):
         return text[len(workspace_root) + 1 :]
     return text
+
+
+def normalize_source_path(raw_path: str) -> str:
+    """Return a workspace-relative normalized source path when possible."""
+    return _normalize_source_path(raw_path)
 
 
 def coverage_sources_from_xml(path: Path) -> Set[str]:
