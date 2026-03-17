@@ -3,7 +3,7 @@ from __future__ import absolute_import, division
 import argparse
 import json
 import unittest
-from typing import Any, Dict, List, cast
+from typing import Dict, List, cast
 
 import env_inspector_core.cli as cli_mod
 from env_inspector_core.cli import build_parser, run_cli

@@ -7,7 +7,7 @@ from env_inspector_core.models import EnvRecord
 
 from .dialogs import BackupPickerDialog
 from .path_actions import open_source_path
-from .secret_policy import resolve_copy_payload, resolve_load_value
+from .secret_policy import is_record_secret, resolve_copy_payload, resolve_load_value
 
 APP_NAME = "Env Inspector"
 MSG_SELECT_ROW_FIRST = "Select a row first."
@@ -47,6 +47,7 @@ class EnvInspectorControllerActionsMixin:
             return
 
         rec = row.record
+        record_is_secret = is_record_secret(rec)
         self.key_text.set(rec.name)
 
         loaded, raw = resolve_load_value(
@@ -59,7 +60,7 @@ class EnvInspectorControllerActionsMixin:
 
         if loaded is not None:
             self.value_text.set(loaded)
-            if rec.is_secret and not raw:
+            if record_is_secret and not raw:
                 self._set_status(f"Loaded masked value for: {rec.name}")
             else:
                 self._set_status(f"Loaded value for: {rec.name}")
@@ -88,6 +89,7 @@ class EnvInspectorControllerActionsMixin:
             self._show_select_row_required()
             return
 
+        record_is_secret = is_record_secret(rec)
         payload, raw = resolve_copy_payload(
             rec,
             show_secrets=bool(self.show_secrets.get()),
@@ -99,7 +101,7 @@ class EnvInspectorControllerActionsMixin:
 
         self.tk.clipboard_clear()
         self.tk.clipboard_append(payload)
-        if rec.is_secret and not raw:
+        if record_is_secret and not raw:
             self._set_status(f"Copied masked value for: {rec.name}")
         else:
             self._set_status(f"Copied value for: {rec.name}")
@@ -110,6 +112,7 @@ class EnvInspectorControllerActionsMixin:
             self._show_select_row_required()
             return
 
+        record_is_secret = is_record_secret(rec)
         payload, raw = resolve_copy_payload(
             rec,
             show_secrets=bool(self.show_secrets.get()),
@@ -121,7 +124,7 @@ class EnvInspectorControllerActionsMixin:
 
         self.tk.clipboard_clear()
         self.tk.clipboard_append(payload)
-        if rec.is_secret and not raw:
+        if record_is_secret and not raw:
             self._set_status(f"Copied masked pair for: {rec.name}")
         else:
             self._set_status(f"Copied pair: {rec.name}=...")
