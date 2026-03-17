@@ -121,6 +121,10 @@ def _normalize_source_path(raw_path: str) -> str:
     return text
 
 
+def normalize_source_path(raw_path: str) -> str:
+    return _normalize_source_path(raw_path)
+
+
 def coverage_sources_from_xml(path: Path) -> Set[str]:
     text = path.read_text(encoding="utf-8")  # lgtm [py/path-injection]
     covered_sources: Set[str] = set()

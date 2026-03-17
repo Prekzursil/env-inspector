@@ -69,14 +69,14 @@ def test_normalize_source_path_handles_empty_and_workspace_absolute_paths(tmp_pa
     inside_file = tmp_path / "env_inspector.py"
     inside_file.write_text("print('ok')\n", encoding="utf-8")
 
-    ensure(coverage_mod._normalize_source_path("") == "")
-    ensure(coverage_mod._normalize_source_path(str(tmp_path)) == "")
-    ensure(coverage_mod._normalize_source_path(str(inside_file)) == "env_inspector.py")
+    ensure(coverage_mod.normalize_source_path("") == "")
+    ensure(coverage_mod.normalize_source_path(str(tmp_path)) == "")
+    ensure(coverage_mod.normalize_source_path(str(inside_file)) == "env_inspector.py")
 
 
 def test_normalize_source_path_handles_empty_normpath_result(monkeypatch):
     monkeypatch.setattr(coverage_mod.posixpath, "normpath", lambda _value: "")
-    ensure(coverage_mod._normalize_source_path("ignored") == "")
+    ensure(coverage_mod.normalize_source_path("ignored") == "")
 
 
 def test_assert_coverage_uses_shared_security_import_helpers():
