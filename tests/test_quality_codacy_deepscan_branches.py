@@ -295,7 +295,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
 
 
 def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
-    findings: list[str] = []
+    findings: List[str] = []
     monkeypatch.setattr(deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}})
 
     open_issues = deepscan_mod._fetch_open_issues(
