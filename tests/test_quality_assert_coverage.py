@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from scripts.quality import assert_coverage_100 as coverage_mod
+from scripts.quality import _security_imports as security_imports
 from scripts import security_helpers as sec
 
 from tests.assertions import ensure
@@ -76,3 +77,8 @@ def test_normalize_source_path_handles_empty_and_workspace_absolute_paths(tmp_pa
 def test_normalize_source_path_handles_empty_normpath_result(monkeypatch):
     monkeypatch.setattr(coverage_mod.posixpath, "normpath", lambda _value: "")
     ensure(coverage_mod._normalize_source_path("ignored") == "")
+
+
+def test_assert_coverage_uses_shared_security_import_helpers():
+    ensure(coverage_mod.SAFE_INPUT_FILE_PATH_IN_WORKSPACE is security_imports.safe_input_file_path_in_workspace)
+    ensure(coverage_mod.SAFE_OUTPUT_PATH_IN_WORKSPACE is security_imports.safe_output_path_in_workspace)
