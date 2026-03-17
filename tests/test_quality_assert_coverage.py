@@ -80,5 +80,11 @@ def test_normalize_source_path_handles_empty_normpath_result(monkeypatch):
 
 
 def test_assert_coverage_uses_shared_security_import_helpers():
-    ensure(coverage_mod.SAFE_INPUT_FILE_PATH_IN_WORKSPACE is security_imports.safe_input_file_path_in_workspace)
-    ensure(coverage_mod.SAFE_OUTPUT_PATH_IN_WORKSPACE is security_imports.safe_output_path_in_workspace)
+    ensure(
+        coverage_mod.SAFE_INPUT_FILE_PATH_IN_WORKSPACE
+        is security_imports.safe_input_file_path_in_workspace
+    )
+    ensure(
+        coverage_mod.SAFE_OUTPUT_PATH_IN_WORKSPACE
+        is security_imports.safe_output_path_in_workspace
+    )
