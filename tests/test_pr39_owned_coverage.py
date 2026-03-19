@@ -14,6 +14,7 @@ import env_inspector_core.service as service_module
 import env_inspector_core.service_listing as service_listing_module
 import env_inspector_core.service_privileged as service_privileged_module
 from env_inspector_core.models import EnvRecord, OperationResult
+from env_inspector_core.service_ops import OperationResultInput, operation_result
 from env_inspector_core.path_policy import PathPolicyError
 from env_inspector_core.service import EnvInspectorService
 from scripts.quality import assert_coverage_100 as coverage_mod
@@ -155,29 +156,43 @@ def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(svc, "_registry_write", lambda *args, **kwargs: ("before", "after", "registry", False, None))
     ensure(
         svc._plan_target_operation(
-            "windows:user",
-            "API_TOKEN",
-            "1",
-            "set",
+            service_module.TargetOperationRequest(
+                target="windows:user",
+                key="API_TOKEN",
+                value="1",
+                action="set",
+                scope_roots=[tmp_path],
+            ),
             apply_changes=False,
-            scope_roots=[tmp_path],
         )[2]
         == "registry"
     )
 
     with pytest.raises(RuntimeError, match="Unsupported target"):
-        svc._file_update("custom:target", "API_TOKEN", "1", "set", apply_changes=False, scope_roots=[tmp_path])
+        svc._file_update(
+            service_module.TargetOperationRequest(
+                target="custom:target",
+                key="API_TOKEN",
+                value="1",
+                action="set",
+                scope_roots=[tmp_path],
+            ),
+            apply_changes=False,
+        )
 
     ensure(
-        svc._make_operation_result(
-            operation_id="op-1",
-            target="linux:bashrc",
-            action="set",
-            success=True,
-            backup_path=None,
-            diff_preview="",
-            error_message=None,
-            value_masked=None,
+        operation_result(
+            OperationResultInput(
+                operation_id="op-1",
+                target="linux:bashrc",
+                action="set",
+                success=True,
+                backup_path=None,
+                preview_only=False,
+                diff_preview="",
+                error_message=None,
+                value_masked=None,
+            )
         ).success
         is True
     )
