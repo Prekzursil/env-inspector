@@ -78,12 +78,19 @@ def test_restore_helpers_reject_positional_arguments(tmp_path: Path) -> None:
         service_restore_module.restore_target("bad-arg")
 
 
-def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> None:
-    scoped = SimpleNamespace(path=tmp_path / ".env", roots=[tmp_path])
-    wsl = SimpleNamespace(
+def _scoped_dotenv_target(tmp_path: Path) -> SimpleNamespace:
+    return SimpleNamespace(path=tmp_path / ".env", roots=[tmp_path])
+
+
+def _wsl_write_adapter() -> SimpleNamespace:
+    return SimpleNamespace(
         write_file=lambda *_args: None,
         write_file_with_privilege=lambda *_args: None,
     )
+
+
+def test_restore_dotenv_target_rejects_unexpected_keyword_arguments(tmp_path: Path) -> None:
+    scoped = _scoped_dotenv_target(tmp_path)
 
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_dotenv_target(
@@ -95,6 +102,8 @@ def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> 
             unexpected=True,
         )
 
+
+def test_restore_linux_target_rejects_unexpected_keyword_arguments() -> None:
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_linux_target(
             target="linux:bashrc",
@@ -102,6 +111,10 @@ def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> 
             write_linux_etc_environment_with_privilege_fn=lambda _text: None,
             unexpected=True,
         )
+
+
+def test_restore_wsl_target_rejects_unexpected_keyword_arguments() -> None:
+    wsl = _wsl_write_adapter()
 
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_wsl_target(
@@ -114,6 +127,8 @@ def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> 
             unexpected=True,
         )
 
+
+def test_restore_powershell_target_rejects_unexpected_keyword_arguments(tmp_path: Path) -> None:
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_powershell_target(
             target="powershell:current_user",
@@ -123,6 +138,8 @@ def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> 
             unexpected=True,
         )
 
+
+def test_restore_windows_registry_target_rejects_unexpected_keyword_arguments() -> None:
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_windows_registry_target(
             target="windows:user",
@@ -136,6 +153,8 @@ def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> 
             unexpected=True,
         )
 
+
+def test_restore_target_rejects_unexpected_keyword_arguments(tmp_path: Path) -> None:
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_target(
             target="linux:bashrc",
@@ -151,36 +170,42 @@ def test_restore_helpers_reject_unexpected_keyword_arguments(tmp_path: Path) -> 
 
 
 def test_coerce_scan_request_covers_positional_branches() -> None:
-    request = sentry_mod.SentryScanRequest(org="my-org", projects=["proj"], token="token")
+    auth_value = "auth-credential"
+    request = sentry_mod.SentryScanRequest(org="my-org", projects=["proj"], token=auth_value)
 
     with pytest.raises(TypeError, match="Pass either a request object or keyword arguments"):
         sentry_mod._coerce_scan_request(request, org="other")
 
-    coerced = sentry_mod._coerce_scan_request("my-org", ("backend", "web"), "token")
+    coerced = sentry_mod._coerce_scan_request("my-org", ("backend", "web"), auth_value)
     ensure(isinstance(coerced, sentry_mod.SentryScanRequest))
     ensure(coerced.org == "my-org")
     ensure(coerced.projects == ["backend", "web"])
-    ensure(coerced.token == "token")
+    ensure(coerced.token == auth_value)
 
     with pytest.raises(TypeError, match="Pass a request object or keyword arguments"):
         sentry_mod._coerce_scan_request("only-org")
 
 
 def test_scan_projects_covers_request_object_and_keyword_request_paths(monkeypatch) -> None:
+    auth_value = "auth-credential"
     monkeypatch.setattr(
         sentry_mod,
         "_request_project_issues",
         lambda org, project, token: ([], {"x-hits": "0"}),
     )
 
-    request = sentry_mod.SentryScanRequest(org="my-org", projects=["proj"], token="token")
+    request = sentry_mod.SentryScanRequest(org="my-org", projects=["proj"], token=auth_value)
     mode, results, findings, failures = sentry_mod._scan_projects(request)
     ensure(mode == "strict")
     ensure(results == [{"project": "proj", "unresolved": 0}])
     ensure(findings == [])
     ensure(failures == [])
 
-    mode, results, findings, failures = sentry_mod._scan_projects(org="my-org", projects=["proj"], token="token")
+    mode, results, findings, failures = sentry_mod._scan_projects(
+        org="my-org",
+        projects=["proj"],
+        token=auth_value,
+    )
     ensure(mode == "strict")
     ensure(results == [{"project": "proj", "unresolved": 0}])
     ensure(findings == [])

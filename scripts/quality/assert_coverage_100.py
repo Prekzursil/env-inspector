@@ -6,24 +6,26 @@ import argparse
 import importlib
 import sys
 from pathlib import Path
-from typing import List, Set
+from typing import List, Set, Tuple
 
+from scripts.quality import _coverage_assert_support as _support
 from scripts.quality._coverage_assert_support import (
     CoverageStats,
     _build_payload,
-    _matches_required_source,
-    _normalize_source_path,
-    _render_md,
     coverage_sources_from_lcov,
     coverage_sources_from_xml,
     evaluate,
-    normalize_source_path,
     parse_coverage_xml,
     parse_lcov,
     parse_named_path as parse_named_path_impl,
-    posixpath,
     _write_outputs,
 )
+
+_matches_required_source = _support._matches_required_source
+_normalize_source_path = _support._normalize_source_path
+_render_md = _support._render_md
+normalize_source_path = _support.normalize_source_path
+posixpath = _support.posixpath
 
 
 def _load_security_helpers():
@@ -70,7 +72,7 @@ def parse_named_path(value: str):
     return parse_named_path_impl(value, SAFE_INPUT_FILE_PATH_IN_WORKSPACE)
 
 
-def _collect_stats(args: argparse.Namespace) -> tuple[List[CoverageStats], Set[str]]:
+def _collect_stats(args: argparse.Namespace) -> Tuple[List[CoverageStats], Set[str]]:
     stats: List[CoverageStats] = []
     covered_sources: Set[str] = set()
     for item in args.xml:
