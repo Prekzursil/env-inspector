@@ -61,6 +61,19 @@ def _require_values(message: str, **values: Any) -> None:
         raise TypeError(message)
 
 
+def _resolve_operation_inputs(
+    args: Tuple[Any, ...],
+    kwargs: Dict[str, Any],
+    field_names: Tuple[str, ...],
+) -> Tuple[Any, ...]:
+    if args and isinstance(args[0], str):
+        return tuple(
+            args[index] if len(args) > index else kwargs.pop(name, None)
+            for index, name in enumerate(field_names)
+        )
+    return tuple(kwargs.pop(name, None) for name in field_names)
+
+
 def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, Any]:
     request = _extract_request_object(
         args=args,
@@ -69,19 +82,11 @@ def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, A
     )
     if request is not None:
         return _target_operation_payload(request)
-
-    if args and isinstance(args[0], str):
-        target = args[0]
-        key = args[1] if len(args) > 1 else kwargs.pop("key", None)
-        value = args[2] if len(args) > 2 else kwargs.pop("value", None)
-        action = args[3] if len(args) > 3 else kwargs.pop("action", None)
-        scope_roots = args[4] if len(args) > 4 else kwargs.pop("scope_roots", None)
-    else:
-        target = kwargs.pop("target", None)
-        key = kwargs.pop("key", None)
-        value = kwargs.pop("value", None)
-        action = kwargs.pop("action", None)
-        scope_roots = kwargs.pop("scope_roots", None)
+    target, key, value, action, scope_roots = _resolve_operation_inputs(
+        args,
+        kwargs,
+        ("target", "key", "value", "action", "scope_roots"),
+    )
 
     if kwargs:
         raise TypeError("Unexpected keyword arguments for target operation request.")
@@ -95,7 +100,6 @@ def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, A
         "scope_roots": list(scope_roots or []),
     }
 
-
 def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> Dict[str, Any]:
     request = _extract_request_object(
         args=args,
@@ -104,19 +108,11 @@ def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> Dict[str, Any
     )
     if request is not None:
         return _target_operation_batch_payload(request)
-
-    if args and isinstance(args[0], str):
-        action = args[0]
-        key = args[1] if len(args) > 1 else kwargs.pop("key", None)
-        value = args[2] if len(args) > 2 else kwargs.pop("value", None)
-        targets = args[3] if len(args) > 3 else kwargs.pop("targets", None)
-        scope_roots = args[4] if len(args) > 4 else kwargs.pop("scope_roots", None)
-    else:
-        action = kwargs.pop("action", None)
-        key = kwargs.pop("key", None)
-        value = kwargs.pop("value", None)
-        targets = kwargs.pop("targets", None)
-        scope_roots = kwargs.pop("scope_roots", None)
+    action, key, value, targets, scope_roots = _resolve_operation_inputs(
+        args,
+        kwargs,
+        ("action", "key", "value", "targets", "scope_roots"),
+    )
 
     if kwargs:
         raise TypeError("Unexpected keyword arguments for target operation batch.")

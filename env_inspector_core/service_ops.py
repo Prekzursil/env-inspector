@@ -2,11 +2,14 @@ from __future__ import absolute_import, division
 
 from dataclasses import dataclass
 import difflib
-from typing import Any, Dict, Tuple, Type
+from typing import Tuple, Type
 
 from .models import OperationResult
 from .secrets import mask_value
-from .service_ops_request import normalize_target_operation_batch, normalize_target_operation_request
+from . import service_ops_request as _service_ops_request
+
+normalize_target_operation_batch = _service_ops_request.normalize_target_operation_batch
+normalize_target_operation_request = _service_ops_request.normalize_target_operation_request
 
 
 @dataclass(frozen=True)

@@ -30,6 +30,31 @@ def _run_sudo_tee(
     )
 
 
+def _resolve_allowed_sudo(which_fn: Callable[[str], Optional[str]]) -> str:
+    sudo_path = which_fn("sudo")
+    if sudo_path in {"/usr/bin/sudo", "/bin/sudo"}:
+        return sudo_path
+    raise RuntimeError("sudo is not available for /etc/environment fallback.")
+
+
+def _write_with_sudo(
+    *,
+    expected_path: str,
+    text: str,
+    which_fn: Callable[[str], Optional[str]],
+    run_fn: Callable[..., CompletedProcess],
+) -> None:
+    proc = _run_sudo_tee(_resolve_allowed_sudo(which_fn), expected_path, text, run_fn)
+    if proc.returncode == 0:
+        return
+    err = (proc.stderr or "").strip()
+    raise RuntimeError(
+        "Failed to write /etc/environment using direct write and sudo fallback. "
+        "Run with elevated privileges or configure passwordless sudo for this command."
+        + (f" Details: {err}" if err else "")
+    )
+
+
 def write_linux_etc_environment_with_privilege(*args, **kwargs) -> None:
     if args:
         raise TypeError("write_linux_etc_environment_with_privilege accepts keyword arguments only.")
@@ -49,18 +74,9 @@ def write_linux_etc_environment_with_privilege(*args, **kwargs) -> None:
     path = Path(expected_path)
     if _try_direct_write(path, text, write_text_file):
         return
-
-    sudo_path = which_fn("sudo")
-    allowed_sudo_path = sudo_path if sudo_path in {"/usr/bin/sudo", "/bin/sudo"} else None
-    if not allowed_sudo_path:
-        raise RuntimeError("sudo is not available for /etc/environment fallback.")
-    proc = _run_sudo_tee(allowed_sudo_path, expected_path, text, run_fn)
-    if proc.returncode == 0:
-        return
-
-    err = (proc.stderr or "").strip()
-    raise RuntimeError(
-        "Failed to write /etc/environment using direct write and sudo fallback. "
-        "Run with elevated privileges or configure passwordless sudo for this command."
-        + (f" Details: {err}" if err else "")
+    _write_with_sudo(
+        expected_path=expected_path,
+        text=text,
+        which_fn=which_fn,
+        run_fn=run_fn,
     )

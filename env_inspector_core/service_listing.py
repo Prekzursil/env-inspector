@@ -42,6 +42,13 @@ class HostRowCollectors:
     collect_linux_records_fn: Callable[..., List[EnvRecord]]
 
 
+@dataclass(frozen=True)
+class _WslDotenvRequest:
+    distro: str | None
+    wsl_path: str | None
+    scan_depth: int
+
+
 def collect_host_rows(
     *,
     request: HostCollectionRequest,
@@ -88,32 +95,47 @@ def collect_wsl_rows(*args: Any, **kwargs: Any) -> List[EnvRecord]:
         unexpected = ", ".join(sorted(kwargs))
         raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
 
-    rows: List[EnvRecord] = []
     if not wsl.available():
-        return rows
+        return []
 
+    rows = _bridge_rows(
+        runtime_context=runtime_context,
+        current_wsl_distro=current_wsl_distro,
+        wsl=wsl,
+        collect_wsl_records_fn=collect_wsl_records_fn,
+    )
+    rows.extend(
+        _wsl_dotenv_rows(
+            request=_WslDotenvRequest(distro=distro, wsl_path=wsl_path, scan_depth=scan_depth),
+            wsl=wsl,
+            collect_wsl_dotenv_records_fn=collect_wsl_dotenv_records_fn,
+        )
+    )
+    return rows
+
+
+def _bridge_rows(*, runtime_context: str, current_wsl_distro: str | None, wsl: Any, collect_wsl_records_fn) -> List[EnvRecord]:
     try:
         exclude_distros: Optional[Set[str]] = None
         if runtime_context == "linux" and current_wsl_distro:
             exclude_distros = {current_wsl_distro}
-        bridge_rows = collect_wsl_records_fn(wsl, include_etc=True, exclude_distros=exclude_distros)
+        return collect_wsl_records_fn(wsl, include_etc=True, exclude_distros=exclude_distros)
     except (OSError, RuntimeError, ValueError):
-        bridge_rows = []
-    rows.extend(bridge_rows)
+        return []
 
-    if distro and wsl_path:
-        try:
-            dotenv_rows = collect_wsl_dotenv_records_fn(
-                wsl,
-                distro=distro,
-                root_path=wsl_path,
-                max_depth=scan_depth,
-            )
-        except (OSError, RuntimeError, ValueError):
-            dotenv_rows = []
-        rows.extend(dotenv_rows)
 
-    return rows
+def _wsl_dotenv_rows(*, request: _WslDotenvRequest, wsl: Any, collect_wsl_dotenv_records_fn) -> List[EnvRecord]:
+    if not (request.distro and request.wsl_path):
+        return []
+    try:
+        return collect_wsl_dotenv_records_fn(
+            wsl,
+            distro=request.distro,
+            root_path=request.wsl_path,
+            max_depth=request.scan_depth,
+        )
+    except (OSError, RuntimeError, ValueError):
+        return []
 
 
 def apply_row_filters(

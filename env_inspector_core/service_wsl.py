@@ -38,6 +38,29 @@ def parse_wsl_dotenv_target(
     return validate_distro_name_fn(distro), validate_dotenv_path_fn(path)
 
 
+def _split_wsl_target(target: str) -> Tuple[str, str]:
+    parts = target.split(":", 2)
+    if len(parts) != 3:
+        raise RuntimeError(f"Unsupported WSL target: {target}")
+    _prefix, distro, suffix = parts
+    return distro, suffix
+
+
+def _resolve_standard_wsl_target(
+    target: str,
+    *,
+    validate_distro_name_fn,
+    linux_etc_env_path: str,
+) -> Tuple[str, str, str, bool]:
+    distro, suffix = _split_wsl_target(target)
+    distro_name = validate_distro_name_fn(distro)
+    if suffix == "bashrc":
+        return distro_name, "~/.bashrc", "export", False
+    if suffix == "etc_environment":
+        return distro_name, linux_etc_env_path, "key_value", True
+    raise RuntimeError(f"Unsupported WSL target: {target}")
+
+
 def resolve_wsl_target(*args, **kwargs) -> Tuple[str, str, str, bool]:
     if not args:
         raise TypeError("resolve_wsl_target requires a target argument.")
@@ -59,15 +82,8 @@ def resolve_wsl_target(*args, **kwargs) -> Tuple[str, str, str, bool]:
 
     if not target.startswith("wsl:"):
         raise RuntimeError(f"Unsupported WSL target: {target}")
-
-    parts = target.split(":", 2)
-    if len(parts) != 3:
-        raise RuntimeError(f"Unsupported WSL target: {target}")
-
-    _prefix, distro, suffix = parts
-    distro_name = validate_distro_name_fn(distro)
-    if suffix == "bashrc":
-        return distro_name, "~/.bashrc", "export", False
-    if suffix == "etc_environment":
-        return distro_name, linux_etc_env_path, "key_value", True
-    raise RuntimeError(f"Unsupported WSL target: {target}")
+    return _resolve_standard_wsl_target(
+        target,
+        validate_distro_name_fn=validate_distro_name_fn,
+        linux_etc_env_path=linux_etc_env_path,
+    )

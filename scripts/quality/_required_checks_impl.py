@@ -22,57 +22,33 @@ class SettledChecksRequest:
 
 
 try:
-    from ._required_checks_http import (
-        GITHUB_API_HOST,
-        GitHubRequest,
-        _SHA_RE,
-        _TRANSIENT_HTTP_CODES,
-        _api_get_check_runs,
-        _api_get_status,
-        _check_run_context,
-        _check_run_failure,
-        _collect_contexts,
-        _evaluate,
-        _github_headers,
-        _is_transient_http_error,
-        _next_retry_wait,
-        _parse_repo,
-        _parse_sha,
-        _request_payload_with_retry,
-        _should_retry_http_error,
-        _should_retry_url_error,
-        _status_context,
-        _status_failure,
-        encode_identifier,
-        request_json_https,
-        safe_output_path_in_workspace,
-    )
+    from . import _required_checks_http as _http
 except ImportError:  # pragma: no cover - direct script execution
-    from _required_checks_http import (  # type: ignore
-        GITHUB_API_HOST,
-        GitHubRequest,
-        _SHA_RE,
-        _TRANSIENT_HTTP_CODES,
-        _api_get_check_runs,
-        _api_get_status,
-        _check_run_context,
-        _check_run_failure,
-        _collect_contexts,
-        _evaluate,
-        _github_headers,
-        _is_transient_http_error,
-        _next_retry_wait,
-        _parse_repo,
-        _parse_sha,
-        _request_payload_with_retry,
-        _should_retry_http_error,
-        _should_retry_url_error,
-        _status_context,
-        _status_failure,
-        encode_identifier,
-        request_json_https,
-        safe_output_path_in_workspace,
-    )
+    import _required_checks_http as _http  # type: ignore
+
+GitHubRequest = _http.GitHubRequest
+GITHUB_API_HOST = _http.GITHUB_API_HOST
+_SHA_RE = _http._SHA_RE
+_TRANSIENT_HTTP_CODES = _http._TRANSIENT_HTTP_CODES
+_api_get_check_runs = _http._api_get_check_runs
+_api_get_status = _http._api_get_status
+_check_run_context = _http._check_run_context
+_check_run_failure = _http._check_run_failure
+_collect_contexts = _http._collect_contexts
+_evaluate = _http._evaluate
+_github_headers = _http._github_headers
+_is_transient_http_error = _http._is_transient_http_error
+_next_retry_wait = _http._next_retry_wait
+_parse_repo = _http._parse_repo
+_parse_sha = _http._parse_sha
+_request_payload_with_retry = _http._request_payload_with_retry
+_should_retry_http_error = _http._should_retry_http_error
+_should_retry_url_error = _http._should_retry_url_error
+_status_context = _http._status_context
+_status_failure = _http._status_failure
+encode_identifier = _http.encode_identifier
+request_json_https = _http.request_json_https
+safe_output_path_in_workspace = _http.safe_output_path_in_workspace
 
 
 def _parse_args() -> argparse.Namespace:

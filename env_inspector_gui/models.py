@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 
 from env_inspector_core.models import EnvRecord
@@ -193,7 +193,7 @@ def resolve_selected_targets(
 
 def summarize_operation_result(action: str, result: Mapping[str, Any]) -> OperationResultSummary:
     if isinstance(result, dict) and "results" in result:
-        failures = [item for item in result["results"] if isinstance(item, dict) and not item.get("success")]
+        failures = _batch_failures(result["results"])
         if failures:
             return OperationResultSummary(
                 status_message=None,
@@ -213,6 +213,10 @@ def summarize_operation_result(action: str, result: Mapping[str, Any]) -> Operat
         status_message=None,
         error_message=f"{action.title()} failed: {result.get('error_message')}",
     )
+
+
+def _batch_failures(results: Any) -> List[Mapping[str, Any]]:
+    return [item for item in results if isinstance(item, dict) and not item.get("success")]
 
 
 def select_target_dialog_result(result: List[str] | None, *, messagebox: Any, app_name: str) -> List[str] | None:

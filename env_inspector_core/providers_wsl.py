@@ -7,7 +7,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Set
 
 from .constants import SOURCE_WSL_BASHRC, SOURCE_WSL_DOTENV, SOURCE_WSL_ETC_ENV
 from .models import EnvRecord
@@ -70,7 +70,8 @@ class WslProvider:
     def _run(self, args: List[str], input_text: str | None = None) -> str:
         if not self.available():
             raise RuntimeError("wsl.exe not available")
-        assert self.wsl_exe is not None
+        if self.wsl_exe is None:  # pragma: no cover - guarded by available()
+            raise RuntimeError("wsl.exe path unavailable")
         proc = self.runner(
             [str(self.wsl_exe), *args],
             input=(input_text.encode("utf-8") if input_text is not None else None),

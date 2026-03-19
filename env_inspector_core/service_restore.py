@@ -2,7 +2,7 @@ from __future__ import absolute_import, division
 
 import json
 from pathlib import Path
-from typing import Any, Callable, List, Tuple, cast
+from typing import cast
 
 
 def restore_dotenv_target(*args, **kwargs) -> None:
@@ -143,19 +143,48 @@ def restore_target(*args, **kwargs) -> None:
         unexpected = ", ".join(sorted(kwargs))
         raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
 
+    handler = _restore_dispatch(target)
+    handler(
+        target=target,
+        text=text,
+        scope_roots=scope_roots,
+        restore_dotenv_target_fn=restore_dotenv_target_fn,
+        restore_linux_target_fn=restore_linux_target_fn,
+        restore_wsl_target_fn=restore_wsl_target_fn,
+        restore_powershell_target_fn=restore_powershell_target_fn,
+        restore_windows_registry_target_fn=restore_windows_registry_target_fn,
+    )
+
+
+def _restore_dispatch(target: str):
     if target.startswith("dotenv:"):
-        restore_dotenv_target_fn(target=target, text=text, scope_roots=scope_roots)
-        return
+        return _dispatch_restore_dotenv
     if target.startswith("linux:"):
-        restore_linux_target_fn(target=target, text=text)
-        return
+        return _dispatch_restore_linux
     if target.startswith("wsl_dotenv:") or target.startswith("wsl:"):
-        restore_wsl_target_fn(target=target, text=text)
-        return
+        return _dispatch_restore_wsl
     if target.startswith("powershell:"):
-        restore_powershell_target_fn(target=target, text=text)
-        return
+        return _dispatch_restore_powershell
     if target.startswith("windows:"):
-        restore_windows_registry_target_fn(target=target, text=text)
-        return
+        return _dispatch_restore_windows
     raise RuntimeError(f"Unsupported restore target: {target}")
+
+
+def _dispatch_restore_dotenv(**kwargs) -> None:
+    kwargs["restore_dotenv_target_fn"](target=kwargs["target"], text=kwargs["text"], scope_roots=kwargs["scope_roots"])
+
+
+def _dispatch_restore_linux(**kwargs) -> None:
+    kwargs["restore_linux_target_fn"](target=kwargs["target"], text=kwargs["text"])
+
+
+def _dispatch_restore_wsl(**kwargs) -> None:
+    kwargs["restore_wsl_target_fn"](target=kwargs["target"], text=kwargs["text"])
+
+
+def _dispatch_restore_powershell(**kwargs) -> None:
+    kwargs["restore_powershell_target_fn"](target=kwargs["target"], text=kwargs["text"])
+
+
+def _dispatch_restore_windows(**kwargs) -> None:
+    kwargs["restore_windows_registry_target_fn"](target=kwargs["target"], text=kwargs["text"])
