@@ -80,11 +80,6 @@ SKIP_DIRS = {
 }
 
 _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
-_POWERSHELL_ASSIGNMENT_RE = re.compile(
-    r"^\s*(?!#)\$env:(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<value>[^\r\n]*)\s*$"
-)
-
-
 def is_windows() -> bool:
     return os.name == "nt"
 
@@ -262,10 +257,18 @@ def _is_valid_powershell_env_key(key: str) -> bool:
 
 
 def _parse_powershell_assignment(line: str) -> Optional[Tuple[str, str]]:
-    match = _POWERSHELL_ASSIGNMENT_RE.match(line)
-    if match is None:
+    stripped = line.lstrip()
+    if not stripped or stripped.startswith("#") or not stripped.startswith("$env:"):
         return None
-    return match.group("key"), _normalize_powershell_assignment_value(match.group("value"))
+    body = stripped[len("$env:") :]
+    separator = body.find("=")
+    if separator < 0:
+        return None
+    key = body[:separator].strip()
+    if not _is_valid_powershell_env_key(key):
+        return None
+    value = body[separator + 1 :].strip()
+    return key, _normalize_powershell_assignment_value(value)
 
 
 def parse_powershell_profile_text(text: str) -> List[Tuple[str, str]]:
