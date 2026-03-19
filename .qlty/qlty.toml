@@ -53,7 +53,7 @@ test_patterns = [
 ]
 
 [smells]
-mode = "comment"
+mode = "block"
 
 [[source]]
 name = "default"

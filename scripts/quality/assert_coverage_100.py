@@ -12,7 +12,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 def _load_security_helpers():
     try:
@@ -108,16 +108,15 @@ def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
 
 def _normalize_source_path(raw_path: str) -> str:
     text = posixpath.normpath(raw_path.strip().replace("\\", "/"))
-    if not text:
-        return ""
-    if text == ".":
+    if text in {"", "."}:
         return ""
 
     workspace_root = posixpath.normpath(Path.cwd().resolve(strict=False).as_posix())
     if text == workspace_root:
         return ""
-    if text.startswith(f"{workspace_root}/"):
-        return text[len(workspace_root) + 1 :]
+    workspace_prefix = f"{workspace_root}/"
+    if text.startswith(workspace_prefix):
+        return text[len(workspace_prefix) :]
     return text
 
 
@@ -170,15 +169,12 @@ def _matches_required_source(source_path: str, required_source: str) -> bool:
 
 
 def _find_missing_required_sources(reported_sources: Set[str], required_sources: List[str]) -> List[str]:
-    missing: List[str] = []
-    for required_source in required_sources:
-        normalized_required = _normalize_source_path(required_source).rstrip("/")
-        if not normalized_required:
-            continue
-        if any(_matches_required_source(source_path, normalized_required) for source_path in reported_sources):
-            continue
-        missing.append(normalized_required)
-    return missing
+    return [
+        normalized_required
+        for required_source in required_sources
+        if (normalized_required := _normalize_source_path(required_source).rstrip("/"))
+        and not any(_matches_required_source(source_path, normalized_required) for source_path in reported_sources)
+    ]
 
 
 def _is_tests_only_report(reported_sources: Set[str]) -> bool:
@@ -188,13 +184,11 @@ def _is_tests_only_report(reported_sources: Set[str]) -> bool:
 
 
 def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[str]:
-    findings: List[str] = []
-    for item in stats:
-        if item.percent < min_percent:
-            findings.append(
-                f"{item.name} coverage below {min_percent:.2f}%: {item.percent:.2f}% ({item.covered}/{item.total})"
-            )
-
+    findings = [
+        f"{item.name} coverage below {min_percent:.2f}%: {item.percent:.2f}% ({item.covered}/{item.total})"
+        for item in stats
+        if item.percent < min_percent
+    ]
     combined_total = sum(item.total for item in stats)
     combined_covered = sum(item.covered for item in stats)
     combined = 100.0 if combined_total <= 0 else (combined_covered / combined_total) * 100.0
@@ -206,12 +200,12 @@ def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[s
 
 
 def _source_findings(reported_sources: Set[str], required_sources: List[str]) -> List[str]:
-    findings: List[str] = []
-    if _is_tests_only_report(reported_sources):
-        findings.append("coverage inputs only reference tests/ paths; first-party sources are missing.")
-
-    for required_source in _find_missing_required_sources(reported_sources, required_sources):
-        findings.append(f"missing required source path: {required_source}")
+    findings = (
+        ["coverage inputs only reference tests/ paths; first-party sources are missing."]
+        if _is_tests_only_report(reported_sources)
+        else []
+    )
+    findings.extend(f"missing required source path: {required_source}" for required_source in _find_missing_required_sources(reported_sources, required_sources))
     return findings
 
 
@@ -229,29 +223,15 @@ def evaluate(
     return status, findings
 
 
-def _append_component_lines(lines: List[str], payload: Dict[str, Any]) -> None:
-    components = payload.get("components") or []
-    if components:
-        for item in components:
-            lines.append(
-                f"- `{item['name']}`: `{item['percent']:.2f}%` ({item['covered']}/{item['total']}) from `{item['path']}`"
-            )
-        return
-    lines.append(_NONE_LIST_ITEM)
-
-
-def _append_covered_source_lines(lines: List[str], payload: Dict[str, Any]) -> None:
-    sources = payload.get("covered_sources") or []
-    if sources:
-        lines.extend(f"- `{source_path}`" for source_path in sources)
-        return
-    lines.append(_NONE_LIST_ITEM)
-
-
-def _append_finding_lines(lines: List[str], payload: Dict[str, Any]) -> None:
-    findings = payload.get("findings") or []
-    if findings:
-        lines.extend(f"- {finding}" for finding in findings)
+def _append_section_lines(
+    lines: List[str],
+    payload: Dict[str, Any],
+    key: str,
+    formatter: Callable[[Any], str],
+) -> None:
+    items = payload.get(key) or []
+    if items:
+        lines.extend(formatter(item) for item in items)
         return
     lines.append(_NONE_LIST_ITEM)
 
@@ -266,13 +246,18 @@ def _render_md(payload: Dict[str, Any]) -> str:
         "",
         "## Components",
     ]
-    _append_component_lines(lines, payload)
+    _append_section_lines(
+        lines,
+        payload,
+        "components",
+        lambda item: f"- `{item['name']}`: `{item['percent']:.2f}%` ({item['covered']}/{item['total']}) from `{item['path']}`",
+    )
 
     lines.extend(["", "## Covered sources"])
-    _append_covered_source_lines(lines, payload)
+    _append_section_lines(lines, payload, "covered_sources", lambda source_path: f"- `{source_path}`")
 
     lines.extend(["", "## Findings"])
-    _append_finding_lines(lines, payload)
+    _append_section_lines(lines, payload, "findings", lambda finding: f"- {finding}")
 
     return "\n".join(lines) + "\n"
 

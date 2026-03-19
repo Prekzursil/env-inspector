@@ -30,15 +30,20 @@ def _run_sudo_tee(
     )
 
 
-def write_linux_etc_environment_with_privilege(
-    *,
-    fixed_path: str,
-    expected_path: str,
-    text: str,
-    write_text_file: Callable[[Path, str], None],
-    which_fn: Callable[[str], Optional[str]] = which,
-    run_fn: Callable[..., CompletedProcess] = run,
-) -> None:
+def write_linux_etc_environment_with_privilege(*args, **kwargs) -> None:
+    if args:
+        raise TypeError("write_linux_etc_environment_with_privilege accepts keyword arguments only.")
+
+    fixed_path = kwargs.pop("fixed_path")
+    expected_path = kwargs.pop("expected_path")
+    text = kwargs.pop("text")
+    write_text_file = kwargs.pop("write_text_file")
+    which_fn = kwargs.pop("which_fn", which)
+    run_fn = kwargs.pop("run_fn", run)
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
+
     if fixed_path != expected_path:
         raise RuntimeError(f"Unexpected /etc/environment resolution: {fixed_path}")
     path = Path(expected_path)

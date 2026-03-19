@@ -8,6 +8,7 @@ import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 from urllib.parse import urlparse, urlunparse
@@ -15,6 +16,27 @@ from urllib.parse import urlparse, urlunparse
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 _LOCAL_IP_FLAGS = ("is_private", "is_loopback", "is_link_local", "is_reserved", "is_multicast")
+
+
+@dataclass(frozen=True)
+class _HttpsRequestInput:
+    host: str
+    path: str
+    headers: Dict[str, str]
+    method: str = "GET"
+    query: Optional[Dict[str, str]] = None
+    data: Optional[Dict[str, Any]] = None
+    timeout: int = 30
+
+
+@dataclass(frozen=True)
+class _HttpsExecutionRequest:
+    host: str
+    method: str
+    request_target: str
+    headers: Dict[str, str]
+    body: Optional[str]
+    timeout: int
 
 
 def _parse_https_url(raw_url: str):
@@ -182,51 +204,58 @@ def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[
     return status, reason, raw_body, response_headers
 
 
-def _execute_https_request(
-    *,
-    host: str,
-    method: str,
-    request_target: str,
-    headers: Dict[str, str],
-    body: Optional[str],
-    timeout: int,
-) -> Tuple[int, str, str, Dict[str, str]]:
-    request = urllib.request.Request(
-        url=f"https://{host}{request_target}",
-        data=body.encode("utf-8") if body is not None else None,
-        headers=headers,
-        method=method.upper(),
+def _execute_https_request(request: _HttpsExecutionRequest) -> Tuple[int, str, str, Dict[str, str]]:
+    http_request = urllib.request.Request(
+        url=f"https://{request.host}{request.request_target}",
+        data=request.body.encode("utf-8") if request.body is not None else None,
+        headers=request.headers,
+        method=request.method.upper(),
     )
     try:
         opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
-        with opener.open(request, timeout=timeout) as response:
+        with opener.open(http_request, timeout=request.timeout) as response:
             status, reason, raw_body, response_headers = _read_https_success(response)
     except urllib.error.HTTPError as exc:
         status, reason, raw_body, response_headers = _read_https_error(exc)
     return status, reason, raw_body, response_headers
 
 
-def request_json_https(
-    *,
-    host: str,
-    path: str,
-    headers: Dict[str, str],
-    method: str = "GET",
-    query: Optional[Dict[str, str]] = None,
-    data: Optional[Dict[str, Any]] = None,
-    timeout: int = 30,
-) -> Tuple[Any, Dict[str, str]]:
-    validated_host = _normalize_https_host(host)
-    normalized_path = _normalize_https_path(path)
-    request_target = _build_request_target(normalized_path, query)
-    body = _json_body_or_none(data)
+def _coerce_https_request(*args: Any, **kwargs: Any) -> _HttpsRequestInput:
+    if args:
+        if len(args) == 1 and isinstance(args[0], _HttpsRequestInput):
+            if kwargs:
+                raise TypeError("Pass either a request object or keyword arguments, not both.")
+            return args[0]
+        raise TypeError("Pass a request object or keyword arguments, not positional arguments.")
+    request = _HttpsRequestInput(
+        host=str(kwargs.pop("host")),
+        path=str(kwargs.pop("path")),
+        headers=dict(kwargs.pop("headers")),
+        method=str(kwargs.pop("method", "GET")),
+        query=kwargs.pop("query", None),
+        data=kwargs.pop("data", None),
+        timeout=int(kwargs.pop("timeout", 30)),
+    )
+    if kwargs:
+        raise TypeError(f"Unexpected keyword arguments: {', '.join(sorted(kwargs))}")
+    return request
+
+
+def request_json_https(*args: Any, **kwargs: Any) -> Tuple[Any, Dict[str, str]]:
+    request = _coerce_https_request(*args, **kwargs)
+    validated_host = _normalize_https_host(request.host)
+    normalized_path = _normalize_https_path(request.path)
+    request_target = _build_request_target(normalized_path, request.query)
+    body = _json_body_or_none(request.data)
     status, reason, raw_body, response_headers = _execute_https_request(
-        host=validated_host,
-        method=method,
-        request_target=request_target,
-        headers=headers,
-        body=body,
-        timeout=timeout,
+        _HttpsExecutionRequest(
+            host=validated_host,
+            method=request.method,
+            request_target=request_target,
+            headers=request.headers,
+            body=body,
+            timeout=request.timeout,
+        )
     )
     if status >= 400:
         error_headers = Message()

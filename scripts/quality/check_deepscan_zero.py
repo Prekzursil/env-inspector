@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import urllib.error
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple, cast
@@ -16,6 +17,15 @@ TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issue
 RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
 SafeOutputPathInWorkspace = Callable[..., Path]
 SplitValidatedHttpsUrl = Callable[..., Tuple[str, str, Dict[str, str]]]
+
+
+@dataclass(frozen=True)
+class DeepScanRequest:
+    host: str
+    path: str
+    query: dict
+    token: str
+    findings: List[str]
 
 
 def _load_security_imports() -> Any:
@@ -88,26 +98,39 @@ def _resolve_deepscan_endpoint(open_issues_url: str) -> Tuple[str, str, Dict[str
     )
 
 
-def _fetch_open_issues(
-    *,
-    host: str,
-    path: str,
-    query: dict,
-    token: str,
-    findings: List[str],
-) -> int | None:
+def _coerce_fetch_request(*args: Any, **kwargs: Any) -> DeepScanRequest:
+    if args:
+        if len(args) == 1 and isinstance(args[0], DeepScanRequest):
+            if kwargs:
+                raise TypeError("Pass either a request object or keyword arguments, not both.")
+            return args[0]
+        if len(args) == 5 and not kwargs:
+            host, path, query, token, findings = args
+            return DeepScanRequest(host=str(host), path=str(path), query=dict(query), token=str(token), findings=findings)
+        raise TypeError("Pass a request object or keyword arguments, not positional arguments.")
+    return DeepScanRequest(
+        host=str(kwargs.pop("host")),
+        path=str(kwargs.pop("path")),
+        query=dict(kwargs.pop("query")),
+        token=str(kwargs.pop("token")),
+        findings=kwargs.pop("findings"),
+    )
+
+
+def _fetch_open_issues(*args: Any, **kwargs: Any) -> int | None:
+    request = _coerce_fetch_request(*args, **kwargs)
     try:
-        payload = _request_json(host=host, path=path, query=query, token=token)
+        payload = _request_json(host=request.host, path=request.path, query=request.query, token=request.token)
     except (urllib.error.URLError, RuntimeError, ValueError) as exc:  # pragma: no cover - network/runtime surface
-        findings.append(f"DeepScan API request failed: {exc}")
+        request.findings.append(f"DeepScan API request failed: {exc}")
         return None
 
     open_issues = extract_total_open(payload)
     if open_issues is None:
-        findings.append("DeepScan response did not include a parseable total issue count.")
+        request.findings.append("DeepScan response did not include a parseable total issue count.")
         return None
     if open_issues != 0:
-        findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
+        request.findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
     return open_issues
 
 

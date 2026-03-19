@@ -38,14 +38,21 @@ def parse_wsl_dotenv_target(
     return validate_distro_name_fn(distro), validate_dotenv_path_fn(path)
 
 
-def resolve_wsl_target(
-    target: str,
-    *,
-    dotenv_prefix: str,
-    validate_distro_name_fn,
-    parse_wsl_dotenv_target_fn,
-    linux_etc_env_path: str,
-) -> Tuple[str, str, str, bool]:
+def resolve_wsl_target(*args, **kwargs) -> Tuple[str, str, str, bool]:
+    if not args:
+        raise TypeError("resolve_wsl_target requires a target argument.")
+    target = args[0]
+    if len(args) > 1:
+        raise TypeError("resolve_wsl_target accepts a single positional target argument only.")
+
+    dotenv_prefix = kwargs.pop("dotenv_prefix")
+    validate_distro_name_fn = kwargs.pop("validate_distro_name_fn")
+    parse_wsl_dotenv_target_fn = kwargs.pop("parse_wsl_dotenv_target_fn")
+    linux_etc_env_path = kwargs.pop("linux_etc_env_path")
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
+
     if target.startswith(dotenv_prefix):
         distro, path = parse_wsl_dotenv_target_fn(target)
         return distro, path, "key_value", False

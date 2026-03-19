@@ -3,6 +3,7 @@ from __future__ import absolute_import, division
 import json
 import os
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple, Type
 
@@ -57,11 +58,12 @@ from .service_listing import (
 )
 from .service_ops import (
     diff_text as _diff_text_helper,
-    make_operation_result as _make_operation_result_helper,
     masked_value as _masked_value_helper,
     OperationResultInput,
     operation_error_types as _operation_error_types_helper,
     operation_result as _operation_result_helper,
+    normalize_target_operation_batch as _normalize_target_operation_batch_helper,
+    normalize_target_operation_request as _normalize_target_operation_request_helper,
 )
 from .service_privileged import (
     run as _privileged_run,
@@ -82,6 +84,7 @@ from .service_wsl import (
     validate_wsl_distro_name as _validate_wsl_distro_name_helper,
     validate_wsl_dotenv_path as _validate_wsl_dotenv_path_helper,
 )
+from . import service_aliases as _service_aliases
 from .service_paths import (
     get_powershell_profile_paths as _get_powershell_profile_paths,
     is_path_within as _is_path_within,
@@ -119,6 +122,43 @@ def _read_text_if_exists(path: Path) -> str:
         return handle.read()
 
 
+@dataclass(frozen=True)
+class TargetOperationRequest:
+    target: str
+    key: str
+    value: str | None
+    action: str
+    scope_roots: Sequence[Path]
+
+
+@dataclass(frozen=True)
+class TargetOperationBatch:
+    action: str
+    key: str
+    value: str | None
+    targets: List[str]
+    scope_roots: List[str | Path] | None = None
+
+
+@dataclass(frozen=True)
+class ListRecordsRequest:
+    root: str | Path | None = None
+    context: str | None = None
+    source: List[str] | None = None
+    wsl_path: str | None = None
+    distro: str | None = None
+    scan_depth: int = DEFAULT_SCAN_DEPTH
+    include_raw_secrets: bool = False
+
+
+@dataclass(frozen=True)
+class ShellMutationRequest:
+    key: str
+    value: str | None
+    action: str
+    style: str
+
+
 class EnvInspectorService:
     _LINUX_ETC_ENV_PATH = "/etc/environment"
 
@@ -144,72 +184,18 @@ class EnvInspectorService:
             roots.extend(normalize_scope_roots(scope_roots))
         return normalize_scope_roots(roots)
 
-    @staticmethod
-    def get_powershell_profile_paths() -> List[Path]:
-        return _get_powershell_profile_paths()
+    def resolve_effective(self, key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
+        return resolve_effective_value(records, key, context)
 
-    @staticmethod
-    def _is_path_within(path: Path, root: Path) -> bool:
-        return _is_path_within(path, root)
 
-    @classmethod
-    def _validate_path_in_roots(cls, path: Path, roots: Sequence[Path], *, label: str) -> Path:
-        return _validate_path_in_roots(path, roots, label=label)
 
-    @staticmethod
-    def _write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
-        _write_text_file(path, text, ensure_parent=ensure_parent)
 
-    @staticmethod
-    def _write_scoped_text_file(
-        *,
-        candidate_path: Path,
-        allowed_roots: Sequence[Path],
-        text: str,
-        label: str,
-    ) -> Path:
-        return _write_scoped_text_file(
-            candidate_path=candidate_path,
-            allowed_roots=allowed_roots,
-            text=text,
-            label=label,
-        )
 
-    def _powershell_target_path_and_roots(self, target: str) -> Tuple[Path, List[Path], bool]:
-        return _powershell_target_path_and_roots(
-            target,
-            profile_resolver=self._powershell_profile_path,
-            current_user_target=TARGET_POWERSHELL_CURRENT_USER,
-            all_users_target=TARGET_POWERSHELL_ALL_USERS,
-        )
 
-    def _validated_powershell_restore_path(self, target: str) -> Path:
-        return _validated_powershell_restore_path(
-            target,
-            profile_resolver=self._powershell_profile_path,
-            current_user_target=TARGET_POWERSHELL_CURRENT_USER,
-            all_users_target=TARGET_POWERSHELL_ALL_USERS,
-        )
 
-    @classmethod
-    def _linux_etc_environment_path(cls) -> Path:
-        return _linux_etc_environment_path(cls._LINUX_ETC_ENV_PATH)
 
-    def list_contexts(self) -> List[str]:
-        contexts = [self.runtime_context]
-        if self.wsl.available():
-            for distro in self._bridge_distros():
-                contexts.append(f"wsl:{distro}")
-        return contexts
 
-    def _bridge_distros(self) -> List[str]:
-        if not self.wsl.available():
-            return []
-        distros = self.wsl.list_distros_for_ui()
-        if self.runtime_context == "linux" and self.current_wsl_distro:
-            current = self.current_wsl_distro.lower()
-            distros = [d for d in distros if d.lower() != current]
-        return distros
+
 
     def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
         return _collect_host_rows_helper(
@@ -247,97 +233,34 @@ class EnvInspectorService:
             collect_wsl_dotenv_records_fn=collect_wsl_dotenv_records,
         )
 
-    @staticmethod
-    def _apply_row_filters(
-        rows: List[EnvRecord],
-        *,
-        source: List[str] | None,
-        context: str | None,
-    ) -> List[EnvRecord]:
-        return _apply_row_filters_helper(rows, source=source, context=context)
 
     def list_records(
         self,
-        *,
-        root: str | Path | None = None,
-        context: str | None = None,
-        source: List[str] | None = None,
-        wsl_path: str | None = None,
-        distro: str | None = None,
-        scan_depth: int = DEFAULT_SCAN_DEPTH,
-        include_raw_secrets: bool = False,
+        request: ListRecordsRequest | None = None,
+        **kwargs: Any,
     ) -> List[Dict[str, Any]]:
-        root_path = resolve_scan_root(root or Path.cwd())
-        rows = self._collect_host_rows(root_path, scan_depth)
-        rows.extend(self._collect_wsl_rows(scan_depth=scan_depth, distro=distro, wsl_path=wsl_path))
-        rows = self._apply_row_filters(rows, source=source, context=context)
+        if request is None:
+            request = ListRecordsRequest(**kwargs)
+        elif kwargs:
+            raise TypeError("Pass either a ListRecordsRequest or keyword arguments, not both.")
+
+        root_path = resolve_scan_root(request.root or Path.cwd())
+        rows = self._collect_host_rows(root_path, request.scan_depth)
+        rows.extend(
+            self._collect_wsl_rows(scan_depth=request.scan_depth, distro=request.distro, wsl_path=request.wsl_path)
+        )
+        rows = self._apply_row_filters(rows, source=request.source, context=request.context)
         rows.sort(key=lambda r: (r.name.lower(), r.context, r.source_type, r.source_path))
 
-        return _rows_to_payload_helper(rows, include_raw_secrets=include_raw_secrets)
+        return _rows_to_payload_helper(rows, include_raw_secrets=request.include_raw_secrets)
 
-    def list_records_raw(self, **kwargs: Any) -> List[EnvRecord]:
-        payload = self.list_records(include_raw_secrets=True, **kwargs)
-        return [EnvRecord(**item) for item in payload]
 
-    @staticmethod
-    def resolve_effective(key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
-        return resolve_effective_value(records, key, context)
 
-    @staticmethod
-    def _diff(before: str, after: str, target: str) -> str:
-        return _diff_text_helper(before, after, target)
 
-    @classmethod
-    def _write_linux_etc_environment_with_privilege(cls, text: str) -> None:
-        _write_linux_etc_environment_with_privilege_helper(
-            fixed_path=cls._LINUX_ETC_ENV_PATH,
-            expected_path=LINUX_ETC_ENV_PATH,
-            text=text,
-            write_text_file=lambda path, payload: cls._write_text_file(path, payload, ensure_parent=False),
-            which_fn=which,
-            run_fn=run,
-        )
 
-    def available_targets(self, records: List[EnvRecord], context: str | None = None) -> List[str]:
-        return _available_targets_helper(
-            records,
-            context=context,
-            win_provider_present=self.win_provider is not None,
-        )
 
-    @staticmethod
-    def _powershell_target_for_path(source_path: str) -> str:
-        return _powershell_target_for_path_helper(source_path)
 
-    @classmethod
-    def _record_target(cls, record: EnvRecord) -> str | None:
-        return _record_target_helper(record)
 
-    def _registry_write(
-        self,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
-        *,
-        apply_changes: bool,
-    ) -> Tuple[str, str, str | None, bool, str | None]:
-        if self.win_provider is None:
-            raise RuntimeError("Windows registry provider unavailable.")
-        scope = WindowsRegistryProvider.USER_SCOPE if target == TARGET_WINDOWS_USER else WindowsRegistryProvider.MACHINE_SCOPE
-        current = self.win_provider.list_scope(scope)
-        before = json.dumps(current, indent=2, sort_keys=True)
-        if action == "set" and value is not None:
-            if apply_changes:
-                self.win_provider.set_scope_value(scope, key, value)
-            current[key] = value
-        elif action == "remove":
-            if apply_changes:
-                self.win_provider.remove_scope_value(scope, key)
-            current.pop(key, None)
-        after = json.dumps(current, indent=2, sort_keys=True)
-        requires_priv = target == TARGET_WINDOWS_MACHINE
-        return before, after, None, requires_priv, None
 
     def _powershell_profile_path(self, target: str) -> Path:
         current, all_users = self.get_powershell_profile_paths()
@@ -349,18 +272,26 @@ class EnvInspectorService:
 
     def _update_dotenv_file(
         self,
-        *,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
+        *args: Any,
         apply_changes: bool,
-        scope_roots: List[Path],
+        **kwargs: Any,
     ) -> Tuple[str, str, str | None, bool, str | None]:
-        scoped = parse_scoped_dotenv_target(target, roots=scope_roots)
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        scoped = parse_scoped_dotenv_target(request.target, roots=list(request.scope_roots))
         path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="dotenv target path")
         before = _read_text_if_exists(path)
-        after = upsert_key_value(before, key, value or "", quote=False) if action == "set" else remove_key_value(before, key)
+        after = (
+            upsert_key_value(before, request.key, request.value or "", quote=False)
+            if request.action == "set"
+            else remove_key_value(before, request.key)
+        )
         if apply_changes:
             self._write_scoped_text_file(
                 candidate_path=scoped.path,
@@ -370,48 +301,59 @@ class EnvInspectorService:
             )
         return before, after, str(path), False, None
 
-    @staticmethod
-    def _mutate_shell_content(before: str, *, key: str, value: str | None, action: str, style: str) -> str:
-        if action != "set":
-            return remove_export(before, key) if style == "export" else remove_key_value(before, key)
-        if style == "export":
-            return upsert_export(before, key, value or "")
-        return upsert_key_value(before, key, value or "", quote=False)
+    def _mutate_shell_content(self, before: str, request: ShellMutationRequest) -> str:
+        if request.action != "set":
+            return remove_export(before, request.key) if request.style == "export" else remove_key_value(before, request.key)
+        if request.style == "export":
+            return upsert_export(before, request.key, request.value or "")
+        return upsert_key_value(before, request.key, request.value or "", quote=False)
 
     def _update_linux_file(
         self,
-        *,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
+        *args: Any,
         apply_changes: bool,
+        **kwargs: Any,
     ) -> Tuple[str, str, str | None, bool, str | None]:
-        if target == TARGET_LINUX_BASHRC:
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        if request.target == TARGET_LINUX_BASHRC:
             bashrc_path = Path.home() / ".bashrc"
             before = _read_text_if_exists(bashrc_path)
-            after = self._mutate_shell_content(before, key=key, value=value, action=action, style="export")
+            after = self._mutate_shell_content(before, ShellMutationRequest(request.key, request.value, request.action, "export"))
             if apply_changes:
                 self._write_text_file(bashrc_path, after, ensure_parent=True)
             return before, after, str(bashrc_path), False, None
 
-        if target == TARGET_LINUX_ETC_ENV:
+        if request.target == TARGET_LINUX_ETC_ENV:
             etc_path = self._linux_etc_environment_path()
             before = _read_text_if_exists(etc_path)
-            after = self._mutate_shell_content(before, key=key, value=value, action=action, style="key_value")
+            after = self._mutate_shell_content(
+                before,
+                ShellMutationRequest(request.key, request.value, request.action, "key_value"),
+            )
             if apply_changes:
                 self._write_linux_etc_environment_with_privilege(after)
             return before, after, self._LINUX_ETC_ENV_PATH, True, None
 
-        raise RuntimeError(f"Unsupported Linux target: {target}")
+        raise RuntimeError(f"Unsupported Linux target: {request.target}")
 
-    @staticmethod
-    def _validate_wsl_distro_name(raw: str) -> str:
-        return _validate_wsl_distro_name_helper(raw)
+    def _write_linux_etc_environment_with_privilege(self, text: str) -> None:
+        _write_linux_etc_environment_with_privilege_helper(
+            fixed_path=LINUX_ETC_ENV_PATH,
+            expected_path=self._LINUX_ETC_ENV_PATH,
+            text=text,
+            write_text_file=lambda path, payload: self._write_text_file(path, payload, ensure_parent=False),
+            which_fn=which,
+            run_fn=run,
+        )
 
-    @staticmethod
-    def _validate_wsl_dotenv_path(raw: str) -> str:
-        return _validate_wsl_dotenv_path_helper(raw, path_error=WSL_DOTENV_PATH_ERROR)
+
 
     def _parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
         return _parse_wsl_dotenv_target_helper(
@@ -432,16 +374,21 @@ class EnvInspectorService:
 
     def _update_wsl_file(
         self,
-        *,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
+        *args: Any,
         apply_changes: bool,
+        **kwargs: Any,
     ) -> Tuple[str, str, str | None, bool, str | None]:
-        distro, path, style, requires_priv = self._resolve_wsl_target(target)
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        distro, path, style, requires_priv = self._resolve_wsl_target(request.target)
         before = self.wsl.read_file(distro, path)
-        after = self._mutate_shell_content(before, key=key, value=value, action=action, style=style)
+        after = self._mutate_shell_content(before, ShellMutationRequest(request.key, request.value, request.action, style))
 
         if apply_changes:
             writer = self.wsl.write_file_with_privilege if requires_priv else self.wsl.write_file
@@ -451,20 +398,25 @@ class EnvInspectorService:
 
     def _update_powershell_file(
         self,
-        *,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
+        *args: Any,
         apply_changes: bool,
-        ) -> Tuple[str, str, str | None, bool, str | None]:
-        profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(target)
+        **kwargs: Any,
+    ) -> Tuple[str, str, str | None, bool, str | None]:
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(request.target)
         safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
         before = _read_text_if_exists(safe_profile)
         after = (
-            upsert_powershell_env(before, key, value or "")
-            if action == "set"
-            else remove_powershell_env(before, key)
+            upsert_powershell_env(before, request.key, request.value or "")
+            if request.action == "set"
+            else remove_powershell_env(before, request.key)
         )
         if apply_changes:
             self._write_text_file(safe_profile, after, ensure_parent=True)
@@ -472,62 +424,45 @@ class EnvInspectorService:
 
     def _file_update(
         self,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
-        *,
+        *args: Any,
         apply_changes: bool,
-        scope_roots: List[Path],
+        **kwargs: Any,
     ) -> Tuple[str, str, str | None, bool, str | None]:
-        if target.startswith(DOTENV_TARGET_PREFIX):
-            return self._update_dotenv_file(
-                target=target,
-                key=key,
-                value=value,
-                action=action,
-                apply_changes=apply_changes,
-                scope_roots=scope_roots,
-            )
-        if target.startswith("linux:"):
-            return self._update_linux_file(
-                target=target,
-                key=key,
-                value=value,
-                action=action,
-                apply_changes=apply_changes,
-            )
-        if target.startswith("wsl"):
-            return self._update_wsl_file(
-                target=target,
-                key=key,
-                value=value,
-                action=action,
-                apply_changes=apply_changes,
-            )
-        if target.startswith("powershell:"):
-            return self._update_powershell_file(
-                target=target,
-                key=key,
-                value=value,
-                action=action,
-                apply_changes=apply_changes,
-            )
-        raise RuntimeError(f"Unsupported target: {target}")
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        if request.target.startswith(DOTENV_TARGET_PREFIX):
+            return self._update_dotenv_file(request=request, apply_changes=apply_changes)
+        if request.target.startswith("linux:"):
+            return self._update_linux_file(request=request, apply_changes=apply_changes)
+        if request.target.startswith("wsl"):
+            return self._update_wsl_file(request=request, apply_changes=apply_changes)
+        if request.target.startswith("powershell:"):
+            return self._update_powershell_file(request=request, apply_changes=apply_changes)
+        raise RuntimeError(f"Unsupported target: {request.target}")
 
     def _plan_target_operation(
         self,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
-        *,
+        *args: Any,
         apply_changes: bool,
-        scope_roots: List[Path],
+        **kwargs: Any,
     ) -> Tuple[str, str, str | None, bool, str | None]:
-        if target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
-            return self._registry_write(target, key, value, action, apply_changes=apply_changes)
-        return self._file_update(target, key, value, action, apply_changes=apply_changes, scope_roots=scope_roots)
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        if request.target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
+            return self._registry_write(request=request, apply_changes=apply_changes)
+        return self._file_update(request=request, apply_changes=apply_changes)
 
     def _validate_target_for_operation(self, target: str, *, scope_roots: List[Path]) -> None:
         if target in {
@@ -550,106 +485,72 @@ class EnvInspectorService:
             return
         raise RuntimeError(f"Unsupported target: {target}")
 
-    @staticmethod
-    def _masked_value(*, secret_operation: bool, value: str | None) -> str | None:
-        return _masked_value_helper(secret_operation=secret_operation, value=value)
 
-    @staticmethod
-    def _make_operation_result(
-        *,
-        operation_id: str,
-        target: str,
-        action: str,
-        success: bool,
-        backup_path: str | None,
-        diff_preview: str,
-        error_message: str | None,
-        value_masked: str | None,
-    ) -> OperationResult:
-        return _make_operation_result_helper(
-            operation_id=operation_id,
-            target=target,
-            action=action,
-            success=success,
-            backup_path=backup_path,
-            diff_preview=diff_preview,
-            error_message=error_message,
-            value_masked=value_masked,
-        )
-    @staticmethod
-    def _operation_error_types() -> Tuple[Type[BaseException], ...]:
-        return _operation_error_types_helper()
 
     def _preview_target_diff(
         self,
-        *,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
-        resolved_scope_roots: Sequence[Path],
+        *args: Any,
+        **kwargs: Any,
     ) -> Tuple[str, str]:
-        self._validate_target_for_operation(target, scope_roots=list(resolved_scope_roots))
-        before, after, _, _, _ = self._plan_target_operation(
-            target=target,
-            key=key,
-            value=value,
-            action=action,
-            apply_changes=False,
-            scope_roots=list(resolved_scope_roots),
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
         )
-        return before, self._diff(before, after, target)
+        self._validate_target_for_operation(request.target, scope_roots=list(request.scope_roots))
+        before, after, _, _, _ = self._plan_target_operation(request=request, apply_changes=False)
+        return before, self._diff(before, after, request.target)
 
     def _apply_target_operation(
         self,
-        *,
-        target: str,
-        key: str,
-        value: str | None,
-        action: str,
+        *args: Any,
         before: str,
-        resolved_scope_roots: Sequence[Path],
+        **kwargs: Any,
     ) -> str:
-        backup_path = str(self.backup_mgr.backup_text(target, before))
-        self._plan_target_operation(
-            target=target,
-            key=key,
-            value=value,
-            action=action,
-            apply_changes=True,
-            scope_roots=list(resolved_scope_roots),
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
         )
+        backup_path = str(self.backup_mgr.backup_text(request.target, before))
+        self._plan_target_operation(request=request, apply_changes=True)
         return backup_path
 
 
-    @staticmethod
-    def _operation_result(payload: OperationResultInput) -> OperationResult:
-        return _operation_result_helper(payload)
-
     def _execute_target_operation(
         self,
-        *,
-        action: str,
-        key: str,
-        value: str | None,
-        target: str,
+        *args: Any,
         preview_only: bool,
-        resolved_scope_roots: Sequence[Path],
         secret_operation: bool,
+        **kwargs: Any,
     ) -> OperationResult:
-        operation_id = f"{action}-{uuid.uuid4().hex[:10]}"
-        value_masked = self._masked_value(secret_operation=secret_operation, value=value)
+        request_data = _normalize_target_operation_request_helper(*args, **kwargs)
+        request = TargetOperationRequest(
+            target=request_data["target"],
+            key=request_data["key"],
+            value=request_data["value"],
+            action=request_data["action"],
+            scope_roots=request_data["scope_roots"],
+        )
+        operation_id = f"{request.action}-{uuid.uuid4().hex[:10]}"
+        value_masked = self._masked_value(secret_operation=secret_operation, value=request.value)
         backup_path: str | None = None
         diff_preview = ""
         try:
-            before, diff_preview = self._preview_target_diff(target=target, key=key, value=value, action=action, resolved_scope_roots=resolved_scope_roots)
+            before, diff_preview = self._preview_target_diff(request)
             if not preview_only:
-                backup_path = self._apply_target_operation(target=target, key=key, value=value, action=action, before=before, resolved_scope_roots=resolved_scope_roots)
-            return self._operation_result(
+                backup_path = self._apply_target_operation(request, before=before)
+            return _operation_result_helper(
                 OperationResultInput(
                     operation_id=operation_id,
-                    target=target,
-                    action=action,
+                    target=request.target,
+                    action=request.action,
                     success=True,
                     backup_path=backup_path,
                     preview_only=preview_only,
@@ -659,11 +560,11 @@ class EnvInspectorService:
                 )
             )
         except self._operation_error_types() as exc:
-            return self._operation_result(
+            return _operation_result_helper(
                 OperationResultInput(
                     operation_id=operation_id,
-                    target=target,
-                    action=action,
+                    target=request.target,
+                    action=request.action,
                     success=False,
                     backup_path=backup_path,
                     preview_only=False,
@@ -675,106 +576,47 @@ class EnvInspectorService:
 
     def _apply(
         self,
-        action: str,
-        *,
-        key: str,
-        value: str | None,
-        targets: List[str],
+        *args: Any,
         preview_only: bool = False,
-        scope_roots: List[str | Path] | None = None,
+        **kwargs: Any,
     ) -> List[OperationResult]:
-        validate_env_key(key)
-        if action == "set":
-            validate_env_value(value or "")
+        request_data = _normalize_target_operation_batch_helper(*args, **kwargs)
+        request = TargetOperationBatch(
+            action=request_data["action"],
+            key=request_data["key"],
+            value=request_data["value"],
+            targets=request_data["targets"],
+            scope_roots=request_data["scope_roots"],
+        )
+        validate_env_key(request.key)
+        if request.action == "set":
+            validate_env_value(request.value or "")
 
-        secret_operation = looks_secret(key, value or "")
-        resolved_scope_roots = self._effective_scope_roots(scope_roots)
+        secret_operation = looks_secret(request.key, request.value or "")
+        resolved_scope_roots = self._effective_scope_roots(request.scope_roots)
         results: List[OperationResult] = []
-        for target in targets:
-            result = self._execute_target_operation(
-                action=action,
-                key=key,
-                value=value,
+        for target in request.targets:
+            target_request = TargetOperationRequest(
                 target=target,
+                key=request.key,
+                value=request.value,
+                action=request.action,
+                scope_roots=resolved_scope_roots,
+            )
+            result = self._execute_target_operation(
+                target_request,
                 preview_only=preview_only,
-                resolved_scope_roots=resolved_scope_roots,
                 secret_operation=secret_operation,
             )
             self.audit.log(audit_safe_result(result, redact=secret_operation))
             results.append(result)
         return results
 
-    def preview_set(
-        self,
-        *,
-        key: str,
-        value: str,
-        targets: List[str],
-        scope_roots: List[str | Path] | None = None,
-    ) -> List[Dict[str, Any]]:
-        return [
-            r.to_dict()
-            for r in self._apply("set", key=key, value=value, targets=targets, preview_only=True, scope_roots=scope_roots)
-        ]
 
-    def preview_remove(
-        self,
-        *,
-        key: str,
-        targets: List[str],
-        scope_roots: List[str | Path] | None = None,
-    ) -> List[Dict[str, Any]]:
-        return [
-            r.to_dict()
-            for r in self._apply(
-                "remove",
-                key=key,
-                value=None,
-                targets=targets,
-                preview_only=True,
-                scope_roots=scope_roots,
-            )
-        ]
 
-    def set_key(
-        self,
-        *,
-        key: str,
-        value: str,
-        targets: List[str],
-        scope_roots: List[str | Path] | None = None,
-    ) -> Dict[str, Any]:
-        results = self._apply("set", key=key, value=value, targets=targets, preview_only=False, scope_roots=scope_roots)
-        if len(results) == 1:
-            return results[0].to_dict()
-        return {"success": all(r.success for r in results), "results": [r.to_dict() for r in results]}
 
-    def remove_key(
-        self,
-        *,
-        key: str,
-        targets: List[str],
-        scope_roots: List[str | Path] | None = None,
-    ) -> Dict[str, Any]:
-        results = self._apply("remove", key=key, value=None, targets=targets, preview_only=False, scope_roots=scope_roots)
-        if len(results) == 1:
-            return results[0].to_dict()
-        return {"success": all(r.success for r in results), "results": [r.to_dict() for r in results]}
 
-    def export_records(
-        self,
-        *,
-        output: str,
-        include_raw_secrets: bool,
-        **list_kwargs: Any,
-    ) -> str:
-        rows = self.list_records(include_raw_secrets=include_raw_secrets, **list_kwargs)
-        return export_rows(rows, output=output)
 
-    def list_backups(self, *, target: str | None = None) -> List[str]:
-        if target:
-            return [str(p) for p in self.backup_mgr.list_backups(target)]
-        return [str(p) for p in self.backup_mgr.list_all_backups()]
 
     def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
         _restore_dotenv_target_helper(
@@ -871,3 +713,33 @@ class EnvInspectorService:
 
         self.audit.log(result)
         return result.to_dict()
+
+EnvInspectorService.which = which
+EnvInspectorService.run = run
+EnvInspectorService.get_powershell_profile_paths = staticmethod(_service_aliases.get_powershell_profile_paths)
+EnvInspectorService._registry_write = _service_aliases.registry_write
+EnvInspectorService._bridge_distros = _service_aliases.bridge_distros
+EnvInspectorService.list_contexts = _service_aliases.list_contexts
+EnvInspectorService._is_path_within = staticmethod(_is_path_within)
+EnvInspectorService._validate_path_in_roots = staticmethod(_validate_path_in_roots)
+EnvInspectorService._write_text_file = staticmethod(_write_text_file)
+EnvInspectorService._write_scoped_text_file = staticmethod(_write_scoped_text_file)
+EnvInspectorService._powershell_target_path_and_roots = _service_aliases.powershell_target_path_and_roots
+EnvInspectorService._validated_powershell_restore_path = _service_aliases.validated_powershell_restore_path
+EnvInspectorService._linux_etc_environment_path = classmethod(_service_aliases.linux_etc_environment_path)
+EnvInspectorService._apply_row_filters = staticmethod(_apply_row_filters_helper)
+EnvInspectorService._diff = staticmethod(_diff_text_helper)
+EnvInspectorService.available_targets = _service_aliases.available_targets
+EnvInspectorService._powershell_target_for_path = staticmethod(_powershell_target_for_path_helper)
+EnvInspectorService._record_target = staticmethod(_record_target_helper)
+EnvInspectorService._masked_value = staticmethod(_masked_value_helper)
+EnvInspectorService._operation_error_types = staticmethod(_operation_error_types_helper)
+EnvInspectorService._validate_wsl_distro_name = staticmethod(_validate_wsl_distro_name_helper)
+EnvInspectorService._validate_wsl_dotenv_path = staticmethod(_service_aliases.validate_wsl_dotenv_path)
+EnvInspectorService.list_records_raw = _service_aliases.list_records_raw
+EnvInspectorService.preview_set = _service_aliases.preview_set
+EnvInspectorService.preview_remove = _service_aliases.preview_remove
+EnvInspectorService.set_key = _service_aliases.set_key
+EnvInspectorService.remove_key = _service_aliases.remove_key
+EnvInspectorService.export_records = _service_aliases.export_records
+EnvInspectorService.list_backups = _service_aliases.list_backups

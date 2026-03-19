@@ -12,6 +12,23 @@ from env_inspector_core.service import EnvInspectorService
 
 from tests.assertions import ensure
 
+_ORIGINAL_PATH_EXISTS = service_module._path_exists
+_ORIGINAL_READ_TEXT_IF_EXISTS = service_module._read_text_if_exists
+_ORIGINAL_WRITE_TEXT_FILE = EnvInspectorService._write_text_file
+_ORIGINAL_WHICH = service_module.which
+_ORIGINAL_RUN = service_module.run
+_ORIGINAL_PATH_HOME = service_module.Path.home
+
+
+@pytest.fixture(autouse=True)
+def _reset_service_globals(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(service_module, "_path_exists", _ORIGINAL_PATH_EXISTS)
+    monkeypatch.setattr(service_module, "_read_text_if_exists", _ORIGINAL_READ_TEXT_IF_EXISTS)
+    monkeypatch.setattr(EnvInspectorService, "_write_text_file", staticmethod(_ORIGINAL_WRITE_TEXT_FILE))
+    monkeypatch.setattr(service_module, "which", _ORIGINAL_WHICH)
+    monkeypatch.setattr(service_module, "run", _ORIGINAL_RUN)
+    monkeypatch.setattr(service_module.Path, "home", _ORIGINAL_PATH_HOME)
+
 def _record(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
     return EnvRecord(
         source_type=source_type,

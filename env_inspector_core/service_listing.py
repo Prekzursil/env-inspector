@@ -72,17 +72,22 @@ def collect_host_rows(
     return rows
 
 
-def collect_wsl_rows(
-    *,
-    runtime_context: str,
-    current_wsl_distro: Optional[str],
-    wsl: Any,
-    scan_depth: int,
-    distro: Optional[str],
-    wsl_path: Optional[str],
-    collect_wsl_records_fn: Callable[..., List[EnvRecord]],
-    collect_wsl_dotenv_records_fn: Callable[..., List[EnvRecord]],
-) -> List[EnvRecord]:
+def collect_wsl_rows(*args: Any, **kwargs: Any) -> List[EnvRecord]:
+    if args:
+        raise TypeError("collect_wsl_rows accepts keyword arguments only.")
+
+    runtime_context = kwargs.pop("runtime_context")
+    current_wsl_distro = kwargs.pop("current_wsl_distro")
+    wsl = kwargs.pop("wsl")
+    scan_depth = kwargs.pop("scan_depth")
+    distro = kwargs.pop("distro")
+    wsl_path = kwargs.pop("wsl_path")
+    collect_wsl_records_fn = kwargs.pop("collect_wsl_records_fn")
+    collect_wsl_dotenv_records_fn = kwargs.pop("collect_wsl_dotenv_records_fn")
+    if kwargs:
+        unexpected = ", ".join(sorted(kwargs))
+        raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
+
     rows: List[EnvRecord] = []
     if not wsl.available():
         return rows

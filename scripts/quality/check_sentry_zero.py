@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import urllib.error
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Tuple
@@ -23,6 +24,13 @@ request_json_https = _security_helpers.request_json_https
 safe_output_path_in_workspace = _security_helpers.safe_output_path_in_workspace
 
 SENTRY_API_HOST = "sentry.io"
+
+
+@dataclass(frozen=True)
+class SentryScanRequest:
+    org: str
+    projects: List[str]
+    token: str
 
 
 def _parse_args() -> argparse.Namespace:
@@ -93,26 +101,50 @@ def _missing_config_findings(token: str, org: str, projects: List[str]) -> List[
     return findings
 
 
-def _scan_projects(
-    org: str,
-    projects: List[str],
-    token: str,
-) -> Tuple[str, List[Dict[str, Any]], List[str], List[str]]:
+def _resolve_unresolved_count(
+    issues: List[Any],
+    headers: Dict[str, str],
+    project: str,
+    failures: List[str],
+) -> int:
+    unresolved = _hits_from_headers(headers)
+    if unresolved is None:
+        unresolved = len(issues)
+        if unresolved >= 1:
+            failures.append(
+                f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
+            )
+    return unresolved
+
+
+def _coerce_scan_request(*args: Any, **kwargs: Any) -> SentryScanRequest:
+    if args:
+        if len(args) == 1 and isinstance(args[0], SentryScanRequest):
+            if kwargs:
+                raise TypeError("Pass either a request object or keyword arguments, not both.")
+            return args[0]
+        if len(args) == 3 and not kwargs:
+            org, projects, token = args
+            return SentryScanRequest(org=str(org), projects=list(projects), token=str(token))
+        raise TypeError("Pass a request object or keyword arguments, not positional arguments.")
+    return SentryScanRequest(
+        org=str(kwargs.pop("org")),
+        projects=list(kwargs.pop("projects")),
+        token=str(kwargs.pop("token")),
+    )
+
+
+def _scan_projects(*args: Any, **kwargs: Any) -> Tuple[str, List[Dict[str, Any]], List[str], List[str]]:
+    request = _coerce_scan_request(*args, **kwargs)
     mode = "strict"
     project_results: List[Dict[str, Any]] = []
     findings: List[str] = []
     failures: List[str] = []
 
-    for project in projects:
+    for project in request.projects:
         try:
-            issues, headers = _request_project_issues(org, project, token)
-            unresolved = _hits_from_headers(headers)
-            if unresolved is None:
-                unresolved = len(issues)
-                if unresolved >= 1:
-                    failures.append(
-                        f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
-                    )
+            issues, headers = _request_project_issues(request.org, project, request.token)
+            unresolved = _resolve_unresolved_count(issues, headers, project, failures)
             if unresolved != 0:
                 failures.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
             project_results.append({"project": project, "unresolved": unresolved})
@@ -174,7 +206,7 @@ def main() -> int:
         status = "pass"
         mode = "skipped"
     else:
-        mode, project_results, runtime_findings, failures = _scan_projects(org, projects, token)
+        mode, project_results, runtime_findings, failures = _scan_projects(org=org, projects=projects, token=token)
         findings.extend(runtime_findings)
         findings.extend(failures)
         status = "pass" if not failures else "fail"

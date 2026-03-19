@@ -11,11 +11,23 @@ from env_inspector_core.service import EnvInspectorService
 
 from .controller_actions import APP_NAME, EnvInspectorControllerActionsMixin
 from .dialogs import DiffPreviewDialog, DotenvTargetDialog, TargetPickerDialog
-from .models import DisplayedRow, PersistedUiState, SortState
+from .models import (
+    DisplayedRow,
+    PersistedUiState,
+    SortState,
+    build_status_line,
+    build_effective_value_text,
+    has_multiple_dotenv_matches,
+    reconcile_selected_targets,
+    resolve_context_selection,
+    resolve_selected_targets,
+    select_theme_name,
+    select_target_dialog_result,
+    summarize_operation_result,
+)
 from .path_actions import is_openable_local_path
-from .secret_policy import resolve_copy_payload
 from .state_store import load_ui_state, sanitize_loaded_state, save_ui_state
-from .table_logic import build_display_rows, sort_display_rows, toggle_sort
+from .table_logic import DisplayRowsRequest, build_display_rows, sort_display_rows, toggle_sort
 from .view import EnvInspectorView
 
 
@@ -107,18 +119,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _apply_theme(self) -> None:
         style = self.ttk.Style(self.tk)
         themes = set(style.theme_names())
-
-        if os.name == "nt":
-            for preferred in ("vista", "xpnative"):
-                if preferred in themes:
-                    style.theme_use(preferred)
-                    break
-            else:
-                if "clam" in themes:
-                    style.theme_use("clam")
-        else:
-            if "clam" in themes:
-                style.theme_use("clam")
+        selected_theme = select_theme_name(os.name, tuple(themes))
+        if selected_theme is not None:
+            style.theme_use(selected_theme)
 
         style.configure("Treeview", rowheight=24)
 
@@ -258,13 +261,15 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _update_context_values(self) -> None:
         contexts = self.service.list_contexts()
         self.view.set_context_values(contexts)
-
-        if self.context_var.get() not in contexts:
-            self.context_var.set(contexts[0] if contexts else self.service.runtime_context)
-
-        distros = [c.split(":", 1)[1] for c in contexts if c.startswith("wsl:")]
-        if self.wsl_distro_var.get() not in distros:
-            self.wsl_distro_var.set(distros[0] if distros else "")
+        selection = resolve_context_selection(
+            contexts=contexts,
+            current_context=self.context_var.get(),
+            current_wsl_distro=self.wsl_distro_var.get(),
+            runtime_context=self.service.runtime_context,
+        )
+        self.context_var.set(selection.context)
+        self.wsl_distro_var.set(selection.wsl_distro)
+        distros = selection.distros
         self.view.set_wsl_distros(distros, enabled=bool(distros))
 
     def _fetch_records(self) -> None:
@@ -284,12 +289,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     def _reconcile_targets(self) -> None:
         available = self.service.available_targets(self.records_raw, context=self.context_var.get())
-        if not self.selected_targets:
-            self.selected_targets = available
-        else:
-            self.selected_targets = [target for target in self.selected_targets if target in available]
-            if not self.selected_targets:
-                self.selected_targets = available
+        self.selected_targets = reconcile_selected_targets(self.selected_targets, available)
 
         self.targets_summary_var.set(f"Targets: {len(self.selected_targets)} selected")
 
@@ -298,11 +298,13 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.rows_by_item.clear()
 
         filtered = build_display_rows(
-            self.records_raw,
-            context=self.context_var.get(),
-            query=self.filter_text.get(),
-            only_secrets=bool(self.only_secrets.get()),
-            show_secrets=bool(self.show_secrets.get()),
+            DisplayRowsRequest(
+                records=self.records_raw,
+                context=self.context_var.get(),
+                query=self.filter_text.get(),
+                only_secrets=bool(self.only_secrets.get()),
+                show_secrets=bool(self.show_secrets.get()),
+            )
         )
         self.displayed_rows = sort_display_rows(filtered, self.sort_state)
 
@@ -326,11 +328,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     def _update_status_line(self, shown: int, total: int) -> None:
         context = self.context_var.get() or self.service.runtime_context
-        if self.last_refresh_at is None:
-            when = "-"
-        else:
-            when = self.last_refresh_at.strftime("%H:%M:%S")
-        self._set_status(f"Showing {shown} / {total} entries | Context: {context} | Last refresh: {when}")
+        self._set_status(build_status_line(shown, total, context, self.last_refresh_at))
 
     def _set_status(self, text: str) -> None:
         view = getattr(self, "view", None)
@@ -355,10 +353,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             self._render_table()
 
             key = self.key_text.get().strip()
-            if key:
-                self._update_effective(key)
-            else:
-                self.effective_value_var.set("Effective: (select key)")
+            self._update_effective(key)
 
             if getattr(self, "view", None) is not None:
                 self._on_row_selected_update_details(self._selected_row())
@@ -370,35 +365,31 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _update_effective(self, key: str) -> None:
         context = self.context_var.get() or self.service.runtime_context
         rec = self.service.resolve_effective(key, context, self.records_raw)
-        if rec is None:
-            self.effective_value_var.set("Effective: (not found)")
-            return
-
-        row_value, _ = resolve_copy_payload(
-            rec,
-            show_secrets=bool(self.show_secrets.get()),
-            confirm_raw=lambda: False,
-            as_pair=False,
+        self.effective_value_var.set(
+            build_effective_value_text(
+                rec,
+                context=context,
+                key=key,
+                show_secrets=bool(self.show_secrets.get()),
+            )
         )
-        self.effective_value_var.set(f"Effective ({context}): {key}={row_value} from {rec.source_type}")
 
-    def choose_targets(self) -> None:
+    def choose_targets(self) -> List[str] | None:
         available = self.service.available_targets(self.records_raw, context=self.context_var.get())
         if not available:
             self.messagebox.showinfo(APP_NAME, "No writable targets found in current context.")
-            return
+            return None
 
         dialog = TargetPickerDialog(self.tk, targets=available, selected=self.selected_targets)
         self.tk.wait_window(dialog.win)
-        if dialog.result is None:
-            return
-        if not dialog.result:
-            self.messagebox.showinfo(APP_NAME, "No targets selected.")
-            return
+        selected = select_target_dialog_result(dialog.result, messagebox=self.messagebox, app_name=APP_NAME)
+        if selected is None:
+            return None
 
-        self.selected_targets = dialog.result
+        self.selected_targets = selected
         self.targets_summary_var.set(f"Targets: {len(self.selected_targets)} selected")
         self._persist_state()
+        return list(self.selected_targets)
 
     def _maybe_choose_dotenv_targets(self, key: str, targets: List[str]) -> List[str] | None:
         dotenv_targets = self._collect_dotenv_targets(targets)
@@ -418,13 +409,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return [target for target in targets if target.startswith(("dotenv:", "wsl_dotenv:"))]
 
     def _has_multiple_dotenv_matches(self, key: str) -> bool:
-        found = 0
-        for rec in self.records_raw:
-            if rec.name == key and rec.source_type in {"dotenv", "wsl_dotenv"}:
-                found += 1
-                if found > 1:
-                    return True
-        return False
+        return has_multiple_dotenv_matches(self.records_raw, key)
 
     def _preview_operation(self, action: str, key: str, value: str, targets: List[str]) -> List[Dict[str, Any]]:
         if action == "set":
@@ -468,14 +453,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             self.messagebox.showerror(APP_NAME, "Key is required.")
             return None
 
-        targets = list(self.selected_targets)
-        if not targets:
-            self.choose_targets()
-            targets = list(self.selected_targets)
-            if not targets:
-                return None
-
-        scoped_targets = self._maybe_choose_dotenv_targets(key, targets)
+        scoped_targets = resolve_selected_targets(
+            selected_targets=self.selected_targets,
+            choose_targets=self.choose_targets,
+            key=key,
+            maybe_choose_dotenv_targets=self._maybe_choose_dotenv_targets,
+        )
         if scoped_targets is None:
             return None
         return key, value, scoped_targets
@@ -495,21 +478,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return None
 
     def _report_operation_result(self, action: str, result: Dict[str, Any]) -> None:
-        if isinstance(result, dict) and "results" in result:
-            failed = [x for x in result["results"] if not x.get("success")]
-            if failed:
-                self.messagebox.showerror(
-                    APP_NAME,
-                    f"{action.title()} had failures:\n" + "\n".join(x.get("error_message", "") for x in failed),
-                )
-            else:
-                self._set_status(f"{action.title()} succeeded for {len(result['results'])} targets")
+        summary = summarize_operation_result(action, result)
+        if summary.error_message is not None:
+            self.messagebox.showerror(APP_NAME, summary.error_message)
             return
-
-        if result.get("success"):
-            self._set_status(f"{action.title()} succeeded ({result.get('operation_id')})")
-        else:
-            self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {result.get('error_message')}")
+        if summary.status_message is not None:
+            self._set_status(summary.status_message)
 
 
 class EnvInspectorApp:

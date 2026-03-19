@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division
 
-from typing import List
+from dataclasses import dataclass
+from typing import Iterable, List
+
 from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
@@ -28,26 +30,28 @@ def _to_displayed_row(rec, *, show_secrets: bool, search_value: str, idx: int) -
     )
 
 
-def build_display_rows(
-    records,
-    *,
-    context: str,
-    query: str,
-    only_secrets: bool,
-    show_secrets: bool,
-) -> List[DisplayedRow]:
-    rows: List[DisplayedRow] = []
-    query_text = query.strip().lower()
+@dataclass(frozen=True)
+class DisplayRowsRequest:
+    records: Iterable
+    context: str
+    query: str
+    only_secrets: bool
+    show_secrets: bool
 
-    for idx, rec in enumerate(records):
-        if not _record_matches_filters(rec, context=context, only_secrets=only_secrets):
+
+def build_display_rows(request: DisplayRowsRequest) -> List[DisplayedRow]:
+    rows: List[DisplayedRow] = []
+    query_text = request.query.strip().lower()
+
+    for idx, rec in enumerate(request.records):
+        if not _record_matches_filters(rec, context=request.context, only_secrets=request.only_secrets):
             continue
 
-        search_value = build_search_value(rec, show_secrets=show_secrets)
+        search_value = build_search_value(rec, show_secrets=request.show_secrets)
         if query_text and query_text not in search_value:
             continue
 
-        rows.append(_to_displayed_row(rec, show_secrets=show_secrets, search_value=search_value, idx=idx))
+        rows.append(_to_displayed_row(rec, show_secrets=request.show_secrets, search_value=search_value, idx=idx))
 
     return rows
 
