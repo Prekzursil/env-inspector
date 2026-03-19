@@ -3,6 +3,13 @@ from __future__ import absolute_import, division
 from typing import Any, Callable, Dict, List, Set, Tuple
 
 
+class _PreviewTabDeps:
+    def __init__(self, mono: Any, ttk: Any, scrolledtext: Any) -> None:
+        self.mono = mono
+        self.ttk = ttk
+        self.scrolledtext = scrolledtext
+
+
 class TargetPickerDialog:
     def __init__(self, parent: Any, targets: List[str], selected: List[str] | None = None) -> None:
         import tkinter as tk
@@ -206,7 +213,7 @@ class DiffPreviewDialog:
         notebook.pack(fill="both", expand=True)
 
         mono = tkfont.nametofont("TkFixedFont")
-        self._build_preview_tabs(notebook, previews, mono, ttk, scrolledtext)
+        self._build_preview_tabs(notebook, previews, _PreviewTabDeps(mono, ttk, scrolledtext))
 
         btns = ttk.Frame(frame)
         btns.pack(fill="x", pady=(10, 0))
@@ -218,28 +225,24 @@ class DiffPreviewDialog:
         self,
         notebook: Any,
         previews: List[Dict[str, Any]],
-        mono: Any,
-        ttk: Any,
-        scrolledtext: Any,
+        deps: _PreviewTabDeps,
     ) -> None:
         for idx, preview in enumerate(previews):
-            self._build_preview_tab(notebook, idx, preview, mono, ttk, scrolledtext)
+            self._build_preview_tab(notebook, idx, preview, deps)
 
     def _build_preview_tab(
         self,
         notebook: Any,
         idx: int,
         preview: Dict[str, Any],
-        mono: Any,
-        ttk: Any,
-        scrolledtext: Any,
+        deps: _PreviewTabDeps,
     ) -> None:
-        tab = ttk.Frame(notebook, padding=8)
+        tab = deps.ttk.Frame(notebook, padding=8)
         target = str(preview.get("target", f"target-{idx + 1}"))
         notebook.add(tab, text=f"{idx + 1}. {target}")
-        self._build_summary(tab, preview, target, ttk)
+        self._build_summary(tab, preview, target, deps.ttk)
 
-        txt = scrolledtext.ScrolledText(tab, wrap="none", font=mono)
+        txt = deps.scrolledtext.ScrolledText(tab, wrap="none", font=deps.mono)
         txt.pack(fill="both", expand=True)
         txt.tag_configure("diff_add", foreground="#1f7a1f")
         txt.tag_configure("diff_remove", foreground="#9b1c1c")

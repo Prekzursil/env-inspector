@@ -3,11 +3,9 @@ from __future__ import absolute_import, division
 import importlib
 import os
 import re
-import shlex
-import shutil
-from subprocess import PIPE, CompletedProcess, run  # nosec B404
+from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, cast
 
 from .constants import (
     SOURCE_DOTENV,
@@ -17,14 +15,16 @@ from .constants import (
     SOURCE_PROCESS,
     SOURCE_WINDOWS_MACHINE,
     SOURCE_WINDOWS_USER,
-    SOURCE_WSL_BASHRC,
-    SOURCE_WSL_DOTENV,
-    SOURCE_WSL_ETC_ENV,
 )
 from .models import EnvRecord
 from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environment
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
+
+try:
+    import env_inspector_core.providers_wsl as _providers_wsl
+except ImportError:  # pragma: no cover - direct script execution
+    import providers_wsl as _providers_wsl  # type: ignore
 
 if TYPE_CHECKING:
     from typing_extensions import Protocol
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
         REG_SZ: int
         OpenKey: Callable[[Any, str, int, int], Any]
         EnumValue: Callable[[Any, int], Tuple[str, Any, Any]]
+        QueryInfoKey: Callable[[Any], Tuple[int, int, int]]
         SetValueEx: Callable[[Any, str, int, int, str], None]
         DeleteValue: Callable[[Any, str], None]
 
@@ -51,6 +52,11 @@ if TYPE_CHECKING:
 else:
     WinregModule = Any
     WslClient = Any
+
+
+WslProvider = _providers_wsl.WslProvider
+collect_wsl_dotenv_records = _providers_wsl.collect_wsl_dotenv_records
+collect_wsl_records = _providers_wsl.collect_wsl_records
 
 
 _winreg: WinregModule | None
@@ -78,8 +84,6 @@ SKIP_DIRS = {
 }
 
 _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
-
-
 def is_windows() -> bool:
     return os.name == "nt"
 
@@ -158,272 +162,120 @@ class WindowsRegistryProvider:
             raise RuntimeError("Windows registry provider only available on Windows.")
 
     @staticmethod
+    def _scope_details(scope: str, access: int) -> Tuple[Any, str, int]:
+        if scope not in {WindowsRegistryProvider.USER_SCOPE, WindowsRegistryProvider.MACHINE_SCOPE}:
+            raise ValueError(f"Unsupported scope: {scope}")
+
+        registry = _require_winreg()
+        try:
+            root, path, scoped_access = {
+                WindowsRegistryProvider.USER_SCOPE: (registry.HKEY_CURRENT_USER, r"Environment", access),
+                WindowsRegistryProvider.MACHINE_SCOPE: (
+                    registry.HKEY_LOCAL_MACHINE,
+                    r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
+                    access | getattr(registry, "KEY_WOW64_64KEY", 0),
+                ),
+            }[scope]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported scope: {scope}") from exc
+        return root, path, scoped_access
+
+    @staticmethod
     def _scope_to_key(scope: str) -> Tuple[Any, str]:
-        if scope == WindowsRegistryProvider.USER_SCOPE:
-            registry = _require_winreg()
-            return registry.HKEY_CURRENT_USER, r"Environment"
-        if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            registry = _require_winreg()
-            return registry.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
-        raise ValueError(f"Unsupported scope: {scope}")
+        root, path, _ = WindowsRegistryProvider._scope_details(scope, 0)
+        return root, path
 
     def list_scope(self, scope: str) -> Dict[str, str]:
         registry = _require_winreg()
-        root, path = self._scope_to_key(scope)
-        access = registry.KEY_READ
-        if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(registry, "KEY_WOW64_64KEY", 0)
+        root, path, access = self._scope_details(scope, registry.KEY_READ)
 
-        values: Dict[str, str] = {}
         with registry.OpenKey(root, path, 0, access) as regkey:
-            index = 0
-            while True:
-                try:
-                    name, value, _ = registry.EnumValue(regkey, index)
-                except OSError:
-                    break
-                values[name] = value if isinstance(value, str) else str(value)
-                index += 1
-        return values
+            return {
+                name: str(value)
+                for index in range(registry.QueryInfoKey(regkey)[1])
+                for name, value, _ in [registry.EnumValue(regkey, index)]
+            }
 
     def set_scope_value(self, scope: str, key: str, value: str) -> None:
         registry = _require_winreg()
-        root, path = self._scope_to_key(scope)
-        access = registry.KEY_SET_VALUE
-        if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(registry, "KEY_WOW64_64KEY", 0)
+        root, path, access = self._scope_details(scope, registry.KEY_SET_VALUE)
         reg_type = registry.REG_EXPAND_SZ if "%" in value else registry.REG_SZ
         with registry.OpenKey(root, path, 0, access) as regkey:
             registry.SetValueEx(regkey, key, 0, reg_type, value)
 
     def remove_scope_value(self, scope: str, key: str) -> None:
         registry = _require_winreg()
-        root, path = self._scope_to_key(scope)
-        access = registry.KEY_SET_VALUE
-        if scope == WindowsRegistryProvider.MACHINE_SCOPE:
-            access |= getattr(registry, "KEY_WOW64_64KEY", 0)
+        root, path, access = self._scope_details(scope, registry.KEY_SET_VALUE)
         with registry.OpenKey(root, path, 0, access) as regkey:
-            try:
+            with suppress(FileNotFoundError):
                 registry.DeleteValue(regkey, key)
-            except FileNotFoundError:
-                pass
 
 
 def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
-    for key, value in sorted(provider.list_scope(provider.USER_SCOPE).items(), key=lambda kv: kv[0].lower()):
-        rows.append(
-            EnvRecord(
-                source_type=SOURCE_WINDOWS_USER,
-                source_id="user",
-                source_path="HKCU\\Environment",
-                context="windows",
-                name=key,
-                value=value,
-                is_secret=looks_secret(key, value),
-                is_persistent=True,
-                is_mutable=True,
-                precedence_rank=20,
-                writable=True,
-                requires_privilege=False,
-                last_error=None,
+    for source_type, source_id, source_path, scope, precedence_rank, requires_privilege in (
+        (
+            SOURCE_WINDOWS_USER,
+            "user",
+            "HKCU\\Environment",
+            provider.USER_SCOPE,
+            20,
+            False,
+        ),
+        (
+            SOURCE_WINDOWS_MACHINE,
+            "machine",
+            "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
+            provider.MACHINE_SCOPE,
+            30,
+            True,
+        ),
+    ):
+        for key, value in sorted(provider.list_scope(scope).items(), key=lambda kv: kv[0].lower()):
+            rows.append(
+                EnvRecord(
+                    source_type=source_type,
+                    source_id=source_id,
+                    source_path=source_path,
+                    context="windows",
+                    name=key,
+                    value=value,
+                    is_secret=looks_secret(key, value),
+                    is_persistent=True,
+                    is_mutable=True,
+                    precedence_rank=precedence_rank,
+                    writable=True,
+                    requires_privilege=requires_privilege,
+                    last_error=None,
+                )
             )
-        )
-    for key, value in sorted(provider.list_scope(provider.MACHINE_SCOPE).items(), key=lambda kv: kv[0].lower()):
-        rows.append(
-            EnvRecord(
-                source_type=SOURCE_WINDOWS_MACHINE,
-                source_id="machine",
-                source_path="HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
-                context="windows",
-                name=key,
-                value=value,
-                is_secret=looks_secret(key, value),
-                is_persistent=True,
-                is_mutable=True,
-                precedence_rank=30,
-                writable=True,
-                requires_privilege=True,
-                last_error=None,
-            )
-        )
     return rows
 
 
-class WslProvider:
-    def __init__(
-        self,
-        runner: Callable[..., CompletedProcess] | None = None,
-        wsl_exe: str | None = None,
-    ) -> None:
-        self.runner = runner or run
-        self.wsl_exe = wsl_exe or self._discover_wsl_exe()
-        self._available_cache: bool | None = None
-
-    @staticmethod
-    def _discover_wsl_exe() -> str | None:
-        candidates: List[Path] = []
-
-        if is_windows():
-            system_root = os.environ.get("SystemRoot")
-            if system_root:
-                candidates.append(Path(system_root) / "System32" / "wsl.exe")
-        else:
-            candidates.append(Path("/mnt/c/Windows/System32/wsl.exe"))
-
-        for candidate in candidates:
-            if candidate.exists():
-                return str(candidate)
-
-        for exe_name in ("wsl.exe", "wsl"):
-            found = shutil.which(exe_name)
-            if found:
-                return found
-
-        return None
-
-    def available(self) -> bool:
-        if self._available_cache is not None:
-            return self._available_cache
-
-        if not self.wsl_exe:
-            self._available_cache = False
-            return False
-
-        try:
-            proc = self.runner(
-                [str(self.wsl_exe), "-l", "-q"],
-                stdout=PIPE,
-                stderr=PIPE,
-                check=False,
-            )
-            self._available_cache = proc.returncode == 0
-        except OSError:
-            self._available_cache = False
-
-        return self._available_cache
-
-    @staticmethod
-    def _decode(data: bytes) -> str:
-        if not data:
-            return ""
-        if b"\x00" in data:
-            try:
-                return data.decode("utf-16le").replace("\x00", "")
-            except UnicodeDecodeError:
-                return data.decode(errors="ignore")
-        return data.decode(errors="ignore")
-
-    def _run(self, args: List[str], input_text: str | None = None) -> str:
-        if not self.available() or not self.wsl_exe:
-            raise RuntimeError("wsl.exe not available")
-        proc = self.runner(
-            [str(self.wsl_exe), *args],
-            input=(input_text.encode("utf-8") if input_text is not None else None),
-            stdout=PIPE,
-            stderr=PIPE,
-            check=False,
-        )
-        out = self._decode(proc.stdout)
-        err = self._decode(proc.stderr)
-        if proc.returncode != 0:
-            raise RuntimeError((err or out).strip() or f"wsl command failed ({proc.returncode})")
-        return out
-
-    def list_distros(self) -> List[str]:
-        text = self._run(["-l", "-q"])
-        distros: List[str] = []
-        for raw in text.splitlines():
-            name = raw.replace("\x00", "").strip().strip("*").strip()
-            if name:
-                distros.append(name)
-        deduped: List[str] = []
-        seen: Set[str] = set()
-        for d in distros:
-            if d not in seen:
-                deduped.append(d)
-                seen.add(d)
-        return deduped
-
-    def list_distros_for_ui(self) -> List[str]:
-        return [d for d in self.list_distros() if not _HELPER_DISTRO_RE.match(d)]
-
-    def read_file(self, distro: str, path: str) -> str:
-        quoted_path = shlex.quote(path)
-        return self._run(["-d", distro, "-e", "bash", "-lc", f"cat {quoted_path} 2>/dev/null || true"])
-
-    def write_file(self, distro: str, path: str, content: str) -> None:
-        quoted_path = shlex.quote(path)
-        self._run(["-d", distro, "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
-
-    def write_file_with_privilege(self, distro: str, path: str, content: str) -> None:
-        quoted_path = shlex.quote(path)
-
-        root_error: RuntimeError | None = None
-
-        # 1) Try direct root user execution.
-        try:
-            self._run(["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
-            return
-        except RuntimeError as exc:
-            root_error = exc
-
-        # 2) Fallback to sudo.
-        try:
-            self._run(["-d", distro, "-e", "bash", "-lc", f"sudo tee {quoted_path} >/dev/null"], input_text=content)
-            return
-        except RuntimeError as exc:
-            cause = exc if root_error is None else root_error
-            raise RuntimeError(
-                "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
-            ) from cause
-
-    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
-        quoted_root = shlex.quote(root_path)
-        command = (
-            f"find {quoted_root} -maxdepth {max_depth} -type f "
-            "\\( -name '.env' -o -name '.env.*' \\) 2>/dev/null"
-        )
-        text = self._run(["-d", distro, "-e", "bash", "-lc", command])
-        return [line.strip() for line in text.splitlines() if line.strip()]
-
-
-
 def _normalize_powershell_assignment_value(raw_value: str) -> str:
-    value = raw_value.strip()
-    if value.endswith(";"):
-        value = value[:-1].strip()
-    if len(value) >= 2 and ((value[0] == value[-1] == '"') or (value[0] == value[-1] == "'")):
+    value = raw_value.strip().rstrip(";").strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
         return value[1:-1]
     return value
 
 
 def _is_valid_powershell_env_key(key: str) -> bool:
-    if not key:
-        return False
-    if not (key[0].isalpha() or key[0] == "_"):
-        return False
-    return all(char.isalnum() or char == "_" for char in key[1:])
+    return re.fullmatch(r"[A-Za-z_]\w*", key) is not None
 
 
 def _parse_powershell_assignment(line: str) -> Optional[Tuple[str, str]]:
-    stripped = line.strip()
-    if not stripped or stripped.startswith("#"):
+    stripped = line.lstrip()
+    if not stripped or stripped.startswith("#") or not stripped.startswith("$env:"):
         return None
-    if not stripped.lower().startswith("$env:"):
+    body = stripped[len("$env:") :]
+    separator = body.find("=")
+    if separator < 0:
         return None
-
-    assignment = stripped[len("$env:") :]
-    if "=" not in assignment:
-        return None
-
-    key_part, value_part = assignment.split("=", 1)
-    key = key_part.strip()
+    key = body[:separator].strip()
     if not _is_valid_powershell_env_key(key):
         return None
-
-    value = _normalize_powershell_assignment_value(value_part)
-    return key, value
+    value = body[separator + 1 :].strip()
+    return key, _normalize_powershell_assignment_value(value)
 
 
 def parse_powershell_profile_text(text: str) -> List[Tuple[str, str]]:
@@ -500,148 +352,32 @@ def collect_linux_records(
     rows: List[EnvRecord] = []
 
     bashrc = bashrc_path or (Path.home() / ".bashrc")
-    if bashrc.exists():
-        bash_text = bashrc.read_text(encoding="utf-8", errors="ignore")
-        for key, value in parse_bash_exports(bash_text).items():
-            rows.append(
-                EnvRecord(
-                    source_type=SOURCE_LINUX_BASHRC,
-                    source_id="linux",
-                    source_path=str(bashrc),
-                    context=context,
-                    name=key,
-                    value=value,
-                    is_secret=looks_secret(key, value),
-                    is_persistent=True,
-                    is_mutable=True,
-                    precedence_rank=20,
-                    writable=True,
-                    requires_privilege=False,
-                    last_error=None,
-                )
-            )
-
     etc_env = etc_environment_path or Path("/etc/environment")
-    if etc_env.exists():
-        etc_text = etc_env.read_text(encoding="utf-8", errors="ignore")
-        for key, value in parse_etc_environment(etc_text).items():
+    for source_type, path, parser, precedence_rank, requires_privilege in [
+        spec
+        for spec in (
+            (SOURCE_LINUX_BASHRC, bashrc, parse_bash_exports, 20, False),
+            (SOURCE_LINUX_ETC_ENV, etc_env, parse_etc_environment, 30, True),
+        )
+        if spec[1].exists()
+    ]:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for key, value in parser(text).items():
             rows.append(
                 EnvRecord(
-                    source_type=SOURCE_LINUX_ETC_ENV,
+                    source_type=source_type,
                     source_id="linux",
-                    source_path=str(etc_env),
+                    source_path=str(path),
                     context=context,
                     name=key,
                     value=value,
                     is_secret=looks_secret(key, value),
                     is_persistent=True,
                     is_mutable=True,
-                    precedence_rank=30,
+                    precedence_rank=precedence_rank,
                     writable=True,
-                    requires_privilege=True,
+                    requires_privilege=requires_privilege,
                     last_error=None,
                 )
             )
     return rows
-
-
-def _append_wsl_records(
-    rows: List[EnvRecord],
-    *,
-    distro: str,
-    context: str,
-    source_type: str,
-    source_path: str,
-    pairs: Dict[str, str],
-    precedence_rank: int,
-    requires_privilege: bool,
-) -> None:
-    for key, value in pairs.items():
-        rows.append(
-            EnvRecord(
-                source_type=source_type,
-                source_id=distro,
-                source_path=source_path,
-                context=context,
-                name=key,
-                value=value,
-                is_secret=looks_secret(key, value),
-                is_persistent=True,
-                is_mutable=True,
-                precedence_rank=precedence_rank,
-                writable=True,
-                requires_privilege=requires_privilege,
-                last_error=None,
-            )
-        )
-
-
-def collect_wsl_records(
-    wsl: WslClient,
-    include_etc: bool = True,
-    exclude_distros: Set[str] | None = None,
-) -> List[EnvRecord]:
-    rows: List[EnvRecord] = []
-    if not wsl.available():
-        return rows
-
-    excluded = {x.lower() for x in (exclude_distros or set())}
-    for distro in wsl.list_distros():
-        if distro.lower() in excluded:
-            continue
-
-        context = f"wsl:{distro}"
-        bash_pairs = parse_bash_exports(wsl.read_file(distro, "~/.bashrc"))
-        _append_wsl_records(
-            rows,
-            distro=distro,
-            context=context,
-            source_type=SOURCE_WSL_BASHRC,
-            source_path=f"{distro}:~/.bashrc",
-            pairs=bash_pairs,
-            precedence_rank=20,
-            requires_privilege=False,
-        )
-
-        if include_etc:
-            etc_pairs = parse_etc_environment(wsl.read_file(distro, "/etc/environment"))
-            _append_wsl_records(
-                rows,
-                distro=distro,
-                context=context,
-                source_type=SOURCE_WSL_ETC_ENV,
-                source_path=f"{distro}:/etc/environment",
-                pairs=etc_pairs,
-                precedence_rank=10,
-                requires_privilege=True,
-            )
-    return rows
-
-
-def collect_wsl_dotenv_records(wsl: WslClient, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
-    rows: List[EnvRecord] = []
-    if not wsl.available():
-        return rows
-    for path in wsl.scan_dotenv_files(distro, root_path, max_depth):
-        text = wsl.read_file(distro, path)
-        for key, value in parse_dotenv_text(text):
-            rows.append(
-                EnvRecord(
-                    source_type=SOURCE_WSL_DOTENV,
-                    source_id=distro,
-                    source_path=f"{distro}:{path}",
-                    context=f"wsl:{distro}",
-                    name=key,
-                    value=value,
-                    is_secret=looks_secret(key, value),
-                    is_persistent=True,
-                    is_mutable=True,
-                    precedence_rank=30,
-                    writable=True,
-                    requires_privilege=False,
-                    last_error=None,
-                )
-            )
-    return rows
-
-

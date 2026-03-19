@@ -184,15 +184,8 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         return 0
 
     active_service = service or EnvInspectorService()
-    if args.command == "list":
-        try:
-            _list_records(active_service, args)
-        except ValueError as exc:
-            print(str(exc), file=sys.stderr)
-            return 2
-        return 0
-
     handlers = {
+        "list": _list_records,
         "set": _set_key,
         "remove": _remove_key,
         "export": _export_records,
@@ -200,11 +193,14 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
         "restore": _restore_backup,
     }
     handler = handlers.get(args.command)
+    exit_code = 2
     if handler is None:
         print(f"Unknown command: {args.command}", file=sys.stderr)
-        return 2
-    try:
-        return handler(active_service, args)
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
+    else:
+        try:
+            exit_code = handler(active_service, args)
+            if args.command == "list":
+                exit_code = 0
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+    return exit_code
