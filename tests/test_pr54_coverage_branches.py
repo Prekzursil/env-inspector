@@ -42,6 +42,19 @@ def test_collect_wsl_rows_rejects_positional_and_unexpected_kwargs() -> None:
         )
 
 
+def test_wsl_dotenv_rows_returns_empty_when_request_is_incomplete() -> None:
+    calls = []
+
+    rows = service_listing_module._wsl_dotenv_rows(
+        request=service_listing_module._WslDotenvRequest(distro=None, wsl_path="/home/user/.env", scan_depth=1),
+        wsl=SimpleNamespace(),
+        collect_wsl_dotenv_records_fn=lambda *_args, **_kwargs: calls.append("called"),
+    )
+
+    ensure(rows == [])
+    ensure(calls == [])
+
+
 def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(tmp_path: Path) -> None:
     target = tmp_path / "environment"
 
