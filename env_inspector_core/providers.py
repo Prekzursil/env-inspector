@@ -82,7 +82,7 @@ SKIP_DIRS = {
 
 _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
 _POWERSHELL_ASSIGNMENT_RE = re.compile(
-    r"^\s*(?!#)\$env:(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<value>.*?)\s*$"
+    r"^\s*(?!#)\$env:(?P<key>[A-Za-z_]\w*)\s*=\s*(?P<value>.*?)\s*$"
 )
 
 
@@ -259,7 +259,7 @@ def _normalize_powershell_assignment_value(raw_value: str) -> str:
 
 
 def _is_valid_powershell_env_key(key: str) -> bool:
-    return re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) is not None
+    return re.fullmatch(r"[A-Za-z_]\w*", key) is not None
 
 
 def _parse_powershell_assignment(line: str) -> Optional[Tuple[str, str]]:

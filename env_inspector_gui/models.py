@@ -28,7 +28,7 @@ def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
     value = payload.get(key, default)
     result = default
     if isinstance(value, bool):
-        pass
+        result = default
     elif isinstance(value, int):
         result = value
     elif isinstance(value, float):
@@ -39,7 +39,7 @@ def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
             try:
                 result = int(text)
             except ValueError:
-                pass
+                result = default
     return result
 
 
@@ -136,8 +136,19 @@ def resolve_context_selection(
     runtime_context: str,
 ) -> ContextSelection:
     distros = [context.split(":", 1)[1] for context in contexts if context.startswith("wsl:")]
-    context = current_context if current_context in contexts else (contexts[0] if contexts else runtime_context)
-    wsl_distro = current_wsl_distro if current_wsl_distro in distros else (distros[0] if distros else "")
+    if current_context in contexts:
+        context = current_context
+    elif contexts:
+        context = contexts[0]
+    else:
+        context = runtime_context
+
+    if current_wsl_distro in distros:
+        wsl_distro = current_wsl_distro
+    elif distros:
+        wsl_distro = distros[0]
+    else:
+        wsl_distro = ""
     return ContextSelection(context=context, wsl_distro=wsl_distro, distros=distros)
 
 

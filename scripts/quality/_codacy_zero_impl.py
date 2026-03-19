@@ -125,9 +125,7 @@ def _fetch_open_issues_for_provider(
 
     if handled and open_issues is None:
         findings.append("Codacy response did not include a parseable total issue count.")
-    elif handled and open_issues == 0:
-        pass
-    elif handled:
+    elif handled and open_issues != 0:
         findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
         sample_payload = request_json_fn(request=replace(request, limit=20, method="POST", data={}))
         findings.extend(sample_findings_fn(sample_payload))
