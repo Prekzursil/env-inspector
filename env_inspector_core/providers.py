@@ -3,13 +3,9 @@ from __future__ import absolute_import, division
 import importlib
 import os
 import re
-import shlex
-import shutil
 from contextlib import suppress
-from subprocess import PIPE, CompletedProcess, run  # nosec B404
-from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, cast
 
 from .constants import (
     SOURCE_DOTENV,
@@ -19,15 +15,12 @@ from .constants import (
     SOURCE_PROCESS,
     SOURCE_WINDOWS_MACHINE,
     SOURCE_WINDOWS_USER,
-    SOURCE_WSL_BASHRC,
-    SOURCE_WSL_DOTENV,
-    SOURCE_WSL_ETC_ENV,
 )
 from .models import EnvRecord
 from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environment
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
-from .providers_wsl import WslProvider, collect_wsl_dotenv_records, collect_wsl_records
+from . import providers_wsl as _providers_wsl
 
 if TYPE_CHECKING:
     from typing_extensions import Protocol
@@ -42,6 +35,7 @@ if TYPE_CHECKING:
         REG_SZ: int
         OpenKey: Callable[[Any, str, int, int], Any]
         EnumValue: Callable[[Any, int], Tuple[str, Any, Any]]
+        QueryInfoKey: Callable[[Any], Tuple[int, int, int]]
         SetValueEx: Callable[[Any, str, int, int, str], None]
         DeleteValue: Callable[[Any, str], None]
 
@@ -54,6 +48,11 @@ if TYPE_CHECKING:
 else:
     WinregModule = Any
     WslClient = Any
+
+
+WslProvider = _providers_wsl.WslProvider
+collect_wsl_dotenv_records = _providers_wsl.collect_wsl_dotenv_records
+collect_wsl_records = _providers_wsl.collect_wsl_records
 
 
 _winreg: WinregModule | None
@@ -82,7 +81,7 @@ SKIP_DIRS = {
 
 _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
 _POWERSHELL_ASSIGNMENT_RE = re.compile(
-    r"^\s*(?!#)\$env:(?P<key>[A-Za-z_]\w*)\s*=\s*(?P<value>.*?)\s*$"
+    r"^\s*(?!#)\$env:(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<value>[^\r\n]*)\s*$"
 )
 
 
