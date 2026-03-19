@@ -20,7 +20,11 @@ from .models import EnvRecord
 from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environment
 from .path_policy import PathPolicyError, resolve_scan_root
 from .secrets import looks_secret
-from . import providers_wsl as _providers_wsl
+
+try:
+    import env_inspector_core.providers_wsl as _providers_wsl
+except ImportError:  # pragma: no cover - direct script execution
+    import providers_wsl as _providers_wsl  # type: ignore
 
 if TYPE_CHECKING:
     from typing_extensions import Protocol
