@@ -176,3 +176,12 @@ def test_restore_powershell_target_all_users_uses_program_files_root(tmp_path: P
     ensure(writes["path"] == profile)
     ensure(writes["text"] == "$env:A='1'\n")
     ensure(writes["ensure_parent"] is True)
+
+
+def test_write_text_file_without_ensure_parent_uses_existing_parent(tmp_path: Path):
+    file_path = tmp_path / "existing" / "env.txt"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    service_paths_module.write_text_file(file_path, "A=1\n", ensure_parent=False)
+
+    ensure(file_path.read_text(encoding="utf-8") == "A=1\n")

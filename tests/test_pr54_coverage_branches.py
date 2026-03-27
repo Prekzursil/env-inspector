@@ -9,6 +9,7 @@ import env_inspector_core.service as service_module
 import env_inspector_core.service_listing as service_listing_module
 import env_inspector_core.service_privileged as service_privileged_module
 import env_inspector_core.service_restore as service_restore_module
+from env_inspector_core.constants import SOURCE_DOTENV
 from env_inspector_core.service import EnvInspectorService
 from scripts.quality import check_sentry_zero as sentry_mod
 from tests.assertions import ensure
@@ -53,6 +54,58 @@ def test_wsl_dotenv_rows_returns_empty_when_request_is_incomplete() -> None:
 
     ensure(rows == [])
     ensure(calls == [])
+
+
+def test_bridge_rows_without_current_linux_distro_uses_no_exclusions() -> None:
+    calls = []
+
+    rows = service_listing_module._bridge_rows(
+        runtime_context="windows",
+        current_wsl_distro="Ubuntu",
+        wsl=SimpleNamespace(),
+        collect_wsl_records_fn=lambda _wsl, include_etc, exclude_distros: calls.append((include_etc, exclude_distros)) or [],
+    )
+
+    ensure(rows == [])
+    ensure(calls == [(True, None)])
+
+
+def test_apply_row_filters_and_available_targets_cover_falsey_branches(tmp_path: Path) -> None:
+    rows = [
+        service_module.EnvRecord(
+            source_type=SOURCE_DOTENV,
+            source_id="dotenv",
+            source_path=str(tmp_path / ".env"),
+            context="linux",
+            name="A",
+            value="1",
+            is_secret=False,
+            is_persistent=True,
+            is_mutable=True,
+            precedence_rank=1,
+            writable=True,
+            requires_privilege=False,
+        )
+    ]
+
+    ensure(service_listing_module.apply_row_filters(rows, source=None, context=None) == rows)
+
+    unknown_record = service_module.EnvRecord(
+        source_type="unknown",
+        source_id="unknown",
+        source_path="ignored",
+        context="wsl:Ubuntu",
+        name="B",
+        value="2",
+        is_secret=False,
+        is_persistent=True,
+        is_mutable=True,
+        precedence_rank=1,
+        writable=True,
+        requires_privilege=False,
+    )
+
+    ensure(service_listing_module.available_targets([unknown_record], context="wsl:Ubuntu", win_provider_present=False) == [])
 
 
 def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(tmp_path: Path) -> None:
@@ -197,6 +250,44 @@ def test_coerce_scan_request_covers_positional_branches() -> None:
 
     with pytest.raises(TypeError, match="Pass a request object or keyword arguments"):
         sentry_mod._coerce_scan_request("only-org")
+
+
+def test_resolve_unresolved_count_without_hits_header_and_without_issues() -> None:
+    failures = []
+
+    unresolved = sentry_mod._resolve_unresolved_count([], {}, "proj", failures)
+
+    ensure(unresolved == 0)
+    ensure(failures == [])
+
+
+def test_check_sentry_zero_script_does_not_duplicate_helper_root(monkeypatch) -> None:
+    import runpy
+    import sys
+
+    helper_root = str(Path(sentry_mod.__file__).resolve().parent.parent)
+    monkeypatch.setattr(sys, "path", [helper_root] + [entry for entry in sys.path if entry != helper_root])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "check_sentry_zero.py",
+            "--out-json",
+            "reports/sentry.json",
+            "--out-md",
+            "reports/sentry.md",
+        ],
+    )
+    monkeypatch.delenv("SENTRY_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("SENTRY_ORG", raising=False)
+    monkeypatch.delenv("SENTRY_PROJECT_BACKEND", raising=False)
+    monkeypatch.delenv("SENTRY_PROJECT_WEB", raising=False)
+
+    with pytest.raises(SystemExit) as exc_info:
+        runpy.run_path(str(Path(sentry_mod.__file__)), run_name="__main__")
+
+    ensure(exc_info.value.code == 0)
+    ensure(sys.path.count(helper_root) == 1)
 
 
 def test_scan_projects_covers_request_object_and_keyword_request_paths(monkeypatch) -> None:

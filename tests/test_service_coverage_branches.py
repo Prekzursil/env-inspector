@@ -79,6 +79,21 @@ def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path
     ensure(rows == [])
 
 
+def test_list_records_accepts_request_without_kwargs(monkeypatch, tmp_path: Path) -> None:
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    request = service_module.ListRecordsRequest(root=tmp_path, include_raw_secrets=True)
+
+    monkeypatch.setattr(service_module, "resolve_scan_root", lambda root: Path(root))
+    monkeypatch.setattr(svc, "_collect_host_rows", lambda root_path, _scan_depth: [_record(SOURCE_DOTENV, str(root_path / ".env"))])
+    monkeypatch.setattr(svc, "_collect_wsl_rows", lambda **_kwargs: [])
+    monkeypatch.setattr(svc, "_apply_row_filters", lambda rows, source, context: rows)
+
+    rows = svc.list_records(request=request)
+
+    ensure(len(rows) == 1)
+    ensure(rows[0]["source_path"] == str(tmp_path / ".env"))
+
+
 def test_available_targets_maps_all_known_sources_and_filters_context(tmp_path: Path):
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.win_provider = object()
@@ -169,6 +184,61 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     )
     ensure(svc._file_update("wsl:Ubuntu:bashrc", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "wsl")
     ensure(svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps")
+
+
+def test_update_helpers_preview_paths_skip_writes_when_apply_changes_is_false(monkeypatch, tmp_path: Path) -> None:
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    monkeypatch.setattr(svc, "_resolve_wsl_target", lambda _target: ("Ubuntu", "~/.bashrc", "export", False))
+    monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "export A='1'\n")
+    monkeypatch.setattr(
+        svc.wsl,
+        "write_file",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("write_file should not run")),
+    )
+    monkeypatch.setattr(
+        svc.wsl,
+        "write_file_with_privilege",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("privileged write should not run")),
+    )
+
+    before, after, out_path, requires_priv, _ = svc._update_wsl_file(
+        target="wsl:Ubuntu:bashrc",
+        key="B",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+
+    ensure(before == "export A='1'\n")
+    ensure("export B='2'" in after)
+    ensure(out_path == "Ubuntu:~/.bashrc")
+    ensure(requires_priv is False)
+
+    profile = tmp_path / "profile.ps1"
+    monkeypatch.setattr(
+        EnvInspectorService,
+        "_powershell_target_path_and_roots",
+        lambda _self, _target: (profile, [tmp_path], False),
+    )
+    monkeypatch.setattr(
+        svc,
+        "_write_text_file",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("PowerShell write should not run")),
+    )
+
+    before, after, out_path, requires_priv, _ = svc._update_powershell_file(
+        target="powershell:current_user",
+        key="B",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+
+    ensure(before == "")
+    ensure("$env:B = '2'" in after)
+    ensure(out_path == str(profile))
+    ensure(requires_priv is False)
 
 
 def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch) -> None:

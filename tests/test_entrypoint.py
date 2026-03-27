@@ -66,6 +66,27 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
     case.assertIn("API_TOKEN", out)
 
 
+def test_legacy_print_secrets_skips_non_secret_rows(tmp_path: Path, monkeypatch, capsys):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+
+    monkeypatch.chdir(workspace)
+
+    def _list_records(**_kwargs):
+        return [{"is_secret": False, "source_type": "dotenv", "source_id": ".env", "name": "PUBLIC_VAR"}]
+
+    class _Service:
+        list_records = staticmethod(_list_records)
+
+    monkeypatch.setattr(env_inspector, "EnvInspectorService", _Service)
+
+    code = env_inspector._legacy_print_secrets(str(workspace))
+
+    case = _case()
+    case.assertEqual(code, 0)
+    case.assertEqual(capsys.readouterr().out, "")
+
+
 def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, monkeypatch, capsys):
     workspace = tmp_path / "workspace"
     nested = workspace / "nested"
