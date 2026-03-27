@@ -1,6 +1,6 @@
 .PHONY: verify compile test
 
-PYTHON ?= python
+PYTHON ?= python3
 
 verify: compile test
 
