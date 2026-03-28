@@ -246,7 +246,8 @@ def test_service_list_records_collects_linux_sources(
     class _NoBridge:
         """WSL bridge stub that reports itself as unavailable."""
 
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             """Report that no WSL bridge is present."""
             return False
 

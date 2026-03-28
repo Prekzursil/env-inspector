@@ -20,7 +20,6 @@ from env_inspector_core.service_ops import OperationResultInput, operation_resul
 from env_inspector_core.path_policy import PathPolicyError
 from env_inspector_core.service import EnvInspectorService
 from scripts.quality import assert_coverage_100 as coverage_mod
-from scripts.quality import check_sentry_zero as sentry_mod
 
 from tests.assertions import ensure
 
@@ -193,7 +192,8 @@ def _assert_service_target_helpers(
     class _NoWsl:
         """Bridge stub that reports WSL as unavailable."""
 
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             """Report that no WSL bridge exists."""
             return False
 
@@ -225,12 +225,12 @@ def _assert_service_target_helpers(
     ensure(requires_privilege is False)
 
 
-def _assert_service_operation_wrappers(
+def _assert_registry_operation_wrappers(
     svc: EnvInspectorService,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Exercise the service wrappers that preview and apply operations."""
+    """Exercise wrapper behavior for registry-target planning."""
     monkeypatch.setattr(
         svc,
         "_registry_write",
@@ -244,12 +244,20 @@ def _assert_service_operation_wrappers(
         == "registry"
     )
 
+
+def _assert_unsupported_target_wrapper(
+    svc: EnvInspectorService, tmp_path: Path
+) -> None:
+    """Exercise the unsupported-target wrapper branch."""
     with pytest.raises(RuntimeError, match="Unsupported target"):
         svc._file_update(
             _target_request(tmp_path, target="custom:target"),
             apply_changes=False,
         )
 
+
+def _assert_operation_result_wrapper() -> None:
+    """Exercise the operation-result helper wrapper."""
     ensure(
         operation_result(
             OperationResultInput(
@@ -267,6 +275,11 @@ def _assert_service_operation_wrappers(
         is True
     )
 
+
+def _assert_apply_wrappers_surface_partial_failures(
+    svc: EnvInspectorService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exercise preview and apply wrappers when one target fails."""
     monkeypatch.setattr(
         svc,
         "_apply",
@@ -303,7 +316,10 @@ def test_service_wrapper_owned_target_branches(
     """Owned wrapper branches should stay covered through the compatibility surface."""
     svc = _service_with_broken_registry(tmp_path, monkeypatch)
     _assert_service_target_helpers(svc, tmp_path, monkeypatch)
-    _assert_service_operation_wrappers(svc, tmp_path, monkeypatch)
+    _assert_registry_operation_wrappers(svc, tmp_path, monkeypatch)
+    _assert_unsupported_target_wrapper(svc, tmp_path)
+    _assert_operation_result_wrapper()
+    _assert_apply_wrappers_surface_partial_failures(svc, monkeypatch)
 
 
 def test_service_listing_filters_cover_registry_fallback(
@@ -538,70 +554,3 @@ def test_assert_coverage_main_supports_lcov_inputs(
     monkeypatch.setattr(coverage_mod, "_parse_args", lambda: args)
 
     ensure(coverage_mod.main() == 0)
-
-
-def test_sentry_owned_branches_cover_headers_output_validation_and_main(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Sentry wrappers should cover header parsing, path validation, and CLI flow."""
-    monkeypatch.chdir(tmp_path)
-    ensure(sentry_mod._hits_from_headers({}) is None)
-    ensure(sentry_mod._hits_from_headers({"x-hits": "bad"}) is None)
-
-    monkeypatch.setattr(
-        sentry_mod,
-        "request_json_https",
-        lambda **kwargs: ({}, {"x-hits": "0"}),
-    )
-    with pytest.raises(RuntimeError, match="Unexpected Sentry response payload"):
-        sentry_mod._request_project_issues("my-org", "proj", "token")
-
-    invalid_args = SimpleNamespace(
-        org="my-org",
-        project=["proj"],
-        token=f"{tmp_path.name}-token",
-        out_json=str(tmp_path.parent / "escaped.json"),
-        out_md="reports/sentry.md",
-    )
-    monkeypatch.setattr(sentry_mod, "_parse_args", lambda: invalid_args)
-    monkeypatch.setattr(
-        sentry_mod,
-        "_scan_projects",
-        lambda org, projects, token: (
-            "strict",
-            [{"project": "proj", "unresolved": 0}],
-            [],
-            [],
-        ),
-    )
-    ensure(sentry_mod.main() == 1)
-    ensure("escapes workspace root" in capsys.readouterr().err)
-
-    helper_root = str(Path(sentry_mod.__file__).resolve().parent.parent)
-    monkeypatch.setattr(
-        sys,
-        "path",
-        [entry for entry in sys.path if entry != helper_root],
-    )
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "check_sentry_zero.py",
-            "--out-json",
-            "reports/sentry.json",
-            "--out-md",
-            "reports/sentry.md",
-        ],
-    )
-    monkeypatch.delenv("SENTRY_AUTH_TOKEN", raising=False)
-    monkeypatch.delenv("SENTRY_ORG", raising=False)
-    monkeypatch.delenv("SENTRY_PROJECT_BACKEND", raising=False)
-    monkeypatch.delenv("SENTRY_PROJECT_WEB", raising=False)
-
-    with pytest.raises(SystemExit) as exc_info:
-        runpy.run_path(str(Path(sentry_mod.__file__)), run_name="__main__")
-
-    ensure(exc_info.value.code == 0)

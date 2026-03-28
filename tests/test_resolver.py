@@ -1,8 +1,11 @@
+"""Resolver tests for precedence and context isolation."""
+
 from __future__ import absolute_import, division
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 
 from tests.assertions import ensure
+
 
 def rec(
     source_type: str,
@@ -28,7 +31,9 @@ def rec(
         last_error=None,
     )
 
-def test_resolve_effective_windows_prefers_lower_precedence_rank():
+
+def test_resolve_effective_windows_prefers_lower_precedence_rank() -> None:
+    """Windows resolution should prefer the lowest precedence rank."""
     rows = [
         rec("windows_machine", "windows", "API_TOKEN", "machine", 30),
         rec("windows_user", "windows", "API_TOKEN", "user", 20),
@@ -40,7 +45,8 @@ def test_resolve_effective_windows_prefers_lower_precedence_rank():
         raise RuntimeError("Expected a resolved Windows record.")
     ensure(chosen.value == "user")
 
-def test_resolve_effective_wsl_context_isolated_by_distro():
+
+def test_resolve_effective_wsl_context_isolated_by_distro() -> None:
     """WSL resolution should stay isolated to the selected distro context."""
     rows = [
         rec("wsl_etc_environment", "wsl:Ubuntu", "API_TOKEN", "ubuntu-etc", 10),
@@ -53,7 +59,8 @@ def test_resolve_effective_wsl_context_isolated_by_distro():
         raise RuntimeError("Expected a resolved WSL record.")
     ensure(chosen.value == "ubuntu-etc")
 
-def test_resolve_effective_windows_does_not_leak_linux_context():
+
+def test_resolve_effective_windows_does_not_leak_linux_context() -> None:
     """Windows resolution should ignore Linux records with the same key."""
     rows = [
         rec("linux_bashrc", "linux", "API_TOKEN", "linux-value", 20),
@@ -65,7 +72,8 @@ def test_resolve_effective_windows_does_not_leak_linux_context():
         raise RuntimeError("Expected a resolved Windows record.")
     ensure(chosen.value == "windows-value")
 
-def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
+
+def test_resolve_effective_linux_precedence_prefers_process_then_bashrc() -> None:
     """Linux resolution should respect precedence ordering within one context."""
     rows = [
         rec("linux_etc_environment", "linux", "PATH", "etc", 30),
