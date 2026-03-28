@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Required-check gate wrapper for the shared GitHub context helpers."""
+
 from __future__ import absolute_import, division
 
 import argparse
@@ -26,8 +28,6 @@ _impl = _load_impl()
 GitHubRequest = _impl.GitHubRequest
 SettledChecksRequest = _impl.SettledChecksRequest
 GITHUB_API_HOST = _impl.GITHUB_API_HOST
-_SHA_RE = getattr(_impl, "_SHA_RE")
-_TRANSIENT_HTTP_CODES = getattr(_impl, "_TRANSIENT_HTTP_CODES")
 encode_identifier = _impl.encode_identifier
 request_json_https = _impl.request_json_https
 safe_output_path_in_workspace = _impl.safe_output_path_in_workspace
@@ -87,6 +87,7 @@ def _should_retry_http_error(
     attempt: int,
     attempts: int,
 ) -> bool:
+    """Return whether the wrapper should retry after an HTTP error."""
     return _impl_helper("_should_retry_http_error")(
         exc=exc,
         attempt=attempt,
@@ -95,6 +96,7 @@ def _should_retry_http_error(
 
 
 def _should_retry_url_error(*, attempt: int, attempts: int) -> bool:
+    """Return whether the wrapper should retry after a URL transport error."""
     return _impl_helper("_should_retry_url_error")(
         attempt=attempt,
         attempts=attempts,
@@ -102,10 +104,12 @@ def _should_retry_url_error(*, attempt: int, attempts: int) -> bool:
 
 
 def _next_retry_wait(wait_seconds: int) -> int:
+    """Calculate the next bounded retry delay."""
     return _impl_helper("_next_retry_wait")(wait_seconds)
 
 
 def _request_payload_with_retry(request: Any) -> Dict[str, Any]:
+    """Fetch one GitHub payload with retry semantics applied."""
     return _impl_helper("_request_payload_with_retry")(request)
 
 
@@ -116,6 +120,7 @@ def _api_get_check_runs(
     sha: str,
     token: str,
 ) -> Dict[str, Any]:
+    """Fetch the check-run payload for the target commit SHA."""
     return _impl_helper("_api_get_check_runs")(
         owner=owner,
         repo=repo,
@@ -125,6 +130,7 @@ def _api_get_check_runs(
 
 
 def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
+    """Fetch the commit-status payload for the target commit SHA."""
     return _impl_helper("_api_get_status")(
         owner=owner,
         repo=repo,
@@ -134,10 +140,12 @@ def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str,
 
 
 def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
+    """Normalize one check-run entry into the shared context shape."""
     return _impl_helper("_check_run_context")(run)
 
 
 def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
+    """Normalize one status entry into the shared context shape."""
     return _impl_helper("_status_context")(status)
 
 
@@ -145,14 +153,17 @@ def _collect_contexts(
     check_runs_payload: Dict[str, Any],
     status_payload: Dict[str, Any],
 ) -> Dict[str, Dict[str, str]]:
+    """Merge check-run and status payloads into one context map."""
     return _impl_helper("_collect_contexts")(check_runs_payload, status_payload)
 
 
 def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
+    """Return the failure summary for a check-run context, if any."""
     return _impl_helper("_check_run_failure")(context, observed)
 
 
 def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
+    """Return the failure summary for a commit-status context, if any."""
     return _impl_helper("_status_failure")(context, observed)
 
 
@@ -160,38 +171,47 @@ def _evaluate(
     required: List[str],
     contexts: Dict[str, Dict[str, str]],
 ) -> Tuple[str, List[str], List[str]]:
+    """Evaluate whether every required context is present and successful."""
     return _impl_helper("_evaluate")(required, contexts)
 
 
 def _render_md(payload: Dict[str, Any]) -> str:
+    """Render the markdown summary for the required-check gate."""
     return _impl_helper("_render_md")(payload)
 
 
 def _required_contexts(args: argparse.Namespace) -> List[str]:
+    """Return the normalized list of required check context names."""
     return _impl_helper("_required_contexts")(args)
 
 
 def _github_token() -> str:
+    """Load the GitHub token used for required-check polling."""
     return _impl_helper("_github_token")()
 
 
 def _snapshot(*args, **kwargs) -> Dict[str, Any]:
+    """Build the current required-check snapshot payload."""
     return _impl_helper("_snapshot")(*args, **kwargs)
 
 
 def _has_in_progress_check_run(contexts: Dict[str, Dict[str, str]]) -> bool:
+    """Return whether any observed check run is still in progress."""
     return _impl_helper("_has_in_progress_check_run")(contexts)
 
 
 def _should_wait(payload: Dict[str, Any]) -> bool:
+    """Return whether polling should continue for the current snapshot."""
     return _impl_helper("_should_wait")(payload)
 
 
 def _collect_until_settled(request: Any) -> Dict[str, Any]:
+    """Poll GitHub until the required contexts settle or time out."""
     return _impl_helper("_collect_until_settled")(request)
 
 
 def main() -> int:
+    """Run the required-check gate and write its report artifacts."""
     args = _parse_args()
     required = _required_contexts(args)
     token = _github_token()
