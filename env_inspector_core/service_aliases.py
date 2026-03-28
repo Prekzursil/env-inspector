@@ -11,7 +11,6 @@ from .service_paths import (
     powershell_target_path_and_roots as _powershell_target_path_and_roots,
     validated_powershell_restore_path as _validated_powershell_restore_path,
 )
-from .service_privileged import write_linux_etc_environment_with_privilege as _write_linux_etc_environment_with_privilege_helper
 from .service_listing import available_targets as _available_targets_helper
 from .service_wsl import validate_wsl_dotenv_path as _validate_wsl_dotenv_path_helper
 
@@ -59,7 +58,7 @@ def bridge_distros(self) -> List[str]:
 def list_contexts(self) -> List[str]:
     contexts = [self.runtime_context]
     if self.wsl.available():
-        for distro in self._bridge_distros():
+        for distro in self.bridge_distros():
             contexts.append(f"wsl:{distro}")
     return contexts
 
@@ -72,7 +71,7 @@ def get_powershell_profile_paths() -> List[Path]:
 def powershell_target_path_and_roots(self, target: str):
     return _powershell_target_path_and_roots(
         target,
-        profile_resolver=self._powershell_profile_path,
+        profile_resolver=self.powershell_profile_path,
         current_user_target="powershell:current_user",
         all_users_target="powershell:all_users",
     )
@@ -81,7 +80,7 @@ def powershell_target_path_and_roots(self, target: str):
 def validated_powershell_restore_path(self, target: str) -> Path:
     return _validated_powershell_restore_path(
         target,
-        profile_resolver=self._powershell_profile_path,
+        profile_resolver=self.powershell_profile_path,
         current_user_target="powershell:current_user",
         all_users_target="powershell:all_users",
     )
@@ -89,18 +88,6 @@ def validated_powershell_restore_path(self, target: str) -> Path:
 
 def linux_etc_environment_path(cls) -> Path:
     return _linux_etc_environment_path(cls._LINUX_ETC_ENV_PATH)
-
-
-def write_linux_etc_environment_with_privilege(cls, text: str) -> None:
-    _write_linux_etc_environment_with_privilege_helper(
-        fixed_path=cls._LINUX_ETC_ENV_PATH,
-        expected_path=cls._LINUX_ETC_ENV_PATH,
-        text=text,
-        write_text_file=lambda path, payload: cls._write_text_file(path, payload, ensure_parent=False),
-        which_fn=cls.which,
-        run_fn=cls.run,
-    )
-
 
 def available_targets(self, records: List[EnvRecord], context: str | None = None) -> List[str]:
     return _available_targets_helper(
@@ -118,7 +105,7 @@ def list_records_raw(self, **kwargs: Any) -> List[EnvRecord]:
 def preview_set(self, *, key: str, value: str, targets: List[str], scope_roots=None) -> List[dict]:
     return [
         r.to_dict()
-        for r in self._apply(
+        for r in self.apply(
             action="set",
             key=key,
             value=value,
@@ -132,7 +119,7 @@ def preview_set(self, *, key: str, value: str, targets: List[str], scope_roots=N
 def preview_remove(self, *, key: str, targets: List[str], scope_roots=None) -> List[dict]:
     return [
         r.to_dict()
-        for r in self._apply(
+        for r in self.apply(
             action="remove",
             key=key,
             value=None,
@@ -150,7 +137,7 @@ def _results_payload(results):
 
 
 def set_key(self, *, key: str, value: str, targets: List[str], scope_roots=None):
-    results = self._apply(
+    results = self.apply(
         action="set",
         key=key,
         value=value,
@@ -162,7 +149,7 @@ def set_key(self, *, key: str, value: str, targets: List[str], scope_roots=None)
 
 
 def remove_key(self, *, key: str, targets: List[str], scope_roots=None):
-    results = self._apply(
+    results = self.apply(
         action="remove",
         key=key,
         value=None,

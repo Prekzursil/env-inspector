@@ -131,6 +131,37 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
 
     ensure(contexts == ["linux", "wsl:Debian"])
 
+def test_service_list_contexts_without_wsl_returns_current_context_only(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "linux"
+
+    class _NoWsl:
+        @staticmethod
+        def available() -> bool:
+            return False
+
+    svc.wsl = _NoWsl()  # type: ignore[assignment]
+
+    ensure(svc.list_contexts() == ["linux"])
+
+def test_service_list_contexts_keeps_all_distros_without_active_linux_bridge(tmp_path: Path):
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    svc.runtime_context = "windows"
+    svc.current_wsl_distro = "Ubuntu"
+
+    class _FakeWsl:
+        @staticmethod
+        def available() -> bool:
+            return True
+
+        @staticmethod
+        def list_distros_for_ui() -> List[str]:
+            return ["Ubuntu", "Debian"]
+
+    svc.wsl = _FakeWsl()  # type: ignore[assignment]
+
+    ensure(svc.list_contexts() == ["windows", "wsl:Ubuntu", "wsl:Debian"])
+
 def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")

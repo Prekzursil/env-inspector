@@ -175,6 +175,137 @@ class EnvInspectorService:
         """Resolve `/etc/environment` through the class seam."""
         return _service_aliases.linux_etc_environment_path(cls)
 
+    def bridge_distros(self) -> List[str]:
+        """Return available WSL bridge distros."""
+        return self._bridge_distros()
+
+    def powershell_profile_path(self, target: str) -> Path:
+        """Resolve a PowerShell target through the bound helper."""
+        return self._powershell_profile_path(target)
+
+    def validate_path_in_roots(
+        self,
+        path: Path,
+        roots: List[Path],
+        *,
+        label: str,
+    ) -> Path:
+        """Validate a path against approved roots through the seam."""
+        return self._validate_path_in_roots(path, roots, label=label)
+
+    def write_text_file(self, path: Path, text: str, *, ensure_parent: bool) -> None:
+        """Write text through the mutable file seam."""
+        self._write_text_file(path, text, ensure_parent=ensure_parent)
+
+    def write_scoped_text_file(
+        self,
+        *,
+        candidate_path: Path,
+        allowed_roots: List[Path],
+        text: str,
+        label: str,
+    ) -> Path:
+        """Write a scoped text file through the mutable file seam."""
+        return self._write_scoped_text_file(
+            candidate_path=candidate_path,
+            allowed_roots=allowed_roots,
+            text=text,
+            label=label,
+        )
+
+    def read_text_if_exists(self, path: Path) -> str:
+        """Read text through the mutable file seam."""
+        return self._read_text_if_exists(path)
+
+    @classmethod
+    def linux_etc_environment_path(cls) -> Path:
+        """Resolve `/etc/environment` through the public bridge."""
+        return cls._linux_etc_environment_path()
+
+    @classmethod
+    def linux_etc_environment_value(cls) -> str:
+        """Return the canonical `/etc/environment` path string."""
+        return cls._LINUX_ETC_ENV_PATH
+
+    def powershell_target_path_and_roots(self, target: str) -> Any:
+        """Resolve a PowerShell target and its allowed roots."""
+        return self._powershell_target_path_and_roots(target)
+
+    def validate_wsl_distro_name(self, raw: str) -> str:
+        """Validate a WSL distro name through the bound helper."""
+        return self._validate_wsl_distro_name(raw)
+
+    def validate_wsl_dotenv_path(self, raw: str) -> str:
+        """Validate a WSL dotenv path through the bound helper."""
+        return self._validate_wsl_dotenv_path(raw)
+
+    def registry_write(self, *args: Any, apply_changes: bool, **kwargs: Any) -> Any:
+        """Dispatch a registry mutation through the bound helper."""
+        return self._registry_write(*args, apply_changes=apply_changes, **kwargs)
+
+    def update_dotenv_file(
+        self,
+        *args: Any,
+        apply_changes: bool,
+        **kwargs: Any,
+    ) -> Any:
+        """Dispatch a dotenv mutation through the bound helper."""
+        return self._update_dotenv_file(*args, apply_changes=apply_changes, **kwargs)
+
+    def update_linux_file(
+        self,
+        *args: Any,
+        apply_changes: bool,
+        **kwargs: Any,
+    ) -> Any:
+        """Dispatch a Linux mutation through the bound helper."""
+        return self._update_linux_file(*args, apply_changes=apply_changes, **kwargs)
+
+    def write_linux_etc_environment_with_privilege(self, text: str) -> None:
+        """Persist `/etc/environment` through the bound helper."""
+        self._write_linux_etc_environment_with_privilege(text)
+
+    def parse_wsl_dotenv_target(self, target: str) -> Any:
+        """Parse a WSL dotenv target through the bound helper."""
+        return self._parse_wsl_dotenv_target(target)
+
+    def resolve_wsl_target(self, target: str) -> Any:
+        """Resolve a WSL target through the bound helper."""
+        return self._resolve_wsl_target(target)
+
+    def update_wsl_file(
+        self,
+        *args: Any,
+        apply_changes: bool,
+        **kwargs: Any,
+    ) -> Any:
+        """Dispatch a WSL mutation through the bound helper."""
+        return self._update_wsl_file(*args, apply_changes=apply_changes, **kwargs)
+
+    def update_powershell_file(
+        self,
+        *args: Any,
+        apply_changes: bool,
+        **kwargs: Any,
+    ) -> Any:
+        """Dispatch a PowerShell mutation through the bound helper."""
+        return self._update_powershell_file(
+            *args,
+            apply_changes=apply_changes,
+            **kwargs,
+        )
+
+    def apply(self, *args: Any, preview_only: bool = False, **kwargs: Any) -> Any:
+        """Apply mutations through the bound helper."""
+        return self._apply(*args, preview_only=preview_only, **kwargs)
+
+    def effective_scope_roots(
+        self,
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[Path]:
+        """Resolve scope roots through the bound helper."""
+        return self._effective_scope_roots(scope_roots)
+
     def __init__(
         self,
         state_dir: Path | None = None,

@@ -18,6 +18,7 @@ from .parsing import (
     validate_env_value,
 )
 from .path_policy import parse_scoped_dotenv_target
+from .rendering import audit_safe_result
 from .secrets import looks_secret
 from . import service_privileged as _service_privileged
 from .service_models import (
@@ -27,8 +28,11 @@ from .service_models import (
 )
 from .service_ops import (
     OperationResultInput,
+    diff_text as _diff_text_helper,
+    masked_value as _masked_value_helper,
     normalize_target_operation_batch as _normalize_target_operation_batch_helper,
     normalize_target_operation_request as _normalize_target_operation_request_helper,
+    operation_error_types as _operation_error_types_helper,
     operation_result as _operation_result_helper,
 )
 from .service_wsl import (
@@ -91,19 +95,19 @@ def update_dotenv_file(
     """Plan or apply a dotenv file update."""
     request = _coerce_target_request(*args, **kwargs)
     scoped = parse_scoped_dotenv_target(request.target, roots=list(request.scope_roots))
-    path = self._validate_path_in_roots(
+    path = self.validate_path_in_roots(
         scoped.path,
         list(scoped.roots),
         label="dotenv target path",
     )
-    before = self._read_text_if_exists(path)
+    before = self.read_text_if_exists(path)
     after = (
         upsert_key_value(before, request.key, request.value or "", quote=False)
         if request.action == "set"
         else remove_key_value(before, request.key)
     )
     if apply_changes:
-        self._write_scoped_text_file(
+        self.write_scoped_text_file(
             candidate_path=scoped.path,
             allowed_roots=scoped.roots,
             text=after,
@@ -133,8 +137,8 @@ def update_linux_file(
     request = _coerce_target_request(*args, **kwargs)
     if request.target == TARGET_LINUX_BASHRC:
         bashrc_path = Path.home() / ".bashrc"
-        before = self._read_text_if_exists(bashrc_path)
-        after = self._mutate_shell_content(
+        before = self.read_text_if_exists(bashrc_path)
+        after = mutate_shell_content(
             before,
             ShellMutationRequest(
                 request.key,
@@ -144,13 +148,13 @@ def update_linux_file(
             ),
         )
         if apply_changes:
-            self._write_text_file(bashrc_path, after, ensure_parent=True)
+            self.write_text_file(bashrc_path, after, ensure_parent=True)
         return before, after, str(bashrc_path), False, None
 
     if request.target == TARGET_LINUX_ETC_ENV:
-        etc_path = self._linux_etc_environment_path()
-        before = self._read_text_if_exists(etc_path)
-        after = self._mutate_shell_content(
+        etc_path = self.linux_etc_environment_path()
+        before = self.read_text_if_exists(etc_path)
+        after = mutate_shell_content(
             before,
             ShellMutationRequest(
                 request.key,
@@ -160,7 +164,7 @@ def update_linux_file(
             ),
         )
         if apply_changes:
-            self._write_linux_etc_environment_with_privilege(after)
+            self.write_linux_etc_environment_with_privilege(after)
         return before, after, LINUX_ETC_ENV_PATH, True, None
 
     raise RuntimeError(f"Unsupported Linux target: {request.target}")
@@ -170,9 +174,9 @@ def write_linux_etc_environment_with_privilege(self, text: str) -> None:
     """Write `/etc/environment` through the privileged helper."""
     _service_privileged.write_linux_etc_environment_with_privilege(
         fixed_path=LINUX_ETC_ENV_PATH,
-        expected_path=self._LINUX_ETC_ENV_PATH,
+        expected_path=self.linux_etc_environment_value(),
         text=text,
-        write_text_file=lambda path, payload: self._write_text_file(
+        write_text_file=lambda path, payload: self.write_text_file(
             path,
             payload,
             ensure_parent=False,
@@ -187,8 +191,8 @@ def parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
     return _parse_wsl_dotenv_target_helper(
         target,
         prefix=WSL_DOTENV_TARGET_PREFIX,
-        validate_distro_name_fn=self._validate_wsl_distro_name,
-        validate_dotenv_path_fn=self._validate_wsl_dotenv_path,
+        validate_distro_name_fn=self.validate_wsl_distro_name,
+        validate_dotenv_path_fn=self.validate_wsl_dotenv_path,
     )
 
 
@@ -197,9 +201,9 @@ def resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
     return _resolve_wsl_target_helper(
         target,
         dotenv_prefix=WSL_DOTENV_TARGET_PREFIX,
-        validate_distro_name_fn=self._validate_wsl_distro_name,
-        parse_wsl_dotenv_target_fn=self._parse_wsl_dotenv_target,
-        linux_etc_env_path=self._LINUX_ETC_ENV_PATH,
+        validate_distro_name_fn=self.validate_wsl_distro_name,
+        parse_wsl_dotenv_target_fn=self.parse_wsl_dotenv_target,
+        linux_etc_env_path=self.linux_etc_environment_value(),
     )
 
 
@@ -211,9 +215,9 @@ def update_wsl_file(
 ) -> PlannedMutation:
     """Plan or apply a WSL file update."""
     request = _coerce_target_request(*args, **kwargs)
-    distro, path, style, requires_priv = self._resolve_wsl_target(request.target)
+    distro, path, style, requires_priv = self.resolve_wsl_target(request.target)
     before = self.wsl.read_file(distro, path)
-    after = self._mutate_shell_content(
+    after = mutate_shell_content(
         before,
         ShellMutationRequest(request.key, request.value, request.action, style),
     )
@@ -237,22 +241,22 @@ def update_powershell_file(
 ) -> PlannedMutation:
     """Plan or apply a PowerShell profile update."""
     request = _coerce_target_request(*args, **kwargs)
-    profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(
+    profile, allowed_roots, requires_priv = self.powershell_target_path_and_roots(
         request.target
     )
-    safe_profile = self._validate_path_in_roots(
+    safe_profile = self.validate_path_in_roots(
         profile,
         allowed_roots,
         label="PowerShell profile path",
     )
-    before = self._read_text_if_exists(safe_profile)
+    before = self.read_text_if_exists(safe_profile)
     after = (
         upsert_powershell_env(before, request.key, request.value or "")
         if request.action == "set"
         else remove_powershell_env(before, request.key)
     )
     if apply_changes:
-        self._write_text_file(safe_profile, after, ensure_parent=True)
+        self.write_text_file(safe_profile, after, ensure_parent=True)
     return before, after, str(safe_profile), requires_priv, None
 
 
@@ -265,13 +269,13 @@ def file_update(
     """Dispatch a file-based mutation to the correct helper."""
     request = _coerce_target_request(*args, **kwargs)
     if request.target.startswith(DOTENV_TARGET_PREFIX):
-        return self._update_dotenv_file(request=request, apply_changes=apply_changes)
+        return self.update_dotenv_file(request=request, apply_changes=apply_changes)
     if request.target.startswith("linux:"):
-        return self._update_linux_file(request=request, apply_changes=apply_changes)
+        return self.update_linux_file(request=request, apply_changes=apply_changes)
     if request.target.startswith("wsl"):
-        return self._update_wsl_file(request=request, apply_changes=apply_changes)
+        return self.update_wsl_file(request=request, apply_changes=apply_changes)
     if request.target.startswith("powershell:"):
-        return self._update_powershell_file(
+        return self.update_powershell_file(
             request=request,
             apply_changes=apply_changes,
         )
@@ -287,8 +291,8 @@ def plan_target_operation(
     """Plan a mutation for either a registry or file-backed target."""
     request = _coerce_target_request(*args, **kwargs)
     if request.target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
-        return self._registry_write(request=request, apply_changes=apply_changes)
-    return self._file_update(request=request, apply_changes=apply_changes)
+        return self.registry_write(request=request, apply_changes=apply_changes)
+    return file_update(self, request=request, apply_changes=apply_changes)
 
 
 def validate_target_for_operation(
@@ -311,10 +315,10 @@ def validate_target_for_operation(
         parse_scoped_dotenv_target(target, roots=scope_roots)
         return
     if target.startswith(WSL_DOTENV_TARGET_PREFIX):
-        self._parse_wsl_dotenv_target(target)
+        self.parse_wsl_dotenv_target(target)
         return
     if target.startswith("wsl:"):
-        self._resolve_wsl_target(target)
+        self.resolve_wsl_target(target)
         return
     raise RuntimeError(f"Unsupported target: {target}")
 
@@ -322,22 +326,24 @@ def validate_target_for_operation(
 def preview_target_diff(self, *args: Any, **kwargs: Any) -> Tuple[str, str]:
     """Return the original text and preview diff for a target mutation."""
     request = _coerce_target_request(*args, **kwargs)
-    self._validate_target_for_operation(
+    validate_target_for_operation(
+        self,
         request.target,
         scope_roots=list(request.scope_roots),
     )
-    before, after, _, _, _ = self._plan_target_operation(
+    before, after, _, _, _ = plan_target_operation(
+        self,
         request=request,
         apply_changes=False,
     )
-    return before, self._diff(before, after, request.target)
+    return before, _diff_text_helper(before, after, request.target)
 
 
 def apply_target_operation(self, *args: Any, before: str, **kwargs: Any) -> str:
     """Persist a target mutation and capture its backup path."""
     request = _coerce_target_request(*args, **kwargs)
     backup_path = str(self.backup_mgr.backup_text(request.target, before))
-    self._plan_target_operation(request=request, apply_changes=True)
+    plan_target_operation(self, request=request, apply_changes=True)
     return backup_path
 
 
@@ -351,16 +357,16 @@ def execute_target_operation(
     """Execute a single target mutation with preview and backup handling."""
     request = _coerce_target_request(*args, **kwargs)
     operation_id = f"{request.action}-{uuid.uuid4().hex[:10]}"
-    value_masked = self._masked_value(
+    value_masked = _masked_value_helper(
         secret_operation=secret_operation,
         value=request.value,
     )
     backup_path: str | None = None
     diff_preview = ""
     try:
-        before, diff_preview = self._preview_target_diff(request)
+        before, diff_preview = preview_target_diff(self, request)
         if not preview_only:
-            backup_path = self._apply_target_operation(request, before=before)
+            backup_path = apply_target_operation(self, request, before=before)
         return _operation_result_helper(
             OperationResultInput(
                 operation_id=operation_id,
@@ -374,7 +380,7 @@ def execute_target_operation(
                 value_masked=value_masked,
             )
         )
-    except self._operation_error_types() as exc:
+    except _operation_error_types_helper() as exc:
         return _operation_result_helper(
             OperationResultInput(
                 operation_id=operation_id,
@@ -403,7 +409,7 @@ def apply(
         validate_env_value(request.value or "")
 
     secret_operation = looks_secret(request.key, request.value or "")
-    resolved_scope_roots = self._effective_scope_roots(request.scope_roots)
+    resolved_scope_roots = self.effective_scope_roots(request.scope_roots)
     results: List[OperationResult] = []
     for target in request.targets:
         target_request = TargetOperationRequest(
@@ -413,11 +419,12 @@ def apply(
             action=request.action,
             scope_roots=resolved_scope_roots,
         )
-        result = self._execute_target_operation(
+        result = execute_target_operation(
+            self,
             target_request,
             preview_only=preview_only,
             secret_operation=secret_operation,
         )
-        self.audit.log(self._audit_safe_result(result, redact=secret_operation))
+        self.audit.log(audit_safe_result(result, redact=secret_operation))
         results.append(result)
     return results
