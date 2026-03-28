@@ -71,7 +71,7 @@ TARGET_POWERSHELL_CURRENT_USER = _service_mutations.TARGET_POWERSHELL_CURRENT_US
 TARGET_WINDOWS_MACHINE = _service_mutations.TARGET_WINDOWS_MACHINE
 TARGET_WINDOWS_USER = _service_mutations.TARGET_WINDOWS_USER
 WSL_DOTENV_TARGET_PREFIX = _service_mutations.WSL_DOTENV_TARGET_PREFIX
-which = _privileged_which; run = _privileged_run
+which, run = _privileged_which, _privileged_run
 
 __all__ = [
     "DOTENV_TARGET_PREFIX", "EnvInspectorService", "LINUX_ETC_ENV_PATH",
