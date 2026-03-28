@@ -1,3 +1,5 @@
+"""Shared HTTPS and path-safety helpers for quality gate scripts."""
+
 from __future__ import absolute_import, division
 
 import ipaddress
@@ -15,11 +17,19 @@ from urllib.parse import urlparse, urlunparse
 
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
-_LOCAL_IP_FLAGS = ("is_private", "is_loopback", "is_link_local", "is_reserved", "is_multicast")
+_LOCAL_IP_FLAGS = (
+    "is_private",
+    "is_loopback",
+    "is_link_local",
+    "is_reserved",
+    "is_multicast",
+)
 
 
 @dataclass(frozen=True)
 class _HttpsRequestInput:
+    """Validated user-facing HTTPS request inputs before execution details."""
+
     host: str
     path: str
     headers: Dict[str, str]
@@ -31,6 +41,8 @@ class _HttpsRequestInput:
 
 @dataclass(frozen=True)
 class _HttpsExecutionRequest:
+    """Normalized HTTPS request payload ready for urllib execution."""
+
     host: str
     method: str
     request_target: str
@@ -40,6 +52,7 @@ class _HttpsExecutionRequest:
 
 
 def _parse_https_url(raw_url: str):
+    """Parse and validate a raw HTTPS URL before hostname checks."""
     parsed = urlparse((raw_url or "").strip())
     if parsed.scheme != "https":
         raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
@@ -51,13 +64,18 @@ def _parse_https_url(raw_url: str):
 
 
 def _normalized_hosts(values: Optional[Set[str]]) -> Set[str]:
+    """Normalize hostname allowlist values for exact or suffix matching."""
     if not values:
         return set()
     return {value.lower().strip(".") for value in values if value.strip(".")}
 
 
 def _hostname_matches_suffix(hostname: str, suffixes: Set[str]) -> bool:
-    return any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes)
+    """Return whether the hostname matches any allowed suffix entry."""
+    return any(
+        hostname == suffix or hostname.endswith(f".{suffix}")
+        for suffix in suffixes
+    )
 
 
 def _validate_hostname_allowlists(
@@ -66,6 +84,7 @@ def _validate_hostname_allowlists(
     allowed_hosts: Optional[Set[str]] = None,
     allowed_host_suffixes: Optional[Set[str]] = None,
 ) -> None:
+    """Validate a hostname against optional exact and suffix allowlists."""
     exact_hosts = _normalized_hosts(allowed_hosts)
     if exact_hosts and hostname not in exact_hosts:
         raise ValueError(f"URL host is not in allowlist: {hostname}")
@@ -76,6 +95,7 @@ def _validate_hostname_allowlists(
 
 
 def _is_local_or_private_ip(hostname: str) -> bool:
+    """Return whether the hostname parses to a local or private IP address."""
     try:
         ip_value = ipaddress.ip_address(hostname)
     except ValueError:
@@ -85,6 +105,7 @@ def _is_local_or_private_ip(hostname: str) -> bool:
 
 
 def _reject_local_targets(hostname: str) -> None:
+    """Reject localhost or non-routable targets from HTTPS helpers."""
     if _is_local_or_private_ip(hostname):
         raise ValueError(f"Private or local addresses are not allowed: {hostname}")
 
@@ -108,7 +129,6 @@ def normalize_https_url(
     - optional hostname allowlist.
     - optional hostname suffix allowlist.
     """
-
     parsed = _parse_https_url(raw_url)
     hostname = parsed.hostname.lower().strip(".")
     _validate_hostname_allowlists(
@@ -125,17 +145,20 @@ def normalize_https_url(
 
 
 def require_identifier(raw: str, *, field_name: str) -> str:
+    """Validate a plain identifier used in URL paths or query segments."""
     value = (raw or "").strip()
     if not value:
         raise ValueError(f"{field_name} is required.")
     if not _IDENTIFIER_RE.fullmatch(value):
         raise ValueError(
-            f"{field_name} contains unsupported characters. Allowed: letters, digits, dot, underscore, dash."
+            f"{field_name} contains unsupported characters. Allowed:"
+            " letters, digits, dot, underscore, dash."
         )
     return value
 
 
 def encode_identifier(raw: str, *, field_name: str) -> str:
+    """URL-encode a validated identifier for safe request construction."""
     value = require_identifier(raw, field_name=field_name)
     return urllib.parse.quote(value, safe="")
 
@@ -146,6 +169,7 @@ def split_validated_https_url(
     allowed_hosts: Optional[Set[str]] = None,
     allowed_host_suffixes: Optional[Set[str]] = None,
 ) -> Tuple[str, str, Dict[str, str]]:
+    """Validate an HTTPS URL and split it into host, path, and query pairs."""
     safe_url = normalize_https_url(
         raw_url,
         allowed_hosts=allowed_hosts,
@@ -154,16 +178,22 @@ def split_validated_https_url(
     parsed = urllib.parse.urlparse(safe_url)
     host = (parsed.hostname or "").strip().lower()
     path = parsed.path or "/"
-    query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True, strict_parsing=False)
+    query_pairs = urllib.parse.parse_qsl(
+        parsed.query,
+        keep_blank_values=True,
+        strict_parsing=False,
+    )
     query = {str(k): str(v) for k, v in query_pairs}
     return host, path, query
 
 
 def _normalize_https_host(host: str) -> str:
+    """Normalize a hostname that will be used for an outbound HTTPS request."""
     return require_identifier((host or "").strip().lower(), field_name="HTTPS host")
 
 
 def _normalize_https_path(path: str) -> str:
+    """Normalize and validate an HTTPS request path."""
     safe_path = path if path.startswith("/") else f"/{path}"
     if "://" in safe_path or "\n" in safe_path or "\r" in safe_path:
         raise ValueError(f"Invalid HTTPS path: {path!r}")
@@ -171,6 +201,7 @@ def _normalize_https_path(path: str) -> str:
 
 
 def _build_request_target(path: str, query: Optional[Dict[str, str]]) -> str:
+    """Build a request target from a normalized path and query mapping."""
     query_text = urllib.parse.urlencode(query or {}, doseq=False)
     return path + (f"?{query_text}" if query_text else "")
 
@@ -189,6 +220,7 @@ def _json_body_or_none(data: Optional[Dict[str, Any]]) -> Optional[str]:
 
 
 def _secure_ssl_context() -> ssl.SSLContext:
+    """Create the TLS context used for outbound HTTPS requests."""
     context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     context.check_hostname = True
     context.verify_mode = ssl.CERT_REQUIRED
@@ -197,6 +229,7 @@ def _secure_ssl_context() -> ssl.SSLContext:
 
 
 def _read_https_success(response) -> Tuple[int, str, str, Dict[str, str]]:
+    """Read a successful HTTPS response into normalized primitives."""
     raw_body = response.read().decode("utf-8")
     response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
     status = int(getattr(response, "status", response.getcode()))
@@ -204,8 +237,15 @@ def _read_https_success(response) -> Tuple[int, str, str, Dict[str, str]]:
     return status, reason, raw_body, response_headers
 
 
-def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[str, str]]:
-    raw_body = exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
+def _read_https_error(
+    exc: urllib.error.HTTPError,
+) -> Tuple[int, str, str, Dict[str, str]]:
+    """Read an HTTPS error response into normalized primitives."""
+    raw_body = (
+        exc.read().decode("utf-8", errors="replace")
+        if exc.fp is not None
+        else ""
+    )
     error_headers = tuple(exc.headers.items()) if exc.headers else ()
     response_headers = {str(k).lower(): str(v) for k, v in error_headers}
     status = int(exc.code)
@@ -213,7 +253,9 @@ def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[
     return status, reason, raw_body, response_headers
 
 
-def _execute_https_request(request: _HttpsExecutionRequest) -> Tuple[int, str, str, Dict[str, str]]:
+def _execute_https_request(
+    request: _HttpsExecutionRequest,
+) -> Tuple[int, str, str, Dict[str, str]]:
     """Execute an HTTPS request and return status, reason, body, and headers."""
     http_request = urllib.request.Request(
         url=_build_https_url(request.host, request.request_target),
@@ -233,12 +275,17 @@ def _execute_https_request(request: _HttpsExecutionRequest) -> Tuple[int, str, s
 
 
 def _coerce_https_request(*args: Any, **kwargs: Any) -> _HttpsRequestInput:
+    """Coerce request_json_https inputs into the internal request dataclass."""
     if args:
         if len(args) == 1 and isinstance(args[0], _HttpsRequestInput):
             if kwargs:
-                raise TypeError("Pass either a request object or keyword arguments, not both.")
+                raise TypeError(
+                    "Pass either a request object or keyword arguments, not both."
+                )
             return args[0]
-        raise TypeError("Pass a request object or keyword arguments, not positional arguments.")
+        raise TypeError(
+            "Pass a request object or keyword arguments, not positional arguments."
+        )
     request = _HttpsRequestInput(
         host=str(kwargs.pop("host")),
         path=str(kwargs.pop("path")),
@@ -254,6 +301,7 @@ def _coerce_https_request(*args: Any, **kwargs: Any) -> _HttpsRequestInput:
 
 
 def request_json_https(*args: Any, **kwargs: Any) -> Tuple[Any, Dict[str, str]]:
+    """Execute an HTTPS request and decode its JSON response payload."""
     request = _coerce_https_request(*args, **kwargs)
     validated_host = _normalize_https_host(request.host)
     normalized_path = _normalize_https_path(request.path)
@@ -284,9 +332,15 @@ def request_json_https(*args: Any, **kwargs: Any) -> Tuple[Any, Dict[str, str]]:
     return json.loads(raw_body), response_headers
 
 
-def safe_output_path_in_workspace(raw: str, fallback: str, base: Optional[Path] = None) -> Path:
+def safe_output_path_in_workspace(
+    raw: str,
+    fallback: str,
+    base: Optional[Path] = None,
+) -> Path:
+    """Validate an output path so it remains inside the workspace root."""
     root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()  # codeql[py/path-injection] constrained to workspace
+    # codeql[py/path-injection] constrained to the workspace root below.
+    candidate = Path((raw or "").strip() or fallback).expanduser()
     if not candidate.is_absolute():
         candidate = root / candidate
     resolved = candidate.resolve(strict=False)
@@ -298,15 +352,19 @@ def safe_output_path_in_workspace(raw: str, fallback: str, base: Optional[Path] 
 
 
 def safe_input_file_path_in_workspace(raw: str, *, base: Optional[Path] = None) -> Path:
+    """Validate an input file path so it remains inside the workspace root."""
     root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip()).expanduser()  # codeql[py/path-injection] constrained to workspace
+    # codeql[py/path-injection] constrained to the workspace root below.
+    candidate = Path((raw or "").strip()).expanduser()
     if not candidate.is_absolute():
         candidate = root / candidate
     resolved = candidate.resolve(strict=False)
     try:
         resolved.relative_to(root)
     except ValueError as exc:
-        raise ValueError(f"Input file path escapes workspace root: {candidate}") from exc
+        raise ValueError(
+            f"Input file path escapes workspace root: {candidate}"
+        ) from exc
     if not resolved.exists() or not resolved.is_file():
         raise ValueError(f"Input file does not exist: {resolved}")
     return resolved
