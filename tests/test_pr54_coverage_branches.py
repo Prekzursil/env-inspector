@@ -16,6 +16,7 @@ from tests.assertions import ensure
 
 
 def test_list_records_rejects_request_and_kwargs(tmp_path: Path) -> None:
+    """list_records should reject mixing a request object with keyword overrides."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     request = service_module.ListRecordsRequest(root=tmp_path)
 
