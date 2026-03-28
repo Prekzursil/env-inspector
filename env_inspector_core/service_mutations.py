@@ -1,3 +1,5 @@
+"""Mutation helpers bound onto :class:`EnvInspectorService`."""
+
 from __future__ import absolute_import, division
 
 import uuid
@@ -17,15 +19,17 @@ from .parsing import (
 )
 from .path_policy import parse_scoped_dotenv_target
 from .secrets import looks_secret
-from .service_models import ShellMutationRequest, TargetOperationBatch, TargetOperationRequest
+from . import service_privileged as _service_privileged
+from .service_models import (
+    ShellMutationRequest,
+    TargetOperationBatch,
+    TargetOperationRequest,
+)
 from .service_ops import (
     OperationResultInput,
     normalize_target_operation_batch as _normalize_target_operation_batch_helper,
     normalize_target_operation_request as _normalize_target_operation_request_helper,
     operation_result as _operation_result_helper,
-)
-from .service_privileged import (
-    write_linux_etc_environment_with_privilege as _write_linux_etc_environment_with_privilege_helper,
 )
 from .service_wsl import (
     parse_wsl_dotenv_target as _parse_wsl_dotenv_target_helper,
@@ -41,15 +45,11 @@ TARGET_POWERSHELL_ALL_USERS = "powershell:all_users"
 DOTENV_TARGET_PREFIX = "dotenv:"
 WSL_DOTENV_TARGET_PREFIX = "wsl_dotenv:"
 LINUX_ETC_ENV_PATH = "/etc/environment"
-
-
-def _service_module():
-    from . import service as service_module
-
-    return service_module
+PlannedMutation = Tuple[str, str, str | None, bool, str | None]
 
 
 def _coerce_target_request(*args: Any, **kwargs: Any) -> TargetOperationRequest:
+    """Normalize a single-target request into a typed model."""
     request_data = _normalize_target_operation_request_helper(*args, **kwargs)
     return TargetOperationRequest(
         target=request_data["target"],
@@ -61,6 +61,7 @@ def _coerce_target_request(*args: Any, **kwargs: Any) -> TargetOperationRequest:
 
 
 def _coerce_target_batch(*args: Any, **kwargs: Any) -> TargetOperationBatch:
+    """Normalize a multi-target request into a typed model."""
     request_data = _normalize_target_operation_batch_helper(*args, **kwargs)
     return TargetOperationBatch(
         action=request_data["action"],
@@ -72,6 +73,7 @@ def _coerce_target_batch(*args: Any, **kwargs: Any) -> TargetOperationBatch:
 
 
 def powershell_profile_path(self, target: str) -> Path:
+    """Resolve a PowerShell target to its profile path."""
     current, all_users = self.get_powershell_profile_paths()
     if target == TARGET_POWERSHELL_CURRENT_USER:
         return current
@@ -85,11 +87,16 @@ def update_dotenv_file(
     *args: Any,
     apply_changes: bool,
     **kwargs: Any,
-) -> Tuple[str, str, str | None, bool, str | None]:
+) -> PlannedMutation:
+    """Plan or apply a dotenv file update."""
     request = _coerce_target_request(*args, **kwargs)
     scoped = parse_scoped_dotenv_target(request.target, roots=list(request.scope_roots))
-    path = self._validate_path_in_roots(scoped.path, list(scoped.roots), label="dotenv target path")
-    before = _service_module()._read_text_if_exists(path)
+    path = self._validate_path_in_roots(
+        scoped.path,
+        list(scoped.roots),
+        label="dotenv target path",
+    )
+    before = self._read_text_if_exists(path)
     after = (
         upsert_key_value(before, request.key, request.value or "", quote=False)
         if request.action == "set"
@@ -106,6 +113,7 @@ def update_dotenv_file(
 
 
 def mutate_shell_content(before: str, request: ShellMutationRequest) -> str:
+    """Apply a normalized mutation to shell-like file content."""
     if request.action != "set":
         if request.style == "export":
             return remove_export(before, request.key)
@@ -120,22 +128,36 @@ def update_linux_file(
     *args: Any,
     apply_changes: bool,
     **kwargs: Any,
-) -> Tuple[str, str, str | None, bool, str | None]:
+) -> PlannedMutation:
+    """Plan or apply a Linux shell file update."""
     request = _coerce_target_request(*args, **kwargs)
     if request.target == TARGET_LINUX_BASHRC:
         bashrc_path = Path.home() / ".bashrc"
-        before = _service_module()._read_text_if_exists(bashrc_path)
-        after = self._mutate_shell_content(before, ShellMutationRequest(request.key, request.value, request.action, "export"))
+        before = self._read_text_if_exists(bashrc_path)
+        after = self._mutate_shell_content(
+            before,
+            ShellMutationRequest(
+                request.key,
+                request.value,
+                request.action,
+                "export",
+            ),
+        )
         if apply_changes:
             self._write_text_file(bashrc_path, after, ensure_parent=True)
         return before, after, str(bashrc_path), False, None
 
     if request.target == TARGET_LINUX_ETC_ENV:
         etc_path = self._linux_etc_environment_path()
-        before = _service_module()._read_text_if_exists(etc_path)
+        before = self._read_text_if_exists(etc_path)
         after = self._mutate_shell_content(
             before,
-            ShellMutationRequest(request.key, request.value, request.action, "key_value"),
+            ShellMutationRequest(
+                request.key,
+                request.value,
+                request.action,
+                "key_value",
+            ),
         )
         if apply_changes:
             self._write_linux_etc_environment_with_privilege(after)
@@ -145,17 +167,23 @@ def update_linux_file(
 
 
 def write_linux_etc_environment_with_privilege(self, text: str) -> None:
-    _write_linux_etc_environment_with_privilege_helper(
+    """Write `/etc/environment` through the privileged helper."""
+    _service_privileged.write_linux_etc_environment_with_privilege(
         fixed_path=LINUX_ETC_ENV_PATH,
         expected_path=self._LINUX_ETC_ENV_PATH,
         text=text,
-        write_text_file=lambda path, payload: self._write_text_file(path, payload, ensure_parent=False),
-        which_fn=_service_module().which,
-        run_fn=_service_module().run,
+        write_text_file=lambda path, payload: self._write_text_file(
+            path,
+            payload,
+            ensure_parent=False,
+        ),
+        which_fn=self.which,
+        run_fn=self.run,
     )
 
 
 def parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
+    """Parse and validate a WSL dotenv target."""
     return _parse_wsl_dotenv_target_helper(
         target,
         prefix=WSL_DOTENV_TARGET_PREFIX,
@@ -165,6 +193,7 @@ def parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
 
 
 def resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
+    """Resolve a WSL mutation target into concrete file details."""
     return _resolve_wsl_target_helper(
         target,
         dotenv_prefix=WSL_DOTENV_TARGET_PREFIX,
@@ -179,14 +208,22 @@ def update_wsl_file(
     *args: Any,
     apply_changes: bool,
     **kwargs: Any,
-) -> Tuple[str, str, str | None, bool, str | None]:
+) -> PlannedMutation:
+    """Plan or apply a WSL file update."""
     request = _coerce_target_request(*args, **kwargs)
     distro, path, style, requires_priv = self._resolve_wsl_target(request.target)
     before = self.wsl.read_file(distro, path)
-    after = self._mutate_shell_content(before, ShellMutationRequest(request.key, request.value, request.action, style))
+    after = self._mutate_shell_content(
+        before,
+        ShellMutationRequest(request.key, request.value, request.action, style),
+    )
 
     if apply_changes:
-        writer = self.wsl.write_file_with_privilege if requires_priv else self.wsl.write_file
+        writer = (
+            self.wsl.write_file_with_privilege
+            if requires_priv
+            else self.wsl.write_file
+        )
         writer(distro, path, after)
 
     return before, after, f"{distro}:{path}", requires_priv, None
@@ -197,11 +234,18 @@ def update_powershell_file(
     *args: Any,
     apply_changes: bool,
     **kwargs: Any,
-) -> Tuple[str, str, str | None, bool, str | None]:
+) -> PlannedMutation:
+    """Plan or apply a PowerShell profile update."""
     request = _coerce_target_request(*args, **kwargs)
-    profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(request.target)
-    safe_profile = self._validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
-    before = _service_module()._read_text_if_exists(safe_profile)
+    profile, allowed_roots, requires_priv = self._powershell_target_path_and_roots(
+        request.target
+    )
+    safe_profile = self._validate_path_in_roots(
+        profile,
+        allowed_roots,
+        label="PowerShell profile path",
+    )
+    before = self._read_text_if_exists(safe_profile)
     after = (
         upsert_powershell_env(before, request.key, request.value or "")
         if request.action == "set"
@@ -217,7 +261,8 @@ def file_update(
     *args: Any,
     apply_changes: bool,
     **kwargs: Any,
-) -> Tuple[str, str, str | None, bool, str | None]:
+) -> PlannedMutation:
+    """Dispatch a file-based mutation to the correct helper."""
     request = _coerce_target_request(*args, **kwargs)
     if request.target.startswith(DOTENV_TARGET_PREFIX):
         return self._update_dotenv_file(request=request, apply_changes=apply_changes)
@@ -226,7 +271,10 @@ def file_update(
     if request.target.startswith("wsl"):
         return self._update_wsl_file(request=request, apply_changes=apply_changes)
     if request.target.startswith("powershell:"):
-        return self._update_powershell_file(request=request, apply_changes=apply_changes)
+        return self._update_powershell_file(
+            request=request,
+            apply_changes=apply_changes,
+        )
     raise RuntimeError(f"Unsupported target: {request.target}")
 
 
@@ -235,14 +283,21 @@ def plan_target_operation(
     *args: Any,
     apply_changes: bool,
     **kwargs: Any,
-) -> Tuple[str, str, str | None, bool, str | None]:
+) -> PlannedMutation:
+    """Plan a mutation for either a registry or file-backed target."""
     request = _coerce_target_request(*args, **kwargs)
     if request.target in {TARGET_WINDOWS_USER, TARGET_WINDOWS_MACHINE}:
         return self._registry_write(request=request, apply_changes=apply_changes)
     return self._file_update(request=request, apply_changes=apply_changes)
 
 
-def validate_target_for_operation(self, target: str, *, scope_roots: List[Path]) -> None:
+def validate_target_for_operation(
+    self,
+    target: str,
+    *,
+    scope_roots: List[Path],
+) -> None:
+    """Validate that a target can participate in a mutation."""
     if target in {
         TARGET_WINDOWS_USER,
         TARGET_WINDOWS_MACHINE,
@@ -265,13 +320,21 @@ def validate_target_for_operation(self, target: str, *, scope_roots: List[Path])
 
 
 def preview_target_diff(self, *args: Any, **kwargs: Any) -> Tuple[str, str]:
+    """Return the original text and preview diff for a target mutation."""
     request = _coerce_target_request(*args, **kwargs)
-    self._validate_target_for_operation(request.target, scope_roots=list(request.scope_roots))
-    before, after, _, _, _ = self._plan_target_operation(request=request, apply_changes=False)
+    self._validate_target_for_operation(
+        request.target,
+        scope_roots=list(request.scope_roots),
+    )
+    before, after, _, _, _ = self._plan_target_operation(
+        request=request,
+        apply_changes=False,
+    )
     return before, self._diff(before, after, request.target)
 
 
 def apply_target_operation(self, *args: Any, before: str, **kwargs: Any) -> str:
+    """Persist a target mutation and capture its backup path."""
     request = _coerce_target_request(*args, **kwargs)
     backup_path = str(self.backup_mgr.backup_text(request.target, before))
     self._plan_target_operation(request=request, apply_changes=True)
@@ -285,9 +348,13 @@ def execute_target_operation(
     secret_operation: bool,
     **kwargs: Any,
 ) -> OperationResult:
+    """Execute a single target mutation with preview and backup handling."""
     request = _coerce_target_request(*args, **kwargs)
     operation_id = f"{request.action}-{uuid.uuid4().hex[:10]}"
-    value_masked = self._masked_value(secret_operation=secret_operation, value=request.value)
+    value_masked = self._masked_value(
+        secret_operation=secret_operation,
+        value=request.value,
+    )
     backup_path: str | None = None
     diff_preview = ""
     try:
@@ -329,6 +396,7 @@ def apply(
     preview_only: bool = False,
     **kwargs: Any,
 ) -> List[OperationResult]:
+    """Apply a normalized batch of mutations across selected targets."""
     request = _coerce_target_batch(*args, **kwargs)
     validate_env_key(request.key)
     if request.action == "set":

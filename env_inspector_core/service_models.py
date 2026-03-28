@@ -1,3 +1,5 @@
+"""Typed request models shared by service helpers."""
+
 from __future__ import absolute_import, division
 
 from dataclasses import dataclass
@@ -9,6 +11,8 @@ from .constants import DEFAULT_SCAN_DEPTH
 
 @dataclass(frozen=True)
 class TargetOperationRequest:
+    """A normalized request for a single target mutation."""
+
     target: str
     key: str
     value: str | None
@@ -18,6 +22,8 @@ class TargetOperationRequest:
 
 @dataclass(frozen=True)
 class TargetOperationBatch:
+    """A normalized batch mutation request."""
+
     action: str
     key: str
     value: str | None
@@ -27,6 +33,8 @@ class TargetOperationBatch:
 
 @dataclass(frozen=True)
 class ListRecordsRequest:
+    """A normalized request for record collection."""
+
     root: str | Path | None = None
     context: str | None = None
     source: List[str] | None = None
@@ -38,6 +46,8 @@ class ListRecordsRequest:
 
 @dataclass(frozen=True)
 class ShellMutationRequest:
+    """A normalized mutation for shell-like files."""
+
     key: str
     value: str | None
     action: str

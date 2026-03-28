@@ -1,3 +1,5 @@
+"""Primary Env Inspector service implementation."""
+
 from __future__ import absolute_import, division
 
 import uuid
@@ -9,7 +11,12 @@ from . import service_models as _service_models
 from . import service_mutations as _service_mutations
 from .constants import DEFAULT_BACKUP_RETENTION
 from .models import EnvRecord, OperationResult
-from .path_policy import normalize_scope_roots, parse_scoped_dotenv_target, resolve_scan_root, validate_backup_path
+from .path_policy import (
+    normalize_scope_roots,
+    parse_scoped_dotenv_target,
+    resolve_scan_root,
+    validate_backup_path,
+)
 from .providers import (
     WindowsRegistryProvider,
     WslProvider,
@@ -77,20 +84,24 @@ run = _privileged_run
 
 
 def _path_exists(path: Path) -> bool:
+    """Return whether a path exists."""
     return path.exists()
 
 
 def _read_text_if_exists(path: Path) -> str:
+    """Read a UTF-8 file if it exists, otherwise return an empty string."""
     if not _path_exists(path):
         return ""
     return path.read_text(encoding="utf-8", errors="ignore")
 
 
 class EnvInspectorService:
+    """Collect, mutate, and restore environment-variable sources."""
+
     _LINUX_ETC_ENV_PATH = LINUX_ETC_ENV_PATH
-    which = staticmethod(which)
-    run = staticmethod(run)
-    get_powershell_profile_paths = staticmethod(_service_aliases.get_powershell_profile_paths)
+    get_powershell_profile_paths = staticmethod(
+        _service_aliases.get_powershell_profile_paths
+    )
     _registry_write = _service_aliases.registry_write
     _bridge_distros = _service_aliases.bridge_distros
     list_contexts = _service_aliases.list_contexts
@@ -98,9 +109,15 @@ class EnvInspectorService:
     _validate_path_in_roots = staticmethod(_validate_path_in_roots)
     _write_text_file = staticmethod(_write_text_file)
     _write_scoped_text_file = staticmethod(_write_scoped_text_file)
-    _powershell_target_path_and_roots = _service_aliases.powershell_target_path_and_roots
-    _validated_powershell_restore_path = _service_aliases.validated_powershell_restore_path
-    _linux_etc_environment_path = classmethod(_service_aliases.linux_etc_environment_path)
+    _powershell_target_path_and_roots = (
+        _service_aliases.powershell_target_path_and_roots
+    )
+    _validated_powershell_restore_path = (
+        _service_aliases.validated_powershell_restore_path
+    )
+    _linux_etc_environment_path = classmethod(
+        _service_aliases.linux_etc_environment_path
+    )
     _apply_row_filters = staticmethod(_apply_row_filters_helper)
     _diff = staticmethod(_diff_text_helper)
     available_targets = _service_aliases.available_targets
@@ -121,7 +138,9 @@ class EnvInspectorService:
     _update_dotenv_file = _service_mutations.update_dotenv_file
     _mutate_shell_content = staticmethod(_service_mutations.mutate_shell_content)
     _update_linux_file = _service_mutations.update_linux_file
-    _write_linux_etc_environment_with_privilege = _service_mutations.write_linux_etc_environment_with_privilege
+    _write_linux_etc_environment_with_privilege = (
+        _service_mutations.write_linux_etc_environment_with_privilege
+    )
     _parse_wsl_dotenv_target = _service_mutations.parse_wsl_dotenv_target
     _resolve_wsl_target = _service_mutations.resolve_wsl_target
     _update_wsl_file = _service_mutations.update_wsl_file
@@ -135,9 +154,31 @@ class EnvInspectorService:
     _apply = _service_mutations.apply
     _audit_safe_result = staticmethod(audit_safe_result)
 
-    def __init__(self, state_dir: Path | None = None, backup_retention: int = DEFAULT_BACKUP_RETENTION) -> None:
+    @staticmethod
+    def which(name: str) -> str | None:
+        """Resolve a binary path through the mutable module seam."""
+        return which(name)
+
+    @staticmethod
+    def run(*args: Any, **kwargs: Any) -> Any:
+        """Invoke the subprocess runner through the mutable module seam."""
+        return run(*args, **kwargs)
+
+    @staticmethod
+    def _read_text_if_exists(path: Path) -> str:
+        """Read text through the mutable module seam."""
+        return _read_text_if_exists(path)
+
+    def __init__(
+        self,
+        state_dir: Path | None = None,
+        backup_retention: int = DEFAULT_BACKUP_RETENTION,
+    ) -> None:
         self.state_dir = Path(state_dir or (Path.cwd() / ".env-inspector-state"))
-        self.backup_mgr = BackupManager(self.state_dir / "backups", retention=backup_retention)
+        self.backup_mgr = BackupManager(
+            self.state_dir / "backups",
+            retention=backup_retention,
+        )
         self.audit = AuditLogger(self.state_dir)
         self.default_scope_roots = normalize_scope_roots([Path.cwd()])
         self.runtime_context = get_runtime_context()
@@ -151,13 +192,21 @@ class EnvInspectorService:
             except RuntimeError:
                 self.win_provider = None
 
-    def _effective_scope_roots(self, scope_roots: List[str | Path] | None = None) -> List[Path]:
+    def _effective_scope_roots(
+        self,
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[Path]:
         roots: List[Path] = list(self.default_scope_roots)
         if scope_roots:
             roots.extend(normalize_scope_roots(scope_roots))
         return normalize_scope_roots(roots)
 
-    def resolve_effective(self, key: str, context: str, records: List[EnvRecord]) -> EnvRecord | None:
+    def resolve_effective(
+        self,
+        key: str,
+        context: str,
+        records: List[EnvRecord],
+    ) -> EnvRecord | None:
         return resolve_effective_value(records, key, context)
 
     def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
@@ -173,7 +222,9 @@ class EnvInspectorService:
                 collect_process_records_fn=collect_process_records,
                 collect_dotenv_records_fn=collect_dotenv_records,
                 build_registry_records_fn=build_registry_records,
-                collect_powershell_profile_records_fn=collect_powershell_profile_records,
+                collect_powershell_profile_records_fn=(
+                    collect_powershell_profile_records
+                ),
                 collect_linux_records_fn=collect_linux_records,
             ),
         )
@@ -204,18 +255,39 @@ class EnvInspectorService:
         if request is None:
             request = ListRecordsRequest(**kwargs)
         elif kwargs:
-            raise TypeError("Pass either a ListRecordsRequest or keyword arguments, not both.")
+            raise TypeError(
+                "Pass either a ListRecordsRequest or keyword arguments, not both."
+            )
 
         root_path = resolve_scan_root(request.root or Path.cwd())
         rows = self._collect_host_rows(root_path, request.scan_depth)
         rows.extend(
-            self._collect_wsl_rows(scan_depth=request.scan_depth, distro=request.distro, wsl_path=request.wsl_path)
+            self._collect_wsl_rows(
+                scan_depth=request.scan_depth,
+                distro=request.distro,
+                wsl_path=request.wsl_path,
+            )
         )
-        rows = self._apply_row_filters(rows, source=request.source, context=request.context)
-        rows.sort(key=lambda r: (r.name.lower(), r.context, r.source_type, r.source_path))
-        return _rows_to_payload_helper(rows, include_raw_secrets=request.include_raw_secrets)
+        rows = self._apply_row_filters(
+            rows,
+            source=request.source,
+            context=request.context,
+        )
+        rows.sort(
+            key=lambda r: (r.name.lower(), r.context, r.source_type, r.source_path)
+        )
+        return _rows_to_payload_helper(
+            rows,
+            include_raw_secrets=request.include_raw_secrets,
+        )
 
-    def _restore_dotenv_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
+    def _restore_dotenv_target(
+        self,
+        *,
+        target: str,
+        text: str,
+        scope_roots: List[Path],
+    ) -> None:
         _restore_dotenv_target_helper(
             target=target,
             text=text,
@@ -228,7 +300,9 @@ class EnvInspectorService:
         _restore_linux_target_helper(
             target=target,
             text=text,
-            write_linux_etc_environment_with_privilege_fn=self._write_linux_etc_environment_with_privilege,
+            write_linux_etc_environment_with_privilege_fn=(
+                self._write_linux_etc_environment_with_privilege
+            ),
         )
 
     def _restore_wsl_target(self, *, target: str, text: str) -> None:
@@ -245,8 +319,14 @@ class EnvInspectorService:
         _restore_powershell_target_helper(
             target=target,
             text=text,
-            validated_powershell_restore_path_fn=self._validated_powershell_restore_path,
-            write_text_file_fn=lambda path, content: self._write_text_file(path, content, ensure_parent=True),
+            validated_powershell_restore_path_fn=(
+                self._validated_powershell_restore_path
+            ),
+            write_text_file_fn=lambda path, content: self._write_text_file(
+                path,
+                content,
+                ensure_parent=True,
+            ),
         )
 
     def _restore_windows_registry_target(self, *, target: str, text: str) -> None:
@@ -257,7 +337,13 @@ class EnvInspectorService:
             windows_registry_provider_cls=WindowsRegistryProvider,
         )
 
-    def _restore_target(self, *, target: str, text: str, scope_roots: List[Path]) -> None:
+    def _restore_target(
+        self,
+        *,
+        target: str,
+        text: str,
+        scope_roots: List[Path],
+    ) -> None:
         _restore_target_helper(
             target=target,
             text=text,
@@ -284,7 +370,11 @@ class EnvInspectorService:
             target = payload["target"]
             text = payload["text"]
 
-            self._restore_target(target=target, text=text, scope_roots=resolved_scope_roots)
+            self._restore_target(
+                target=target,
+                text=text,
+                scope_roots=resolved_scope_roots,
+            )
 
             result = OperationResult(
                 operation_id=operation_id,
