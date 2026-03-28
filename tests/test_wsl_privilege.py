@@ -21,6 +21,7 @@ def test_write_file_with_privilege_root_success() -> None:
     calls: List[List[str]] = []
 
     def runner(cmd, **_kwargs) -> CompletedProcess:
+        """Capture the command issued by the privileged root write path."""
         calls.append(cmd)
         return _proc(0)
 
@@ -41,6 +42,7 @@ def test_write_file_with_privilege_falls_back_to_sudo() -> None:
     inputs: List[bytes | None] = []
 
     def runner(cmd, **kwargs) -> CompletedProcess:
+        """Record write attempts and fail the direct root path once."""
         calls.append(cmd)
         inputs.append(kwargs.get("input"))
         if "-u" in cmd and "root" in cmd:
@@ -61,6 +63,7 @@ def test_write_file_with_privilege_falls_back_to_sudo() -> None:
 def test_write_file_with_privilege_raises_when_root_and_sudo_fail() -> None:
     """Raise when both privileged write strategies fail."""
     def runner(_cmd, **_kwargs) -> CompletedProcess:
+        """Return a failed process result for every privileged attempt."""
         return _proc(1, stderr=b"fail")
 
     provider = WslProvider(runner=runner)
@@ -80,6 +83,7 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     fake_wsl.write_text("", encoding="utf-8")
 
     def runner(cmd, **_kwargs) -> CompletedProcess:
+        """Record the availability probe command and force failure."""
         calls.append(cmd)
         return _proc(1, stderr=b"not working")
 
