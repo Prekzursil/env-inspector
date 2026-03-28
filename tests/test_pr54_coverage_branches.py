@@ -2,6 +2,7 @@ from __future__ import absolute_import, division
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import List
 
 import pytest
 
@@ -275,7 +276,7 @@ def test_coerce_scan_request_covers_positional_branches() -> None:
 
 def test_resolve_unresolved_count_without_hits_header_and_without_issues() -> None:
     """Test resolve unresolved count without hits header and without issues."""
-    failures: list[str] = []
+    failures: List[str] = []
 
     unresolved = sentry_mod._resolve_unresolved_count([], {}, "proj", failures)
 
