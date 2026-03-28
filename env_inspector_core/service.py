@@ -105,7 +105,6 @@ class EnvInspectorService:
     _registry_write = _service_aliases.registry_write
     _bridge_distros = _service_aliases.bridge_distros
     list_contexts = _service_aliases.list_contexts
-    _is_path_within = staticmethod(_is_path_within)
     _validate_path_in_roots = staticmethod(_validate_path_in_roots)
     _write_text_file = staticmethod(_write_text_file)
     _write_scoped_text_file = staticmethod(_write_scoped_text_file)
@@ -114,9 +113,6 @@ class EnvInspectorService:
     )
     _validated_powershell_restore_path = (
         _service_aliases.validated_powershell_restore_path
-    )
-    _linux_etc_environment_path = classmethod(
-        _service_aliases.linux_etc_environment_path
     )
     _apply_row_filters = staticmethod(_apply_row_filters_helper)
     _diff = staticmethod(_diff_text_helper)
@@ -169,6 +165,16 @@ class EnvInspectorService:
         """Read text through the mutable module seam."""
         return _read_text_if_exists(path)
 
+    @staticmethod
+    def _is_path_within(path: Path, root: Path) -> bool:
+        """Check whether a path is contained within an approved root."""
+        return _is_path_within(path, root)
+
+    @classmethod
+    def _linux_etc_environment_path(cls) -> Path:
+        """Resolve `/etc/environment` through the class seam."""
+        return _service_aliases.linux_etc_environment_path(cls)
+
     def __init__(
         self,
         state_dir: Path | None = None,
@@ -201,8 +207,8 @@ class EnvInspectorService:
             roots.extend(normalize_scope_roots(scope_roots))
         return normalize_scope_roots(roots)
 
+    @staticmethod
     def resolve_effective(
-        self,
         key: str,
         context: str,
         records: List[EnvRecord],
