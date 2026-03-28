@@ -40,6 +40,7 @@ def _record(source_type: str, source_path: str, *, context: str = "linux", sourc
 
 
 def _raise_unexpected_write(message: str) -> None:
+    """Raise when a preview path unexpectedly performs a write."""
     raise AssertionError(message)
 
 
@@ -439,6 +440,44 @@ def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path
         "remove",
         apply_changes=True,
     )
+
+
+def test_registry_write_noop_and_preview_remove_paths(tmp_path: Path):
+    """Test registry write noop set and preview remove paths."""
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    import types
+
+    remove_calls = []
+    fake_provider = types.SimpleNamespace(
+        USER_SCOPE="User",
+        MACHINE_SCOPE="Machine",
+        list_scope=lambda _scope: {"A": "1"},
+        set_scope_value=lambda _scope, _key, _value: None,
+        remove_scope_value=lambda _scope, _key: remove_calls.append((_scope, _key)),
+    )
+
+    svc.win_provider = fake_provider  # type: ignore[assignment]
+
+    before, after, _path, requires_priv, _ = svc._registry_write(
+        "windows:user",
+        "A",
+        None,
+        "set",
+        apply_changes=False,
+    )
+    ensure(before == after)
+    ensure(requires_priv is False)
+
+    _before_remove, after_remove, _path_remove, _requires_priv_remove, _ = svc._registry_write(
+        "windows:user",
+        "A",
+        None,
+        "remove",
+        apply_changes=False,
+    )
+    ensure('"A": "1"' not in after_remove)
+    ensure(remove_calls == [])
 
 
 def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, monkeypatch):

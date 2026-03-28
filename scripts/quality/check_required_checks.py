@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Required-check gate wrapper for the shared GitHub context helpers."""
+
 from __future__ import absolute_import, division
 
 import argparse
@@ -11,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def _load_impl() -> Any:
+    """Load the reusable required-checks implementation module."""
     try:
         return importlib.import_module("scripts.quality._required_checks_impl")
     except ModuleNotFoundError:  # pragma: no cover - direct script execution
@@ -25,18 +28,32 @@ _impl = _load_impl()
 GitHubRequest = _impl.GitHubRequest
 SettledChecksRequest = _impl.SettledChecksRequest
 GITHUB_API_HOST = _impl.GITHUB_API_HOST
-_SHA_RE = _impl._SHA_RE
-_TRANSIENT_HTTP_CODES = _impl._TRANSIENT_HTTP_CODES
 encode_identifier = _impl.encode_identifier
 request_json_https = _impl.request_json_https
 safe_output_path_in_workspace = _impl.safe_output_path_in_workspace
 
 
+def _impl_helper(name: str) -> Any:
+    """Return a helper exported by the reusable required-checks module."""
+    return getattr(_impl, name)
+
+
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Wait for required GitHub check contexts and assert they are successful.")
+    """Parse command-line arguments for the required-checks gate."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Wait for required GitHub check contexts and assert they are"
+            " successful."
+        )
+    )
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--sha", required=True, help="commit SHA")
-    parser.add_argument("--required-context", action="append", default=[], help="Required context name")
+    parser.add_argument(
+        "--required-context",
+        action="append",
+        default=[],
+        help="Required context name",
+    )
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--poll-seconds", type=int, default=20)
     parser.add_argument("--out-json", default="quality-zero-gate/required-checks.json")
@@ -45,98 +62,156 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _parse_repo(raw: str) -> Tuple[str, str]:
-    return _impl._parse_repo(raw)
+    """Validate and normalize an owner/repo argument for GitHub API calls."""
+    return _impl_helper("_parse_repo")(raw)
 
 
 def _parse_sha(raw: str) -> str:
-    return _impl._parse_sha(raw)
+    """Validate and normalize the target commit SHA."""
+    return _impl_helper("_parse_sha")(raw)
 
 
 def _github_headers(token: str) -> Dict[str, str]:
-    return _impl._github_headers(token)
+    """Build GitHub API headers for the required-checks requests."""
+    return _impl_helper("_github_headers")(token)
 
 
 def _is_transient_http_error(exc: urllib.error.HTTPError) -> bool:
-    return _impl._is_transient_http_error(exc)
+    """Return whether an HTTP error should be treated as retryable."""
+    return _impl_helper("_is_transient_http_error")(exc)
 
 
-def _should_retry_http_error(*, exc: urllib.error.HTTPError, attempt: int, attempts: int) -> bool:
-    return _impl._should_retry_http_error(exc=exc, attempt=attempt, attempts=attempts)
+def _should_retry_http_error(
+    *,
+    exc: urllib.error.HTTPError,
+    attempt: int,
+    attempts: int,
+) -> bool:
+    """Return whether the wrapper should retry after an HTTP error."""
+    return _impl_helper("_should_retry_http_error")(
+        exc=exc,
+        attempt=attempt,
+        attempts=attempts,
+    )
 
 
 def _should_retry_url_error(*, attempt: int, attempts: int) -> bool:
-    return _impl._should_retry_url_error(attempt=attempt, attempts=attempts)
+    """Return whether the wrapper should retry after a URL transport error."""
+    return _impl_helper("_should_retry_url_error")(
+        attempt=attempt,
+        attempts=attempts,
+    )
 
 
 def _next_retry_wait(wait_seconds: int) -> int:
-    return _impl._next_retry_wait(wait_seconds)
+    """Calculate the next bounded retry delay."""
+    return _impl_helper("_next_retry_wait")(wait_seconds)
 
 
-def _request_payload_with_retry(request: GitHubRequest) -> Dict[str, Any]:
-    return _impl._request_payload_with_retry(request)
+def _request_payload_with_retry(request: Any) -> Dict[str, Any]:
+    """Fetch one GitHub payload with retry semantics applied."""
+    return _impl_helper("_request_payload_with_retry")(request)
 
 
-def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
-    return _impl._api_get_check_runs(owner=owner, repo=repo, sha=sha, token=token)
+def _api_get_check_runs(
+    *,
+    owner: str,
+    repo: str,
+    sha: str,
+    token: str,
+) -> Dict[str, Any]:
+    """Fetch the check-run payload for the target commit SHA."""
+    return _impl_helper("_api_get_check_runs")(
+        owner=owner,
+        repo=repo,
+        sha=sha,
+        token=token,
+    )
 
 
 def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
-    return _impl._api_get_status(owner=owner, repo=repo, sha=sha, token=token)
+    """Fetch the commit-status payload for the target commit SHA."""
+    return _impl_helper("_api_get_status")(
+        owner=owner,
+        repo=repo,
+        sha=sha,
+        token=token,
+    )
 
 
 def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
-    return _impl._check_run_context(run)
+    """Normalize one check-run entry into the shared context shape."""
+    return _impl_helper("_check_run_context")(run)
 
 
 def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
-    return _impl._status_context(status)
+    """Normalize one status entry into the shared context shape."""
+    return _impl_helper("_status_context")(status)
 
 
-def _collect_contexts(check_runs_payload: Dict[str, Any], status_payload: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
-    return _impl._collect_contexts(check_runs_payload, status_payload)
+def _collect_contexts(
+    check_runs_payload: Dict[str, Any],
+    status_payload: Dict[str, Any],
+) -> Dict[str, Dict[str, str]]:
+    """Merge check-run and status payloads into one context map."""
+    return _impl_helper("_collect_contexts")(check_runs_payload, status_payload)
 
 
 def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
-    return _impl._check_run_failure(context, observed)
+    """Return the failure summary for a check-run context, if any."""
+    return _impl_helper("_check_run_failure")(context, observed)
 
 
 def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
-    return _impl._status_failure(context, observed)
+    """Return the failure summary for a commit-status context, if any."""
+    return _impl_helper("_status_failure")(context, observed)
 
 
-def _evaluate(required: List[str], contexts: Dict[str, Dict[str, str]]) -> Tuple[str, List[str], List[str]]:
-    return _impl._evaluate(required, contexts)
+def _evaluate(
+    required: List[str],
+    contexts: Dict[str, Dict[str, str]],
+) -> Tuple[str, List[str], List[str]]:
+    """Evaluate whether every required context is present and successful."""
+    return _impl_helper("_evaluate")(required, contexts)
 
 
 def _render_md(payload: Dict[str, Any]) -> str:
-    return _impl._render_md(payload)
+    """Render the markdown summary for the required-check gate."""
+    return _impl_helper("_render_md")(payload)
 
 
 def _required_contexts(args: argparse.Namespace) -> List[str]:
-    return _impl._required_contexts(args)
+    """Return the normalized list of required check context names."""
+    return _impl_helper("_required_contexts")(args)
 
 
 def _github_token() -> str:
-    return _impl._github_token()
+    """Load the GitHub token used for required-check polling."""
+    return _impl_helper("_github_token")()
 
 
 def _snapshot(*args, **kwargs) -> Dict[str, Any]:
-    return _impl._snapshot(*args, **kwargs)
+    """Build the current required-check snapshot payload."""
+    return _impl_helper("_snapshot")(*args, **kwargs)
 
 
 def _has_in_progress_check_run(contexts: Dict[str, Dict[str, str]]) -> bool:
-    return _impl._has_in_progress_check_run(contexts)
+    """Return whether any observed check run is still in progress."""
+    return _impl_helper("_has_in_progress_check_run")(contexts)
 
 
 def _should_wait(payload: Dict[str, Any]) -> bool:
-    return _impl._should_wait(payload)
+    """Return whether polling should continue for the current snapshot."""
+    return _impl_helper("_should_wait")(payload)
 
 
-def _collect_until_settled(request: SettledChecksRequest) -> Dict[str, Any]:
-    return _impl._collect_until_settled(request)
+def _collect_until_settled(request: Any) -> Dict[str, Any]:
+    """Poll GitHub until the required contexts settle or time out."""
+    return _impl_helper("_collect_until_settled")(request)
 
 
 def main() -> int:
+    """Run the required-check gate and write its report artifacts."""
     args = _parse_args()
     required = _required_contexts(args)
     token = _github_token()
@@ -161,15 +236,24 @@ def main() -> int:
     )
 
     try:
-        out_json = safe_output_path_in_workspace(args.out_json, "quality-zero-gate/required-checks.json")
-        out_md = safe_output_path_in_workspace(args.out_md, "quality-zero-gate/required-checks.md")
+        out_json = safe_output_path_in_workspace(
+            args.out_json,
+            "quality-zero-gate/required-checks.json",
+        )
+        out_md = safe_output_path_in_workspace(
+            args.out_md,
+            "quality-zero-gate/required-checks.md",
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(final_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out_json.write_text(
+        json.dumps(final_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     out_md.write_text(_render_md(final_payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
 

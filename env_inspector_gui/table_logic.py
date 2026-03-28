@@ -1,3 +1,5 @@
+"""Helpers for filtering and sorting GUI table rows."""
+
 from __future__ import absolute_import, division
 
 from dataclasses import dataclass
@@ -9,7 +11,13 @@ from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
 
-def _record_matches_filters(rec: EnvRecord, *, context: str, only_secrets: bool) -> bool:
+def _record_matches_filters(
+    rec: EnvRecord,
+    *,
+    context: str,
+    only_secrets: bool,
+) -> bool:
+    """Return whether a record should survive the current filter set."""
     if only_secrets and not rec.is_secret:
         return False
     if context and rec.context != context:
@@ -17,23 +25,38 @@ def _record_matches_filters(rec: EnvRecord, *, context: str, only_secrets: bool)
     return True
 
 
-def _to_displayed_row(rec: EnvRecord, *, show_secrets: bool, search_value: str, idx: int) -> DisplayedRow:
+def _to_displayed_row(
+    rec: EnvRecord,
+    *,
+    show_secrets: bool,
+    search_value: str,
+    idx: int,
+) -> DisplayedRow:
+    """Convert a record into the GUI row model used by the table."""
+    rec_payload = rec.to_dict()
+    is_secret = bool(rec_payload["is_secret"])
+    is_persistent = bool(rec_payload["is_persistent"])
+    is_mutable = bool(rec_payload["is_mutable"])
+    is_writable = bool(rec_payload["writable"])
+    requires_privilege = bool(rec_payload["requires_privilege"])
     return DisplayedRow(
         record=rec,
         visible_value=build_visible_value(rec, show_secrets=show_secrets),
         search_value=search_value,
         source_label=rec.source_type,
-        secret_text="yes" if rec.is_secret else "no",
-        persistent_text="yes" if rec.is_persistent else "no",
-        mutable_text="yes" if rec.is_mutable else "no",
-        writable_text="yes" if rec.writable else "no",
-        requires_privilege_text="yes" if rec.requires_privilege else "no",
+        secret_text="yes" if is_secret else "no",
+        persistent_text="yes" if is_persistent else "no",
+        mutable_text="yes" if is_mutable else "no",
+        writable_text="yes" if is_writable else "no",
+        requires_privilege_text="yes" if requires_privilege else "no",
         original_index=idx,
     )
 
 
 @dataclass(frozen=True)
 class DisplayRowsRequest:
+    """Inputs required to build the filtered, searchable GUI row list."""
+
     records: Iterable[EnvRecord]
     context: str
     query: str
@@ -42,29 +65,43 @@ class DisplayRowsRequest:
 
 
 def build_display_rows(request: DisplayRowsRequest) -> List[DisplayedRow]:
+    """Build the filtered GUI rows for the current table request."""
     rows: List[DisplayedRow] = []
     query_text = request.query.strip().lower()
 
     for idx, rec in enumerate(request.records):
-        if not _record_matches_filters(rec, context=request.context, only_secrets=request.only_secrets):
+        if not _record_matches_filters(
+            rec,
+            context=request.context,
+            only_secrets=request.only_secrets,
+        ):
             continue
 
         search_value = build_search_value(rec, show_secrets=request.show_secrets)
         if query_text and query_text not in search_value:
             continue
 
-        rows.append(_to_displayed_row(rec, show_secrets=request.show_secrets, search_value=search_value, idx=idx))
+        rows.append(
+            _to_displayed_row(
+                rec,
+                show_secrets=request.show_secrets,
+                search_value=search_value,
+                idx=idx,
+            )
+        )
 
     return rows
 
 
 def toggle_sort(current: SortState, column: str) -> SortState:
+    """Toggle the active sort direction or start sorting by a new column."""
     if current.column == column:
         return SortState(column=column, descending=not current.descending)
     return SortState(column=column, descending=False)
 
 
 def _sort_key(row: DisplayedRow, column: str):
+    """Return the sortable value for the requested GUI table column."""
     rec = row.record
 
     str_map = {
@@ -91,7 +128,11 @@ def _sort_key(row: DisplayedRow, column: str):
     return str_map["name"]
 
 
-def sort_display_rows(rows: List[DisplayedRow], sort_state: SortState) -> List[DisplayedRow]:
+def sort_display_rows(
+    rows: List[DisplayedRow],
+    sort_state: SortState,
+) -> List[DisplayedRow]:
+    """Return rows sorted by the active GUI sort state."""
     column = sort_state.column or "name"
     return sorted(
         rows,

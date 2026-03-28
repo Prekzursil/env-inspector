@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""HTTP helpers for polling required GitHub check contexts."""
+
 from __future__ import absolute_import, division
 
 from dataclasses import dataclass
@@ -8,9 +10,17 @@ from typing import Any, Dict, List, Optional, Tuple
 import urllib.error
 
 try:
-    from ._security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
+    from ._security_imports import (
+        encode_identifier,
+        request_json_https,
+        safe_output_path_in_workspace,
+    )
 except ImportError:  # pragma: no cover - direct script execution
-    from _security_imports import encode_identifier, request_json_https, safe_output_path_in_workspace
+    from _security_imports import (  # type: ignore
+        encode_identifier,
+        request_json_https,
+        safe_output_path_in_workspace,
+    )
 
 GITHUB_API_HOST = "api.github.com"
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
@@ -19,6 +29,8 @@ _TRANSIENT_HTTP_CODES = {429, 500, 502, 503, 504}
 
 @dataclass(frozen=True)
 class GitHubRequest:
+    """Normalized request data for one GitHub commit endpoint poll."""
+
     owner: str
     repo: str
     sha: str
@@ -29,6 +41,7 @@ class GitHubRequest:
 
 
 def _parse_repo(raw: str) -> Tuple[str, str]:
+    """Validate and normalize an owner/repo identifier."""
     text = (raw or "").strip()
     if "/" not in text:
         raise ValueError("Repo must be in owner/repo format.")
@@ -40,6 +53,7 @@ def _parse_repo(raw: str) -> Tuple[str, str]:
 
 
 def _parse_sha(raw: str) -> str:
+    """Validate and normalize the target commit SHA."""
     sha = (raw or "").strip()
     if not _SHA_RE.fullmatch(sha):
         raise ValueError("Commit SHA must be a 7-64 char hex string.")
@@ -47,6 +61,7 @@ def _parse_sha(raw: str) -> str:
 
 
 def _github_headers(token: str) -> Dict[str, str]:
+    """Build the HTTP headers for GitHub commit endpoint requests."""
     return {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {token}",
@@ -56,22 +71,32 @@ def _github_headers(token: str) -> Dict[str, str]:
 
 
 def _is_transient_http_error(exc: urllib.error.HTTPError) -> bool:
+    """Return whether an HTTP error code should be retried."""
     return int(exc.code) in _TRANSIENT_HTTP_CODES
 
 
-def _should_retry_http_error(*, exc: urllib.error.HTTPError, attempt: int, attempts: int) -> bool:
+def _should_retry_http_error(
+    *,
+    exc: urllib.error.HTTPError,
+    attempt: int,
+    attempts: int,
+) -> bool:
+    """Return whether a GitHub HTTP error should be retried."""
     return _is_transient_http_error(exc) and attempt < attempts
 
 
 def _should_retry_url_error(*, attempt: int, attempts: int) -> bool:
+    """Return whether a transport-layer URL error should be retried."""
     return attempt < attempts
 
 
 def _next_retry_wait(wait_seconds: int) -> int:
+    """Return the next bounded exponential-backoff delay."""
     return min(wait_seconds * 2, 10)
 
 
 def _request_payload_with_retry(request: GitHubRequest) -> Dict[str, Any]:
+    """Fetch one GitHub payload, retrying transient endpoint failures."""
     wait_seconds = 1
     last_error: Optional[Exception] = None
     total_attempts = max(request.attempts, 1)
@@ -80,17 +105,26 @@ def _request_payload_with_retry(request: GitHubRequest) -> Dict[str, Any]:
         try:
             payload, _headers = request_json_https(
                 host=GITHUB_API_HOST,
-                path=f"/repos/{request.owner}/{request.repo}/commits/{request.sha}/{request.endpoint}",
+                path=(
+                    f"/repos/{request.owner}/{request.repo}"
+                    f"/commits/{request.sha}/{request.endpoint}"
+                ),
                 headers={**_github_headers(request.token)},
                 query=request.query,
                 method="GET",
             )
             if not isinstance(payload, dict):
-                raise RuntimeError(f"Unexpected GitHub {request.endpoint} response payload.")
+                raise RuntimeError(
+                    f"Unexpected GitHub {request.endpoint} response payload."
+                )
             return payload
         except urllib.error.HTTPError as exc:
             last_error = exc
-            if not _should_retry_http_error(exc=exc, attempt=attempt, attempts=total_attempts):
+            if not _should_retry_http_error(
+                exc=exc,
+                attempt=attempt,
+                attempts=total_attempts,
+            ):
                 raise
         except urllib.error.URLError as exc:
             last_error = exc
@@ -102,10 +136,19 @@ def _request_payload_with_retry(request: GitHubRequest) -> Dict[str, Any]:
 
     if last_error is None:
         raise RuntimeError(f"Failed to query GitHub endpoint: {request.endpoint}")
-    raise RuntimeError(f"Failed to query GitHub endpoint: {request.endpoint}") from last_error
+    raise RuntimeError(
+        f"Failed to query GitHub endpoint: {request.endpoint}"
+    ) from last_error
 
 
-def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
+def _api_get_check_runs(
+    *,
+    owner: str,
+    repo: str,
+    sha: str,
+    token: str,
+) -> Dict[str, Any]:
+    """Fetch the check-runs payload for the target commit SHA."""
     return _request_payload_with_retry(
         GitHubRequest(
             owner=owner,
@@ -119,12 +162,20 @@ def _api_get_check_runs(*, owner: str, repo: str, sha: str, token: str) -> Dict[
 
 
 def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
+    """Fetch the combined commit-status payload for the target SHA."""
     return _request_payload_with_retry(
-        GitHubRequest(owner=owner, repo=repo, sha=sha, token=token, endpoint="status")
+        GitHubRequest(
+            owner=owner,
+            repo=repo,
+            sha=sha,
+            token=token,
+            endpoint="status",
+        )
     )
 
 
 def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
+    """Normalize a GitHub check run into the shared context payload."""
     name = str(run.get("name") or "").strip()
     if not name:
         return None
@@ -136,6 +187,7 @@ def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str
 
 
 def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
+    """Normalize a GitHub commit status into the shared context payload."""
     name = str(status.get("context") or "").strip()
     if not name:
         return None
@@ -147,7 +199,11 @@ def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str
     }
 
 
-def _collect_contexts(check_runs_payload: Dict[str, Any], status_payload: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+def _collect_contexts(
+    check_runs_payload: Dict[str, Any],
+    status_payload: Dict[str, Any],
+) -> Dict[str, Dict[str, str]]:
+    """Merge check-run and status payloads into one context map."""
     contexts: Dict[str, Dict[str, str]] = {}
 
     for run in check_runs_payload.get("check_runs", []) or []:
@@ -166,6 +222,7 @@ def _collect_contexts(check_runs_payload: Dict[str, Any], status_payload: Dict[s
 
 
 def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
+    """Return a failure message for a check-run context, if any."""
     state = observed.get("state")
     if state != "completed":
         return f"{context}: status={state}"
@@ -177,13 +234,18 @@ def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
 
 
 def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
+    """Return a failure message for a commit-status context, if any."""
     conclusion = observed.get("conclusion")
     if conclusion != "success":
         return f"{context}: state={conclusion}"
     return None
 
 
-def _evaluate(required: List[str], contexts: Dict[str, Dict[str, str]]) -> Tuple[str, List[str], List[str]]:
+def _evaluate(
+    required: List[str],
+    contexts: Dict[str, Dict[str, str]],
+) -> Tuple[str, List[str], List[str]]:
+    """Return the aggregate required-check status plus missing and failed items."""
     missing: List[str] = []
     failed: List[str] = []
 
