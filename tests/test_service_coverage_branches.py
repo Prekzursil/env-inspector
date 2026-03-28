@@ -44,6 +44,76 @@ def _raise_unexpected_write(message: str) -> None:
     raise AssertionError(message)
 
 
+def _assert_wsl_preview_skips_writes(
+    svc: EnvInspectorService,
+    monkeypatch,
+) -> None:
+    """Assert WSL preview mutations do not perform writes."""
+    monkeypatch.setattr(
+        svc,
+        "_resolve_wsl_target",
+        lambda _target: ("Ubuntu", "~/.bashrc", "export", False),
+    )
+    monkeypatch.setattr(svc.wsl, "read_file", lambda _distro, _path: "export A='1'\n")
+    monkeypatch.setattr(
+        svc.wsl,
+        "write_file",
+        lambda *_args: _raise_unexpected_write("write_file should not run"),
+    )
+    monkeypatch.setattr(
+        svc.wsl,
+        "write_file_with_privilege",
+        lambda *_args: _raise_unexpected_write("privileged write should not run"),
+    )
+
+    before, after, out_path, requires_priv, _ = svc._update_wsl_file(
+        target="wsl:Ubuntu:bashrc",
+        key="B",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+
+    ensure(before == "export A='1'\n")
+    ensure("export B='2'" in after)
+    ensure(out_path == "Ubuntu:~/.bashrc")
+    ensure(requires_priv is False)
+
+
+def _assert_powershell_preview_skips_writes(
+    svc: EnvInspectorService,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Assert PowerShell preview mutations do not perform writes."""
+    profile = tmp_path / "profile.ps1"
+    monkeypatch.setattr(
+        EnvInspectorService,
+        "_powershell_target_path_and_roots",
+        lambda _self, _target: (profile, [tmp_path], False),
+    )
+    monkeypatch.setattr(
+        svc,
+        "_write_text_file",
+        lambda *_args, **_kwargs: _raise_unexpected_write(
+            "PowerShell write should not run"
+        ),
+    )
+
+    before, after, out_path, requires_priv, _ = svc._update_powershell_file(
+        target="powershell:current_user",
+        key="B",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+
+    ensure(before == "")
+    ensure("$env:B = '2'" in after)
+    ensure(out_path == str(profile))
+    ensure(requires_priv is False)
+
+
 def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path: Path) -> None:
     """Test collect wsl rows uses linux exclusion and dotenv."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -209,61 +279,29 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     ensure(svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps")
 
 
-def test_update_helpers_preview_paths_skip_writes_when_apply_changes_is_false(monkeypatch, tmp_path: Path) -> None:
-    """Test update helpers preview paths skip writes when apply changes is false."""
+def test_update_wsl_preview_skips_writes_when_apply_changes_is_false(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Test WSL preview paths skip writes when apply changes is false."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
+    _assert_wsl_preview_skips_writes(svc, monkeypatch)
 
-    monkeypatch.setattr(svc, "_resolve_wsl_target", lambda _target: ("Ubuntu", "~/.bashrc", "export", False))
-    monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "export A='1'\n")
-    monkeypatch.setattr(
-        svc.wsl,
-        "write_file",
-        lambda *_args: _raise_unexpected_write("write_file should not run"),
-    )
-    monkeypatch.setattr(
-        svc.wsl,
-        "write_file_with_privilege",
-        lambda *_args: _raise_unexpected_write("privileged write should not run"),
-    )
 
-    before, after, out_path, requires_priv, _ = svc._update_wsl_file(
-        target="wsl:Ubuntu:bashrc",
-        key="B",
-        value="2",
-        action="set",
-        apply_changes=False,
-    )
+def test_update_powershell_preview_skips_writes_when_apply_changes_is_false(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    """Test PowerShell preview paths skip writes when apply changes is false."""
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    _assert_powershell_preview_skips_writes(svc, monkeypatch, tmp_path)
 
-    ensure(before == "export A='1'\n")
-    ensure("export B='2'" in after)
-    ensure(out_path == "Ubuntu:~/.bashrc")
-    ensure(requires_priv is False)
 
-    profile = tmp_path / "profile.ps1"
-    monkeypatch.setattr(
-        EnvInspectorService,
-        "_powershell_target_path_and_roots",
-        lambda _self, _target: (profile, [tmp_path], False),
-    )
-    monkeypatch.setattr(
-        svc,
-        "_write_text_file",
-        lambda *_args, **_kwargs: _raise_unexpected_write("PowerShell write should not run"),
-    )
-
-    before, after, out_path, requires_priv, _ = svc._update_powershell_file(
-        target="powershell:current_user",
-        key="B",
-        value="2",
-        action="set",
-        apply_changes=False,
-    )
-
-    ensure(before == "")
-    ensure("$env:B = '2'" in after)
-    ensure(out_path == str(profile))
-    ensure(requires_priv is False)
-
+def test_mutate_shell_content_preview_remove_keeps_other_keys(
+    tmp_path: Path,
+) -> None:
+    """Test shell preview remove mutations keep unrelated keys."""
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
     removed = svc._mutate_shell_content(
         "A=1\nB=2\n",
         service_module.ShellMutationRequest("A", None, "remove", "key_value"),

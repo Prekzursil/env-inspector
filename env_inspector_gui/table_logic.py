@@ -3,12 +3,22 @@
 from __future__ import absolute_import, division
 
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Dict, Iterable, List
 
 from env_inspector_core.models import EnvRecord
 
 from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
+
+
+def _record_payload(rec: EnvRecord) -> Dict[str, object]:
+    """Return a normalized payload for analyzer-friendly flag access."""
+    return rec.to_dict()
+
+
+def _record_flag(rec_payload: Dict[str, object], key: str) -> bool:
+    """Return a boolean flag from a serialized record payload."""
+    return bool(rec_payload.get(key, False))
 
 
 def _record_matches_filters(
@@ -18,7 +28,8 @@ def _record_matches_filters(
     only_secrets: bool,
 ) -> bool:
     """Return whether a record should survive the current filter set."""
-    if only_secrets and not rec.is_secret:
+    rec_payload = _record_payload(rec)
+    if only_secrets and not _record_flag(rec_payload, "is_secret"):
         return False
     if context and rec.context != context:
         return False
@@ -33,12 +44,12 @@ def _to_displayed_row(
     idx: int,
 ) -> DisplayedRow:
     """Convert a record into the GUI row model used by the table."""
-    rec_payload = rec.to_dict()
-    is_secret = bool(rec_payload["is_secret"])
-    is_persistent = bool(rec_payload["is_persistent"])
-    is_mutable = bool(rec_payload["is_mutable"])
-    is_writable = bool(rec_payload["writable"])
-    requires_privilege = bool(rec_payload["requires_privilege"])
+    rec_payload = _record_payload(rec)
+    is_secret = _record_flag(rec_payload, "is_secret")
+    is_persistent = _record_flag(rec_payload, "is_persistent")
+    is_mutable = _record_flag(rec_payload, "is_mutable")
+    is_writable = _record_flag(rec_payload, "writable")
+    requires_privilege = _record_flag(rec_payload, "requires_privilege")
     return DisplayedRow(
         record=rec,
         visible_value=build_visible_value(rec, show_secrets=show_secrets),
@@ -103,6 +114,7 @@ def toggle_sort(current: SortState, column: str) -> SortState:
 def _sort_key(row: DisplayedRow, column: str):
     """Return the sortable value for the requested GUI table column."""
     rec = row.record
+    rec_payload = _record_payload(rec)
 
     str_map = {
         "context": rec.context.lower(),
@@ -115,9 +127,9 @@ def _sort_key(row: DisplayedRow, column: str):
         return str_map[column]
 
     bool_map = {
-        "secret": bool(rec.is_secret),
-        "persistent": bool(rec.is_persistent),
-        "mutable": bool(rec.is_mutable),
+        "secret": _record_flag(rec_payload, "is_secret"),
+        "persistent": _record_flag(rec_payload, "is_persistent"),
+        "mutable": _record_flag(rec_payload, "is_mutable"),
     }
     if column in bool_map:
         return bool_map[column]

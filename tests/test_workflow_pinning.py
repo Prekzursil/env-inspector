@@ -13,8 +13,15 @@ def test_release_workflow_pins_third_party_actions_to_shas():
         if stripped.startswith("uses: "):
             uses_values.append(stripped.split("uses: ", 1)[1].strip())
 
-    ensure(uses_values, "Expected at least one uses: entry in release workflow.")
+    ensure(
+        bool(uses_values),
+        "Expected at least one uses: entry in release workflow.",
+    )
 
     sha_pin = re.compile(r"^[^@]+@[\da-f]{40}(?:\s+#\s+v\d[\w.-]*)?$")
-    unpinned = [value for value in uses_values if value and not value.startswith("./") and not sha_pin.match(value)]
+    unpinned = [
+        value
+        for value in uses_values
+        if value and not value.startswith("./") and not sha_pin.match(value)
+    ]
     ensure(not unpinned, f"Unpinned action refs found: {unpinned}")

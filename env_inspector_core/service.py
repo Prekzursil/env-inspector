@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from . import service_aliases as _service_aliases
-from . import service_models as _service_models
 from . import service_mutations as _service_mutations
 from .constants import DEFAULT_BACKUP_RETENTION
 from .models import EnvRecord, OperationResult
@@ -64,6 +63,12 @@ from .service_restore import (
     restore_wsl_target as _restore_wsl_target_helper,
 )
 from .service_wsl import validate_wsl_distro_name as _validate_wsl_distro_name_helper
+from .service_models import (
+    ListRecordsRequest,
+    ShellMutationRequest,
+    TargetOperationBatch,
+    TargetOperationRequest,
+)
 from .storage import AuditLogger, BackupManager
 
 DOTENV_TARGET_PREFIX = _service_mutations.DOTENV_TARGET_PREFIX
@@ -75,10 +80,6 @@ TARGET_POWERSHELL_CURRENT_USER = _service_mutations.TARGET_POWERSHELL_CURRENT_US
 TARGET_WINDOWS_MACHINE = _service_mutations.TARGET_WINDOWS_MACHINE
 TARGET_WINDOWS_USER = _service_mutations.TARGET_WINDOWS_USER
 WSL_DOTENV_TARGET_PREFIX = _service_mutations.WSL_DOTENV_TARGET_PREFIX
-ListRecordsRequest = _service_models.ListRecordsRequest
-ShellMutationRequest = _service_models.ShellMutationRequest
-TargetOperationBatch = _service_models.TargetOperationBatch
-TargetOperationRequest = _service_models.TargetOperationRequest
 which = _privileged_which
 run = _privileged_run
 

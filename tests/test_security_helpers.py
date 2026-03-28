@@ -1,3 +1,5 @@
+"""Tests for HTTPS security helpers."""
+
 from __future__ import absolute_import, division
 
 import io
@@ -35,7 +37,8 @@ def test_request_json_https_success(monkeypatch):
         reason = "OK"
         headers = {"X-Hits": "1"}
 
-        def read(self):
+        @staticmethod
+        def read():
             return b'{"ok":true}'
 
         def __enter__(self):
@@ -92,7 +95,8 @@ def test_request_json_https_success(monkeypatch):
 
 def test_request_json_https_http_error(monkeypatch):
     class _FakeOpener:
-        def open(self, request, timeout=0):
+        @staticmethod
+        def open(request, timeout=0):
             headers = Message()
             raise urllib.error.HTTPError(
                 request.full_url,

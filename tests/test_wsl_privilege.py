@@ -1,3 +1,4 @@
+"""Tests for privileged WSL file writes and availability probing."""
 from __future__ import absolute_import, division
 from subprocess import CompletedProcess  # nosec B404
 from pathlib import Path
@@ -17,7 +18,7 @@ def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> Complete
 def test_write_file_with_privilege_root_success() -> None:
     calls: List[List[str]] = []
 
-    def runner(cmd, **kwargs) -> CompletedProcess:
+    def runner(cmd, **_kwargs) -> CompletedProcess:
         calls.append(cmd)
         return _proc(0)
 
@@ -55,7 +56,7 @@ def test_write_file_with_privilege_falls_back_to_sudo() -> None:
 
 
 def test_write_file_with_privilege_raises_when_root_and_sudo_fail() -> None:
-    def runner(cmd, **kwargs) -> CompletedProcess:
+    def runner(_cmd, **_kwargs) -> CompletedProcess:
         return _proc(1, stderr=b"fail")
 
     provider = WslProvider(runner=runner)
@@ -73,7 +74,7 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     fake_wsl = tmp_path / "wsl.exe"
     fake_wsl.write_text("", encoding="utf-8")
 
-    def runner(cmd, **kwargs) -> CompletedProcess:
+    def runner(cmd, **_kwargs) -> CompletedProcess:
         calls.append(cmd)
         return _proc(1, stderr=b"not working")
 
@@ -82,5 +83,5 @@ def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: P
     provider._available_cache = None
 
     ensure(provider.available() is False)
-    ensure(calls)
+    ensure(bool(calls))
     ensure(calls[0][-2:] == ["-l", "-q"])

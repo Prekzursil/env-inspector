@@ -18,9 +18,9 @@ def _case() -> unittest.TestCase:
     return unittest.TestCase()
 
 
-def _as_wsl_client(value: object) -> providers.WslClient:
-    """Cast a stub object to the WSL client protocol used by providers."""
-    return cast(providers.WslClient, value)
+def _as_wsl_provider(value: object) -> providers.WslProvider:
+    """Cast a stub object to the WSL provider interface used by collectors."""
+    return cast(providers.WslProvider, value)
 
 
 def test_is_workspace_scoped_path_checks_exact_and_descendant(
@@ -126,7 +126,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs() -> None:
             return ["Ubuntu"]
 
         @staticmethod
-        def read_file(distro: str, path: str) -> str:
+        def read_file(_distro: str, path: str) -> str:
             """Return canned WSL file contents for collection tests."""
             mapping = {
                 "~/.bashrc": "export API_TOKEN='abc'\n",
@@ -134,7 +134,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs() -> None:
             }
             return mapping.get(path, "")
 
-    rows = providers.collect_wsl_records(_as_wsl_client(_FakeWsl()), include_etc=True)
+    rows = providers.collect_wsl_records(_as_wsl_provider(_FakeWsl()), include_etc=True)
 
     case = _case()
     case.assertTrue(
@@ -154,20 +154,23 @@ def test_collect_wsl_records_respects_excluded_distros() -> None:
     class _FakeWsl:
         """WSL stub that exposes two distros for exclusion filtering."""
 
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             """Return that WSL is available."""
             return True
 
-        def list_distros(self) -> List[str]:
+        @staticmethod
+        def list_distros() -> List[str]:
             """Return two distros so one can be excluded."""
             return ["Ubuntu", "Debian"]
 
-        def read_file(self, distro: str, path: str) -> str:
+        @staticmethod
+        def read_file(_distro: str, _path: str) -> str:
             """Return an empty payload for all WSL file reads."""
             return ""
 
     rows = providers.collect_wsl_records(
-        _as_wsl_client(_FakeWsl()),
+        _as_wsl_provider(_FakeWsl()),
         include_etc=False,
         exclude_distros={"ubuntu"},
     )
@@ -181,14 +184,15 @@ def test_collect_wsl_helpers_return_empty_when_wsl_unavailable() -> None:
     class _FakeWsl:
         """WSL stub that reports itself as unavailable."""
 
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             """Return that WSL is unavailable."""
             return False
 
-    _case().assertEqual(providers.collect_wsl_records(_as_wsl_client(_FakeWsl())), [])
+    _case().assertEqual(providers.collect_wsl_records(_as_wsl_provider(_FakeWsl())), [])
     _case().assertEqual(
         providers.collect_wsl_dotenv_records(
-            _as_wsl_client(_FakeWsl()),
+            _as_wsl_provider(_FakeWsl()),
             "Ubuntu",
             "/workspace",
             2,
@@ -203,21 +207,27 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files() -> N
     class _FakeWsl:
         """WSL stub that returns one dotenv file with one key."""
 
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             """Return that WSL is available."""
             return True
 
         @staticmethod
-        def scan_dotenv_files(distro: str, root_path: str, max_depth: int) -> List[str]:
+        def scan_dotenv_files(
+            _distro: str,
+            _root_path: str,
+            _max_depth: int,
+        ) -> List[str]:
             """Return the dotenv files that should be scanned."""
             return ["/workspace/.env"]
 
-        def read_file(self, distro: str, path: str) -> str:
+        @staticmethod
+        def read_file(_distro: str, _path: str) -> str:
             """Return the dotenv file content for collection tests."""
             return "A=1\n"
 
     rows = providers.collect_wsl_dotenv_records(
-        _as_wsl_client(_FakeWsl()),
+        _as_wsl_provider(_FakeWsl()),
         "Ubuntu",
         "/workspace",
         2,

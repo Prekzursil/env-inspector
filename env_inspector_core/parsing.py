@@ -2,9 +2,8 @@
 
 from __future__ import absolute_import, division
 
-from typing import Dict, List, Tuple
 import re
-from collections.abc import Callable
+from typing import Callable, Dict, List, Tuple
 
 _ENV_KEY_PATTERN = r"[A-Za-z_]\w*"
 ENV_KEY_RE = re.compile(rf"^{_ENV_KEY_PATTERN}$")
