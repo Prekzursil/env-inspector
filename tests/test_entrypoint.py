@@ -22,6 +22,8 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
     monkeypatch.chdir(workspace)
 
     class _ForbiddenService:
+        """Guard service proving invalid roots fail before service construction."""
+
         def __init__(self, *args, **kwargs):  # pragma: no cover - should not be reached
             """Init."""
             raise AssertionError("EnvInspectorService should not be created for invalid --root")
@@ -57,6 +59,8 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
         return [{"is_secret": secret_flag, "source_type": "dotenv", "source_id": ".env", "name": "API_TOKEN"}]
 
     class _Service:
+        """Minimal service stub that returns the captured secret rows."""
+
         list_records = staticmethod(_list_records)
 
     monkeypatch.setattr(env_inspector, "EnvInspectorService", _Service)
@@ -83,6 +87,8 @@ def test_legacy_print_secrets_skips_non_secret_rows(tmp_path: Path, monkeypatch,
         return [{"is_secret": False, "source_type": "dotenv", "source_id": ".env", "name": "PUBLIC_VAR"}]
 
     class _Service:
+        """Minimal service stub that only yields non-secret rows."""
+
         list_records = staticmethod(_list_records)
 
     monkeypatch.setattr(env_inspector, "EnvInspectorService", _Service)
@@ -103,6 +109,8 @@ def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, m
     monkeypatch.chdir(workspace)
 
     class _ForbiddenService:
+        """Guard service proving nested roots fail before service construction."""
+
         def __init__(self, *args, **kwargs):  # pragma: no cover - should not be reached
             """Init."""
             raise AssertionError("EnvInspectorService should not be created for unsupported nested root")
