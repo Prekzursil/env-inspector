@@ -1,3 +1,5 @@
+"""Parsing and text-mutation helpers for environment files."""
+
 from __future__ import absolute_import, division
 
 from typing import Dict, List, Tuple
@@ -12,6 +14,7 @@ POWERSHELL_ENV_RE = re.compile(rf"^\s*\$env:({_ENV_KEY_PATTERN})\s*=", re.IGNORE
 
 
 def validate_env_key(key: str) -> None:
+    """Validate an environment-variable key."""
     if not key:
         raise ValueError("Environment key cannot be empty.")
     if not ENV_KEY_RE.match(key):
@@ -19,11 +22,13 @@ def validate_env_key(key: str) -> None:
 
 
 def validate_env_value(value: str) -> None:
+    """Validate an environment-variable value."""
     if "\x00" in value:
         raise ValueError("Environment value cannot contain null bytes.")
 
 
 def strip_outer_quotes(value: str) -> str:
+    """Remove matching outer quotes and unescape shell single quotes."""
     v = value.strip()
     if len(v) >= 2 and ((v[0] == v[-1] == "'") or (v[0] == v[-1] == '"')):
         v = v[1:-1]
@@ -31,10 +36,12 @@ def strip_outer_quotes(value: str) -> str:
 
 
 def shell_single_quote(value: str) -> str:
+    """Quote a value for single-quoted shell assignments."""
     return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
 def _render_upsert(lines: List[str], had_trailing_newline: bool) -> str:
+    """Render updated content while preserving a trailing newline."""
     text = "\n".join(lines)
     if had_trailing_newline or lines:
         text += "\n"
@@ -42,6 +49,7 @@ def _render_upsert(lines: List[str], had_trailing_newline: bool) -> str:
 
 
 def _render_remove(lines: List[str], had_trailing_newline: bool) -> str:
+    """Render removed content while preserving trailing-newline semantics."""
     text = "\n".join(lines)
     if had_trailing_newline and lines:
         text += "\n"
@@ -49,6 +57,7 @@ def _render_remove(lines: List[str], had_trailing_newline: bool) -> str:
 
 
 def _append_with_optional_blank(lines: List[str], new_line: str) -> None:
+    """Append a line, inserting a blank separator when needed."""
     if lines and lines[-1].strip():
         lines.append("")
     lines.append(new_line)
@@ -60,6 +69,7 @@ def _replace_first_match(
     replacement: str,
     matcher: Callable[[str], bool],
 ) -> Tuple[List[str], bool]:
+    """Replace the first matching line and drop any later duplicates."""
     out: List[str] = []
     replaced = False
     for line in lines:
@@ -73,11 +83,13 @@ def _replace_first_match(
 
 
 def _matches_export_key(line: str, key: str) -> bool:
+    """Return whether a line exports the requested key."""
     match = EXPORT_LINE_RE.match(line)
     return bool(match and match.group(1) == key)
 
 
 def _matches_assign_key(line: str, key: str) -> bool:
+    """Return whether a non-comment assignment line matches the key."""
     stripped = line.strip()
     if not stripped or stripped.startswith("#"):
         return False
@@ -86,6 +98,7 @@ def _matches_assign_key(line: str, key: str) -> bool:
 
 
 def _line_assigns_key(line: str, key: str) -> bool:
+    """Return whether a line assigns the requested key in either form."""
     stripped = line.strip()
     assign_match = ASSIGN_LINE_RE.match(stripped)
     if assign_match and assign_match.group(1) == key:
@@ -95,11 +108,13 @@ def _line_assigns_key(line: str, key: str) -> bool:
 
 
 def _matches_powershell_key(line: str, key: str) -> bool:
+    """Return whether a PowerShell assignment line matches the key."""
     match = POWERSHELL_ENV_RE.match(line)
     return bool(match and match.group(1).lower() == key.lower())
 
 
 def parse_dotenv_text(text: str) -> List[Tuple[str, str]]:
+    """Parse dotenv-style text into ordered key/value pairs."""
     rows: List[Tuple[str, str]] = []
     for line in text.splitlines():
         stripped = line.strip()
@@ -119,6 +134,7 @@ def parse_dotenv_text(text: str) -> List[Tuple[str, str]]:
 
 
 def parse_bash_exports(text: str) -> Dict[str, str]:
+    """Parse `export KEY=value` lines into a mapping."""
     values: Dict[str, str] = {}
     for line in text.splitlines():
         match = EXPORT_LINE_RE.match(line)
@@ -130,6 +146,7 @@ def parse_bash_exports(text: str) -> Dict[str, str]:
 
 
 def parse_etc_environment(text: str) -> Dict[str, str]:
+    """Parse `/etc/environment`-style assignments into a mapping."""
     values: Dict[str, str] = {}
     for line in text.splitlines():
         stripped = line.strip()
@@ -144,17 +161,23 @@ def parse_etc_environment(text: str) -> Dict[str, str]:
 
 
 def upsert_export(content: str, key: str, value: str) -> str:
+    """Insert or replace an exported shell variable assignment."""
     validate_env_key(key)
     validate_env_value(value)
     export_line = f"export {key}={shell_single_quote(value)}"
     lines = content.splitlines()
-    out, replaced = _replace_first_match(lines, replacement=export_line, matcher=lambda line: _matches_export_key(line, key))
+    out, replaced = _replace_first_match(
+        lines,
+        replacement=export_line,
+        matcher=lambda line: _matches_export_key(line, key),
+    )
     if not replaced:
         _append_with_optional_blank(out, export_line)
     return _render_upsert(out, content.endswith("\n"))
 
 
 def remove_export(content: str, key: str) -> str:
+    """Remove exported shell variable assignments for a key."""
     validate_env_key(key)
     lines = content.splitlines()
     out = [line for line in lines if not _matches_export_key(line, key)]
@@ -162,17 +185,23 @@ def remove_export(content: str, key: str) -> str:
 
 
 def upsert_key_value(content: str, key: str, value: str, *, quote: bool = False) -> str:
+    """Insert or replace a plain `KEY=value` assignment."""
     validate_env_key(key)
     validate_env_value(value)
     line_out = f"{key}={shell_single_quote(value) if quote else value}"
     lines = content.splitlines()
-    out, replaced = _replace_first_match(lines, replacement=line_out, matcher=lambda line: _matches_assign_key(line, key))
+    out, replaced = _replace_first_match(
+        lines,
+        replacement=line_out,
+        matcher=lambda line: _matches_assign_key(line, key),
+    )
     if not replaced:
         _append_with_optional_blank(out, line_out)
     return _render_upsert(out, content.endswith("\n"))
 
 
 def remove_key_value(content: str, key: str) -> str:
+    """Remove plain or exported key/value assignments for a key."""
     validate_env_key(key)
     lines = content.splitlines()
     out = [line for line in lines if not _line_assigns_key(line, key)]
@@ -180,18 +209,24 @@ def remove_key_value(content: str, key: str) -> str:
 
 
 def upsert_powershell_env(content: str, key: str, value: str) -> str:
+    """Insert or replace a PowerShell environment assignment."""
     validate_env_key(key)
     validate_env_value(value)
     escaped_value = value.replace("'", "''")
     line_out = f"$env:{key} = '{escaped_value}'"
     lines = content.splitlines()
-    out, replaced = _replace_first_match(lines, replacement=line_out, matcher=lambda line: _matches_powershell_key(line, key))
+    out, replaced = _replace_first_match(
+        lines,
+        replacement=line_out,
+        matcher=lambda line: _matches_powershell_key(line, key),
+    )
     if not replaced:
         _append_with_optional_blank(out, line_out)
     return _render_upsert(out, content.endswith("\n"))
 
 
 def remove_powershell_env(content: str, key: str) -> str:
+    """Remove a PowerShell environment assignment for a key."""
     validate_env_key(key)
     lines = content.splitlines()
     out = [line for line in lines if not _matches_powershell_key(line, key)]
