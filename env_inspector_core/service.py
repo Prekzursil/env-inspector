@@ -158,7 +158,9 @@ class EnvInspectorService:
     @staticmethod
     def run(*args: Any, **kwargs: Any) -> Any:
         """Invoke the subprocess runner through the mutable module seam."""
-        return run(*args, **kwargs)
+        call_kwargs = dict(kwargs)
+        call_kwargs.setdefault("check", False)
+        return run(*args, **call_kwargs)
 
     @staticmethod
     def _read_text_if_exists(path: Path) -> str:
