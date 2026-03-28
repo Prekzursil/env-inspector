@@ -8,10 +8,12 @@ import env_inspector_core.parsing as parsing
 
 
 def _case() -> unittest.TestCase:
+    """Return a lightweight unittest assertion helper."""
     return unittest.TestCase()
 
 
 def test_parse_dotenv_text_supports_export_comments_and_quotes():
+    """Parse dotenv text while preserving valid exports and quoted values."""
     text = """
 # comment
 export API_TOKEN='fixture-value'
@@ -28,6 +30,7 @@ INVALID_LINE
 
 
 def test_parse_bash_exports_only_reads_export_lines():
+    """Ignore non-export assignments when parsing shell exports."""
     text = """
 export A=1
 B=2
@@ -38,6 +41,7 @@ B=2
 
 
 def test_parse_etc_environment_ignores_comments_and_blank_lines():
+    """Ignore comments and blank lines in `/etc/environment` style files."""
     text = """
 # header
 LANG=en_US.UTF-8
@@ -49,6 +53,7 @@ PATH="/usr/local/bin:/usr/bin"
 
 
 def test_upsert_and_remove_export_roundtrip():
+    """Round-trip exported variables through insert, replace, and removal."""
     base = "export A='1'\n"
     updated = parsing.upsert_export(base, "B", "two")
     case = _case()
@@ -63,6 +68,7 @@ def test_upsert_and_remove_export_roundtrip():
 
 
 def test_remove_key_value_handles_assign_export_and_comments():
+    """Remove matching assignments without disturbing unrelated lines."""
     base = "# keep me\n\nA=1\n export A='2'\nB=3\n"
 
     removed = parsing.remove_key_value(base, "A")
@@ -75,6 +81,7 @@ def test_remove_key_value_handles_assign_export_and_comments():
 
 
 def test_upsert_and_remove_powershell_env_roundtrip():
+    """Round-trip PowerShell environment assignments through mutation helpers."""
     base = "$env:API_TOKEN = 'old'\nWrite-Host 'hi'\n"
     updated = parsing.upsert_powershell_env(base, "API_TOKEN", "new")
     case = _case()
@@ -89,6 +96,7 @@ def test_upsert_and_remove_powershell_env_roundtrip():
 
 
 def test_upsert_key_value_ignores_blank_and_comment_lines_when_matching():
+    """Append new key/value pairs without clobbering comments or blanks."""
     base = "# keep\n\nA=1\n"
 
     updated = parsing.upsert_key_value(base, "NEW_KEY", "v", quote=False)

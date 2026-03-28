@@ -83,6 +83,25 @@ WSL_DOTENV_TARGET_PREFIX = _service_mutations.WSL_DOTENV_TARGET_PREFIX
 which = _privileged_which
 run = _privileged_run
 
+__all__ = [
+    "DOTENV_TARGET_PREFIX",
+    "EnvInspectorService",
+    "LINUX_ETC_ENV_PATH",
+    "ListRecordsRequest",
+    "ShellMutationRequest",
+    "TARGET_LINUX_BASHRC",
+    "TARGET_LINUX_ETC_ENV",
+    "TARGET_POWERSHELL_ALL_USERS",
+    "TARGET_POWERSHELL_CURRENT_USER",
+    "TARGET_WINDOWS_MACHINE",
+    "TARGET_WINDOWS_USER",
+    "TargetOperationBatch",
+    "TargetOperationRequest",
+    "WSL_DOTENV_TARGET_PREFIX",
+    "run",
+    "which",
+]
+
 
 def _path_exists(path: Path) -> bool:
     """Return whether a path exists."""

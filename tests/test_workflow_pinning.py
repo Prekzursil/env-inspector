@@ -1,3 +1,5 @@
+"""Tests for workflow action pinning requirements."""
+
 from __future__ import absolute_import, division
 import re
 from pathlib import Path
@@ -5,6 +7,7 @@ from pathlib import Path
 from tests.assertions import ensure
 
 def test_release_workflow_pins_third_party_actions_to_shas():
+    """Require third-party workflow actions to be pinned to commit SHAs."""
     workflow = Path(".github/workflows/env-inspector-exe-release.yml")
     lines = workflow.read_text(encoding="utf-8").splitlines()
     uses_values = []
