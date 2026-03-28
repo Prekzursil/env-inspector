@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Tuple
 
 
 def _load_impl() -> Any:
@@ -25,6 +25,7 @@ def _load_impl() -> Any:
 
 
 def _load_support() -> Any:
+    """Load the shared Codacy support module for script and package modes."""
     try:
         return importlib.import_module("scripts.quality._codacy_zero_support")
     except ModuleNotFoundError:  # pragma: no cover - direct script execution
@@ -45,17 +46,76 @@ request_json_https = _impl.request_json_https
 encode_identifier = _impl.encode_identifier
 safe_output_path_in_workspace = _impl.safe_output_path_in_workspace
 
-_parse_args = _impl._parse_args
-_request_json = _impl._request_json
-_extract_numeric_total = _impl._extract_numeric_total
 extract_total_open = _impl.extract_total_open
-_provider_candidates = _impl._provider_candidates
-_first_text = _support._first_text
-_format_issue_sample = _support._format_issue_sample
-_sample_issue_findings = _support._sample_issue_findings
-_fetch_open_issues_for_provider = _impl._fetch_open_issues_for_provider
-_query_open_issues = _impl._query_open_issues
-_render_md = _impl._render_md
+
+
+def _impl_helper(name: str) -> Any:
+    """Return a helper exported by the reusable Codacy implementation module."""
+    return getattr(_impl, name)
+
+
+def _support_helper(name: str) -> Any:
+    """Return a helper exported by the reusable Codacy support module."""
+    return getattr(_support, name)
+
+
+def _parse_args() -> Any:
+    """Parse command-line arguments for the Codacy zero gate."""
+    return _impl_helper("_parse_args")()
+
+
+def _request_json(request: CodacyRequest | None = None, **kwargs: Any) -> dict[str, Any]:
+    """Request the Codacy issue-search payload for the target repository scope."""
+    return _support_helper("_request_json")(request=request, **kwargs)
+
+
+def _extract_numeric_total(
+    payload: dict[str, Any],
+    keys: Tuple[str, ...],
+) -> int | None:
+    """Extract the first numeric total value from a payload using fallback keys."""
+    return _impl_helper("_extract_numeric_total")(payload, keys)
+
+
+def _provider_candidates(preferred: str) -> List[str]:
+    """Return the ordered provider aliases to try for Codacy API resolution."""
+    return _support_helper("_provider_candidates")(preferred)
+
+
+def _first_text(issue: dict[str, Any], keys: Tuple[str, ...]) -> str:
+    """Return the first populated text field from a Codacy issue payload."""
+    return _support_helper("_first_text")(issue, keys)
+
+
+def _format_issue_sample(issue: dict[str, Any]) -> str | None:
+    """Render one sample Codacy issue into a short human-readable finding."""
+    return _support_helper("_format_issue_sample")(issue)
+
+
+def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> List[str]:
+    """Extract a bounded sample of issue descriptions from the Codacy payload."""
+    return _support_helper("_sample_issue_findings")(payload, limit)
+
+
+def _fetch_open_issues_for_provider(
+    request: CodacyRequest | None = None,
+    **kwargs: Any,
+) -> tuple[bool, int | None, List[str], Exception | None]:
+    """Query Codacy for one provider alias and interpret the result payload."""
+    return _impl_helper("_fetch_open_issues_for_provider")(request=request, **kwargs)
+
+
+def _query_open_issues(
+    request: CodacyRequest | None = None,
+    **kwargs: Any,
+) -> tuple[int | None, List[str]]:
+    """Query Codacy across provider aliases until one returns a settled result."""
+    return _impl_helper("_query_open_issues")(request=request, **kwargs)
+
+
+def _render_md(payload: dict[str, Any]) -> str:
+    """Render the markdown artifact for the Codacy zero gate result."""
+    return _impl_helper("_render_md")(payload)
 
 
 def main() -> int:

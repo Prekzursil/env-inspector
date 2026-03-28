@@ -379,6 +379,7 @@ class EnvInspectorService:
         distro: str | None,
         wsl_path: str | None,
     ) -> List[EnvRecord]:
+        """Collect records from the requested WSL distro and optional dotenv path."""
         return _collect_wsl_rows_helper(
             runtime_context=self.runtime_context,
             current_wsl_distro=self.current_wsl_distro,
@@ -442,6 +443,7 @@ class EnvInspectorService:
         )
 
     def _restore_linux_target(self, *, target: str, text: str) -> None:
+        """Restore the host Linux `/etc/environment` target from backup text."""
         _restore_linux_target_helper(
             target=target,
             text=text,
@@ -462,6 +464,7 @@ class EnvInspectorService:
         )
 
     def _restore_powershell_target(self, *, target: str, text: str) -> None:
+        """Restore a PowerShell profile target from backup text."""
         _restore_powershell_target_helper(
             target=target,
             text=text,

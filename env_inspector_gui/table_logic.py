@@ -100,6 +100,7 @@ def toggle_sort(current: SortState, column: str) -> SortState:
 
 
 def _sort_key(row: DisplayedRow, column: str):
+    """Return the sortable value for the requested GUI table column."""
     rec = row.record
 
     str_map = {
