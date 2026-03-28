@@ -10,9 +10,15 @@ from . import service_aliases as _service_aliases
 from . import service_mutations as _service_mutations
 from .constants import DEFAULT_BACKUP_RETENTION
 from .models import EnvRecord, OperationResult
-from .path_policy import normalize_scope_roots, parse_scoped_dotenv_target, resolve_scan_root, validate_backup_path
+from .path_policy import (
+    normalize_scope_roots,
+    parse_scoped_dotenv_target,
+    resolve_scan_root,
+    validate_backup_path,
+)
 from .providers import (
-    WindowsRegistryProvider, WslProvider, build_registry_records, collect_dotenv_records,
+    WindowsRegistryProvider, WslProvider, build_registry_records,
+    collect_dotenv_records,
     collect_linux_records, collect_powershell_profile_records, collect_process_records,
     collect_wsl_dotenv_records, collect_wsl_records, current_wsl_distro_name,
     get_runtime_context, is_windows,
@@ -20,24 +26,40 @@ from .providers import (
 from .rendering import audit_safe_result
 from .resolver import resolve_effective_value
 from .service_listing import (
-    HostCollectionRequest, HostRowCollectors, apply_row_filters as _apply_row_filters_helper,
-    collect_host_rows as _collect_host_rows_helper, collect_wsl_rows as _collect_wsl_rows_helper,
+    HostCollectionRequest, HostRowCollectors,
+    apply_row_filters as _apply_row_filters_helper,
+    collect_host_rows as _collect_host_rows_helper,
+    collect_wsl_rows as _collect_wsl_rows_helper,
     powershell_target_for_path as _powershell_target_for_path_helper,
     record_target as _record_target_helper, rows_to_payload as _rows_to_payload_helper,
 )
-from .service_ops import diff_text as _diff_text_helper, masked_value as _masked_value_helper, operation_error_types as _operation_error_types_helper
+from .service_ops import (
+    diff_text as _diff_text_helper,
+    masked_value as _masked_value_helper,
+    operation_error_types as _operation_error_types_helper,
+)
 from .service_paths import (
-    is_path_within as _is_path_within, validate_path_in_roots as _validate_path_in_roots,
-    write_scoped_text_file as _write_scoped_text_file, write_text_file as _write_text_file,
+    is_path_within as _is_path_within,
+    validate_path_in_roots as _validate_path_in_roots,
+    write_scoped_text_file as _write_scoped_text_file,
+    write_text_file as _write_text_file,
 )
 from .service_privileged import run as _privileged_run, which as _privileged_which
 from .service_restore import (
-    restore_dotenv_target as _restore_dotenv_target_helper, restore_linux_target as _restore_linux_target_helper,
-    restore_powershell_target as _restore_powershell_target_helper, restore_target as _restore_target_helper,
-    restore_windows_registry_target as _restore_windows_registry_target_helper, restore_wsl_target as _restore_wsl_target_helper,
+    restore_dotenv_target as _restore_dotenv_target_helper,
+    restore_linux_target as _restore_linux_target_helper,
+    restore_powershell_target as _restore_powershell_target_helper,
+    restore_target as _restore_target_helper,
+    restore_windows_registry_target as _restore_windows_registry_target_helper,
+    restore_wsl_target as _restore_wsl_target_helper,
 )
 from .service_wsl import validate_wsl_distro_name as _validate_wsl_distro_name_helper
-from .service_models import ListRecordsRequest, ShellMutationRequest, TargetOperationBatch, TargetOperationRequest
+from .service_models import (
+    ListRecordsRequest,
+    ShellMutationRequest,
+    TargetOperationBatch,
+    TargetOperationRequest,
+)
 from .storage import AuditLogger, BackupManager
 
 DOTENV_TARGET_PREFIX = _service_mutations.DOTENV_TARGET_PREFIX
@@ -49,13 +71,14 @@ TARGET_POWERSHELL_CURRENT_USER = _service_mutations.TARGET_POWERSHELL_CURRENT_US
 TARGET_WINDOWS_MACHINE = _service_mutations.TARGET_WINDOWS_MACHINE
 TARGET_WINDOWS_USER = _service_mutations.TARGET_WINDOWS_USER
 WSL_DOTENV_TARGET_PREFIX = _service_mutations.WSL_DOTENV_TARGET_PREFIX
-which = _privileged_which
-run = _privileged_run
+which = _privileged_which; run = _privileged_run
 
 __all__ = [
-    "DOTENV_TARGET_PREFIX", "EnvInspectorService", "LINUX_ETC_ENV_PATH", "ListRecordsRequest",
+    "DOTENV_TARGET_PREFIX", "EnvInspectorService", "LINUX_ETC_ENV_PATH",
+    "ListRecordsRequest",
     "ShellMutationRequest", "TARGET_LINUX_BASHRC", "TARGET_LINUX_ETC_ENV",
-    "TARGET_POWERSHELL_ALL_USERS", "TARGET_POWERSHELL_CURRENT_USER", "TARGET_WINDOWS_MACHINE",
+    "TARGET_POWERSHELL_ALL_USERS", "TARGET_POWERSHELL_CURRENT_USER",
+    "TARGET_WINDOWS_MACHINE",
     "TARGET_WINDOWS_USER", "TargetOperationBatch", "TargetOperationRequest",
     "WSL_DOTENV_TARGET_PREFIX", "run", "which",
 ]
