@@ -307,6 +307,8 @@ def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypat
         svc._restore_windows_registry_target(target="windows:user", text="{}")
 
     class _FakeWinProvider:
+        """Minimal Windows provider stub for registry restore guard coverage."""
+
         def __init__(self) -> None:
             """Init."""
             self.removed: List[Tuple[str, str]] = []
@@ -358,6 +360,8 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
     outside.mkdir(parents=True, exist_ok=True)
 
     class _Scoped:
+        """Scoped target stub exposing the parsed dotenv path for guard checks."""
+
         def __init__(self, path: Path) -> None:
             """Init."""
             self.path = path
