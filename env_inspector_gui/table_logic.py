@@ -33,11 +33,12 @@ def _to_displayed_row(
     idx: int,
 ) -> DisplayedRow:
     """Convert a record into the GUI row model used by the table."""
-    is_secret = bool(rec.is_secret)
-    is_persistent = bool(rec.is_persistent)
-    is_mutable = bool(rec.is_mutable)
-    is_writable = bool(rec.writable)
-    requires_privilege = bool(rec.requires_privilege)
+    rec_payload = rec.to_dict()
+    is_secret = bool(rec_payload["is_secret"])
+    is_persistent = bool(rec_payload["is_persistent"])
+    is_mutable = bool(rec_payload["is_mutable"])
+    is_writable = bool(rec_payload["writable"])
+    requires_privilege = bool(rec_payload["requires_privilege"])
     return DisplayedRow(
         record=rec,
         visible_value=build_visible_value(rec, show_secrets=show_secrets),

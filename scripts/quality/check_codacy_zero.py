@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def _load_impl() -> Any:
@@ -64,13 +64,16 @@ def _parse_args() -> Any:
     return _impl_helper("_parse_args")()
 
 
-def _request_json(request: CodacyRequest | None = None, **kwargs: Any) -> dict[str, Any]:
+def _request_json(
+    request: Any = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
     """Request the Codacy issue-search payload for the target repository scope."""
     return _support_helper("_request_json")(request=request, **kwargs)
 
 
 def _extract_numeric_total(
-    payload: dict[str, Any],
+    payload: Dict[str, Any],
     keys: Tuple[str, ...],
 ) -> int | None:
     """Extract the first numeric total value from a payload using fallback keys."""
@@ -82,38 +85,41 @@ def _provider_candidates(preferred: str) -> List[str]:
     return _support_helper("_provider_candidates")(preferred)
 
 
-def _first_text(issue: dict[str, Any], keys: Tuple[str, ...]) -> str:
+def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
     """Return the first populated text field from a Codacy issue payload."""
     return _support_helper("_first_text")(issue, keys)
 
 
-def _format_issue_sample(issue: dict[str, Any]) -> str | None:
+def _format_issue_sample(issue: Dict[str, Any]) -> Optional[str]:
     """Render one sample Codacy issue into a short human-readable finding."""
     return _support_helper("_format_issue_sample")(issue)
 
 
-def _sample_issue_findings(payload: dict[str, Any], limit: int = 5) -> List[str]:
+def _sample_issue_findings(
+    payload: Dict[str, Any],
+    limit: int = 5,
+) -> List[str]:
     """Extract a bounded sample of issue descriptions from the Codacy payload."""
     return _support_helper("_sample_issue_findings")(payload, limit)
 
 
 def _fetch_open_issues_for_provider(
-    request: CodacyRequest | None = None,
+    request: Any = None,
     **kwargs: Any,
-) -> tuple[bool, int | None, List[str], Exception | None]:
+) -> Tuple[bool, Optional[int], List[str], Optional[Exception]]:
     """Query Codacy for one provider alias and interpret the result payload."""
     return _impl_helper("_fetch_open_issues_for_provider")(request=request, **kwargs)
 
 
 def _query_open_issues(
-    request: CodacyRequest | None = None,
+    request: Any = None,
     **kwargs: Any,
-) -> tuple[int | None, List[str]]:
+) -> Tuple[Optional[int], List[str]]:
     """Query Codacy across provider aliases until one returns a settled result."""
     return _impl_helper("_query_open_issues")(request=request, **kwargs)
 
 
-def _render_md(payload: dict[str, Any]) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render the markdown artifact for the Codacy zero gate result."""
     return _impl_helper("_render_md")(payload)
 
