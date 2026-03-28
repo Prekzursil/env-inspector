@@ -4,7 +4,13 @@ from env_inspector_core.resolver import resolve_effective_value
 
 from tests.assertions import ensure
 
-def rec(source_type: str, context: str, name: str, value: str, precedence: int) -> EnvRecord:
+def rec(
+    source_type: str,
+    context: str,
+    name: str,
+    value: str,
+    precedence: int,
+) -> EnvRecord:
     return EnvRecord(
         source_type=source_type,
         source_id=source_type,
@@ -29,6 +35,8 @@ def test_resolve_effective_windows_prefers_lower_precedence_rank():
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "windows")
     ensure(chosen is not None)
+    if chosen is None:
+        raise RuntimeError("Expected a resolved Windows record.")
     ensure(chosen.value == "user")
 
 def test_resolve_effective_wsl_context_isolated_by_distro():
@@ -39,6 +47,8 @@ def test_resolve_effective_wsl_context_isolated_by_distro():
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "wsl:Ubuntu")
     ensure(chosen is not None)
+    if chosen is None:
+        raise RuntimeError("Expected a resolved WSL record.")
     ensure(chosen.value == "ubuntu-etc")
 
 def test_resolve_effective_windows_does_not_leak_linux_context():
@@ -48,6 +58,8 @@ def test_resolve_effective_windows_does_not_leak_linux_context():
     ]
     chosen = resolve_effective_value(rows, "API_TOKEN", "windows")
     ensure(chosen is not None)
+    if chosen is None:
+        raise RuntimeError("Expected a resolved Windows record.")
     ensure(chosen.value == "windows-value")
 
 def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
@@ -59,4 +71,6 @@ def test_resolve_effective_linux_precedence_prefers_process_then_bashrc():
     ]
     chosen = resolve_effective_value(rows, "PATH", "linux")
     ensure(chosen is not None)
+    if chosen is None:
+        raise RuntimeError("Expected a resolved Linux record.")
     ensure(chosen.value == "process")

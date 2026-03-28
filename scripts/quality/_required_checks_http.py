@@ -4,7 +4,7 @@ from __future__ import absolute_import, division
 from dataclasses import dataclass
 import re
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import urllib.error
 
 try:
@@ -183,9 +183,9 @@ def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
     return None
 
 
-def _evaluate(required: list[str], contexts: Dict[str, Dict[str, str]]) -> tuple[str, list[str], list[str]]:
-    missing: list[str] = []
-    failed: list[str] = []
+def _evaluate(required: List[str], contexts: Dict[str, Dict[str, str]]) -> Tuple[str, List[str], List[str]]:
+    missing: List[str] = []
+    failed: List[str] = []
 
     for context in required:
         observed = contexts.get(context)

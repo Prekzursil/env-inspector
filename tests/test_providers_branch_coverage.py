@@ -85,13 +85,16 @@ def test_normalize_and_validate_powershell_values_and_keys():
 
 def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
     class _FakeWsl:
-        def available(self) -> bool:
+        @staticmethod
+        def available() -> bool:
             return True
 
-        def list_distros(self) -> List[str]:
+        @staticmethod
+        def list_distros() -> List[str]:
             return ["Ubuntu"]
 
-        def read_file(self, distro: str, path: str) -> str:
+        @staticmethod
+        def read_file(distro: str, path: str) -> str:
             mapping = {
                 "~/.bashrc": "export API_TOKEN='abc'\n",
                 "/etc/environment": "LANG=en_US.UTF-8\n",
@@ -142,7 +145,8 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
         def available(self) -> bool:
             return True
 
-        def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+        @staticmethod
+        def scan_dotenv_files(distro: str, root_path: str, max_depth: int) -> List[str]:
             return ["/workspace/.env"]
 
         def read_file(self, distro: str, path: str) -> str:

@@ -7,7 +7,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 
 def _load_impl() -> Any:
@@ -59,7 +59,7 @@ def main() -> int:
     args = _parse_args()
     branch = getattr(args, "branch", "")
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    findings: list[str] = []
+    findings: List[str] = []
     open_issues: int | None = None
 
     if not token:
