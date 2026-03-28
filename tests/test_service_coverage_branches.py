@@ -83,8 +83,14 @@ def test_list_records_accepts_request_without_kwargs(monkeypatch, tmp_path: Path
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     request = service_module.ListRecordsRequest(root=tmp_path, include_raw_secrets=True)
 
-    monkeypatch.setattr(service_module, "resolve_scan_root", lambda root: Path(root))
-    monkeypatch.setattr(svc, "_collect_host_rows", lambda root_path, _scan_depth: [_record(SOURCE_DOTENV, str(root_path / ".env"))])
+    def _resolve_scan_root(root):
+        return Path(root)
+
+    def _collect_host_rows(root_path, _scan_depth):
+        return [_record(SOURCE_DOTENV, str(root_path / ".env"))]
+
+    monkeypatch.setattr(service_module, "resolve_scan_root", _resolve_scan_root)
+    monkeypatch.setattr(svc, "_collect_host_rows", _collect_host_rows)
     monkeypatch.setattr(svc, "_collect_wsl_rows", lambda **_kwargs: [])
     monkeypatch.setattr(svc, "_apply_row_filters", lambda rows, source, context: rows)
 

@@ -59,11 +59,15 @@ def test_wsl_dotenv_rows_returns_empty_when_request_is_incomplete() -> None:
 def test_bridge_rows_without_current_linux_distro_uses_no_exclusions() -> None:
     calls = []
 
+    def _fake_collect(_wsl, include_etc, exclude_distros):
+        calls.append((include_etc, exclude_distros))
+        return []
+
     rows = service_listing_module._bridge_rows(
         runtime_context="windows",
         current_wsl_distro="Ubuntu",
         wsl=SimpleNamespace(),
-        collect_wsl_records_fn=lambda _wsl, include_etc, exclude_distros: calls.append((include_etc, exclude_distros)) or [],
+        collect_wsl_records_fn=_fake_collect,
     )
 
     ensure(rows == [])
@@ -253,7 +257,7 @@ def test_coerce_scan_request_covers_positional_branches() -> None:
 
 
 def test_resolve_unresolved_count_without_hits_header_and_without_issues() -> None:
-    failures = []
+    failures: list[str] = []
 
     unresolved = sentry_mod._resolve_unresolved_count([], {}, "proj", failures)
 
