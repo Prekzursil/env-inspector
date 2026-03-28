@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Codacy zero-issue gate for repository and branch scopes."""
+
 from __future__ import absolute_import, division
 
 import importlib
@@ -11,6 +13,7 @@ from typing import Any, List
 
 
 def _load_impl() -> Any:
+    """Load the reusable Codacy helper module for script and package modes."""
     try:
         return importlib.import_module("scripts.quality._codacy_zero_impl")
     except ModuleNotFoundError:  # pragma: no cover - direct script execution
@@ -56,6 +59,7 @@ _render_md = _impl._render_md
 
 
 def main() -> int:
+    """Run the Codacy zero-issue gate and write its report artifacts."""
     args = _parse_args()
     branch = getattr(args, "branch", "")
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
@@ -86,7 +90,10 @@ def main() -> int:
     }
 
     try:
-        out_json = safe_output_path_in_workspace(args.out_json, "codacy-zero/codacy.json")
+        out_json = safe_output_path_in_workspace(
+            args.out_json,
+            "codacy-zero/codacy.json",
+        )
         out_md = safe_output_path_in_workspace(args.out_md, "codacy-zero/codacy.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -94,7 +101,10 @@ def main() -> int:
 
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out_json.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     out_md.write_text(_render_md(payload), encoding="utf-8")
     return 0 if status == "pass" else 1
 

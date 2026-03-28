@@ -1,26 +1,29 @@
+"""Alias helpers that provide the service's compatibility surface."""
+
 from __future__ import absolute_import, division
 
+import json
 from pathlib import Path
 from typing import Any, List
 
 from .models import EnvRecord
+from .providers import WindowsRegistryProvider
 from .rendering import export_rows
+from .service_listing import available_targets as _available_targets_helper
+from .service_ops import (
+    normalize_target_operation_request as _normalize_target_operation_request_helper,
+)
 from .service_paths import (
     get_powershell_profile_paths as _get_powershell_profile_paths,
     linux_etc_environment_path as _linux_etc_environment_path,
     powershell_target_path_and_roots as _powershell_target_path_and_roots,
     validated_powershell_restore_path as _validated_powershell_restore_path,
 )
-from .service_listing import available_targets as _available_targets_helper
 from .service_wsl import validate_wsl_dotenv_path as _validate_wsl_dotenv_path_helper
 
 
-from .providers import WindowsRegistryProvider
-from .service_ops import normalize_target_operation_request as _normalize_target_operation_request_helper
-import json
-
-
 def registry_write(self, *args: Any, apply_changes: bool, **kwargs: Any):
+    """Apply or preview a Windows registry mutation."""
     request_data = _normalize_target_operation_request_helper(*args, **kwargs)
     target = request_data["target"]
     key = request_data["key"]
@@ -28,7 +31,11 @@ def registry_write(self, *args: Any, apply_changes: bool, **kwargs: Any):
     action = request_data["action"]
     if self.win_provider is None:
         raise RuntimeError("Windows registry provider unavailable.")
-    scope = WindowsRegistryProvider.USER_SCOPE if target == "windows:user" else WindowsRegistryProvider.MACHINE_SCOPE
+    scope = (
+        WindowsRegistryProvider.USER_SCOPE
+        if target == "windows:user"
+        else WindowsRegistryProvider.MACHINE_SCOPE
+    )
     current = self.win_provider.list_scope(scope)
     before = json.dumps(current, indent=2, sort_keys=True)
     if action == "set" and value is not None:
@@ -44,8 +51,8 @@ def registry_write(self, *args: Any, apply_changes: bool, **kwargs: Any):
     return before, after, None, requires_priv, None
 
 
-
 def bridge_distros(self) -> List[str]:
+    """Return bridge distros, excluding the active Linux-host distro."""
     if not self.wsl.available():
         return []
     distros = self.wsl.list_distros_for_ui()
@@ -56,6 +63,7 @@ def bridge_distros(self) -> List[str]:
 
 
 def list_contexts(self) -> List[str]:
+    """Return the runtime context plus any available WSL bridge contexts."""
     contexts = [self.runtime_context]
     if self.wsl.available():
         for distro in self.bridge_distros():
@@ -63,12 +71,13 @@ def list_contexts(self) -> List[str]:
     return contexts
 
 
-
 def get_powershell_profile_paths() -> List[Path]:
+    """Return the PowerShell profile paths exposed by the path helper."""
     return _get_powershell_profile_paths()
 
 
 def powershell_target_path_and_roots(self, target: str):
+    """Resolve a PowerShell target into its path and allowed roots."""
     return _powershell_target_path_and_roots(
         target,
         profile_resolver=self.powershell_profile_path,
@@ -78,6 +87,7 @@ def powershell_target_path_and_roots(self, target: str):
 
 
 def validated_powershell_restore_path(self, target: str) -> Path:
+    """Resolve and validate the destination for a PowerShell restore."""
     return _validated_powershell_restore_path(
         target,
         profile_resolver=self.powershell_profile_path,
@@ -87,9 +97,16 @@ def validated_powershell_restore_path(self, target: str) -> Path:
 
 
 def linux_etc_environment_path(cls) -> Path:
-    return _linux_etc_environment_path(cls._LINUX_ETC_ENV_PATH)
+    """Resolve `/etc/environment` using the public service bridge."""
+    return _linux_etc_environment_path(cls.linux_etc_environment_value())
 
-def available_targets(self, records: List[EnvRecord], context: str | None = None) -> List[str]:
+
+def available_targets(
+    self,
+    records: List[EnvRecord],
+    context: str | None = None,
+) -> List[str]:
+    """Return the set of editable targets visible for the provided records."""
     return _available_targets_helper(
         records,
         context=context,
@@ -98,11 +115,20 @@ def available_targets(self, records: List[EnvRecord], context: str | None = None
 
 
 def list_records_raw(self, **kwargs: Any) -> List[EnvRecord]:
+    """Return raw `EnvRecord` instances instead of serialized payload rows."""
     payload = self.list_records(include_raw_secrets=True, **kwargs)
     return [EnvRecord(**item) for item in payload]
 
 
-def preview_set(self, *, key: str, value: str, targets: List[str], scope_roots=None) -> List[dict]:
+def preview_set(
+    self,
+    *,
+    key: str,
+    value: str,
+    targets: List[str],
+    scope_roots=None,
+) -> List[dict]:
+    """Preview a set operation and serialize the results."""
     return [
         r.to_dict()
         for r in self.apply(
@@ -116,7 +142,14 @@ def preview_set(self, *, key: str, value: str, targets: List[str], scope_roots=N
     ]
 
 
-def preview_remove(self, *, key: str, targets: List[str], scope_roots=None) -> List[dict]:
+def preview_remove(
+    self,
+    *,
+    key: str,
+    targets: List[str],
+    scope_roots=None,
+) -> List[dict]:
+    """Preview a remove operation and serialize the results."""
     return [
         r.to_dict()
         for r in self.apply(
@@ -131,12 +164,17 @@ def preview_remove(self, *, key: str, targets: List[str], scope_roots=None) -> L
 
 
 def _results_payload(results):
+    """Collapse one or more operation results into the legacy payload shape."""
     if len(results) == 1:
         return results[0].to_dict()
-    return {"success": all(r.success for r in results), "results": [r.to_dict() for r in results]}
+    return {
+        "success": all(r.success for r in results),
+        "results": [r.to_dict() for r in results],
+    }
 
 
 def set_key(self, *, key: str, value: str, targets: List[str], scope_roots=None):
+    """Apply a set operation and return the legacy payload shape."""
     results = self.apply(
         action="set",
         key=key,
@@ -149,6 +187,7 @@ def set_key(self, *, key: str, value: str, targets: List[str], scope_roots=None)
 
 
 def remove_key(self, *, key: str, targets: List[str], scope_roots=None):
+    """Apply a remove operation and return the legacy payload shape."""
     results = self.apply(
         action="remove",
         key=key,
@@ -160,16 +199,28 @@ def remove_key(self, *, key: str, targets: List[str], scope_roots=None):
     return _results_payload(results)
 
 
-def export_records(self, *, output: str, include_raw_secrets: bool, **list_kwargs: Any) -> str:
+def export_records(
+    self,
+    *,
+    output: str,
+    include_raw_secrets: bool,
+    **list_kwargs: Any,
+) -> str:
+    """Export serialized rows in the requested output format."""
     rows = self.list_records(include_raw_secrets=include_raw_secrets, **list_kwargs)
     return export_rows(rows, output=output)
 
 
 def list_backups(self, *, target: str | None = None) -> List[str]:
+    """Return backup paths, optionally scoped to a single target."""
     if target:
         return [str(p) for p in self.backup_mgr.list_backups(target)]
     return [str(p) for p in self.backup_mgr.list_all_backups()]
 
 
 def validate_wsl_dotenv_path(raw: str) -> str:
-    return _validate_wsl_dotenv_path_helper(raw, path_error="Unsupported WSL dotenv target path")
+    """Validate a WSL dotenv path for legacy service callers."""
+    return _validate_wsl_dotenv_path_helper(
+        raw,
+        path_error="Unsupported WSL dotenv target path",
+    )

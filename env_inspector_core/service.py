@@ -159,8 +159,8 @@ class EnvInspectorService:
     def run(*args: Any, **kwargs: Any) -> Any:
         """Invoke the subprocess runner through the mutable module seam."""
         call_kwargs = dict(kwargs)
-        call_kwargs.setdefault("check", False)
-        return run(*args, **call_kwargs)
+        check = call_kwargs.pop("check", False)
+        return run(*args, check=check, **call_kwargs)
 
     @staticmethod
     def _read_text_if_exists(path: Path) -> str:
@@ -313,6 +313,7 @@ class EnvInspectorService:
         state_dir: Path | None = None,
         backup_retention: int = DEFAULT_BACKUP_RETENTION,
     ) -> None:
+        """Initialize service state, backup management, and host providers."""
         self.state_dir = Path(state_dir or (Path.cwd() / ".env-inspector-state"))
         self.backup_mgr = BackupManager(
             self.state_dir / "backups",
@@ -335,6 +336,7 @@ class EnvInspectorService:
         self,
         scope_roots: List[str | Path] | None = None,
     ) -> List[Path]:
+        """Return the default scope roots plus any validated overrides."""
         roots: List[Path] = list(self.default_scope_roots)
         if scope_roots:
             roots.extend(normalize_scope_roots(scope_roots))
@@ -346,9 +348,11 @@ class EnvInspectorService:
         context: str,
         records: List[EnvRecord],
     ) -> EnvRecord | None:
+        """Resolve the effective record for a key within a context."""
         return resolve_effective_value(records, key, context)
 
     def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
+        """Collect host-visible records for the active runtime context."""
         return _collect_host_rows_helper(
             request=HostCollectionRequest(
                 runtime_context=self.runtime_context,
@@ -391,6 +395,7 @@ class EnvInspectorService:
         request: ListRecordsRequest | None = None,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
+        """Collect records, apply filters, and serialize the result payload."""
         if request is None:
             request = ListRecordsRequest(**kwargs)
         elif kwargs:
@@ -427,6 +432,7 @@ class EnvInspectorService:
         text: str,
         scope_roots: List[Path],
     ) -> None:
+        """Restore a scoped dotenv target from backup text."""
         _restore_dotenv_target_helper(
             target=target,
             text=text,
@@ -445,6 +451,7 @@ class EnvInspectorService:
         )
 
     def _restore_wsl_target(self, *, target: str, text: str) -> None:
+        """Restore a WSL bashrc or `/etc/environment` target from backup text."""
         _restore_wsl_target_helper(
             target=target,
             text=text,
@@ -469,6 +476,7 @@ class EnvInspectorService:
         )
 
     def _restore_windows_registry_target(self, *, target: str, text: str) -> None:
+        """Restore a Windows registry target from backup text."""
         _restore_windows_registry_target_helper(
             target=target,
             text=text,
@@ -483,6 +491,7 @@ class EnvInspectorService:
         text: str,
         scope_roots: List[Path],
     ) -> None:
+        """Dispatch backup restoration to the target-specific helper."""
         _restore_target_helper(
             target=target,
             text=text,
@@ -500,6 +509,7 @@ class EnvInspectorService:
         backup: str,
         scope_roots: List[str | Path] | None = None,
     ) -> Dict[str, Any]:
+        """Restore a recorded backup payload to its original target."""
         operation_id = f"restore-{uuid.uuid4().hex[:10]}"
         path = Path(backup)
         try:

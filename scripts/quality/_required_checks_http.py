@@ -183,7 +183,11 @@ def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
     return None
 
 
-def _evaluate(required: List[str], contexts: Dict[str, Dict[str, str]]) -> Tuple[str, List[str], List[str]]:
+def _evaluate(
+    required: List[str],
+    contexts: Dict[str, Dict[str, str]],
+) -> Tuple[str, List[str], List[str]]:
+    """Return the aggregate required-check status plus missing and failed items."""
     missing: List[str] = []
     failed: List[str] = []
 

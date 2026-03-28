@@ -176,6 +176,7 @@ def _build_request_target(path: str, query: Optional[Dict[str, str]]) -> str:
 
 
 def _build_https_url(host: str, request_target: str) -> str:
+    """Build a normalized HTTPS URL from a host and request target."""
     parsed_target = urllib.parse.urlsplit(request_target)
     return urllib.parse.urlunsplit(
         ("https", host, parsed_target.path, parsed_target.query, "")
@@ -183,6 +184,7 @@ def _build_https_url(host: str, request_target: str) -> str:
 
 
 def _json_body_or_none(data: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Serialize a JSON request body when one is present."""
     return json.dumps(data) if data is not None else None
 
 
@@ -212,6 +214,7 @@ def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[
 
 
 def _execute_https_request(request: _HttpsExecutionRequest) -> Tuple[int, str, str, Dict[str, str]]:
+    """Execute an HTTPS request and return status, reason, body, and headers."""
     http_request = urllib.request.Request(
         url=_build_https_url(request.host, request.request_target),
         data=request.body.encode("utf-8") if request.body is not None else None,
@@ -219,7 +222,9 @@ def _execute_https_request(request: _HttpsExecutionRequest) -> Tuple[int, str, s
         method=request.method.upper(),
     )
     try:
-        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_secure_ssl_context()))
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=_secure_ssl_context())
+        )
         with opener.open(http_request, timeout=request.timeout) as response:
             status, reason, raw_body, response_headers = _read_https_success(response)
     except urllib.error.HTTPError as exc:

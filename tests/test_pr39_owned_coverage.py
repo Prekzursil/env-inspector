@@ -136,6 +136,7 @@ def _service_with_broken_registry(tmp_path: Path, monkeypatch) -> EnvInspectorSe
 
 
 def _target_request(tmp_path: Path, *, target: str) -> service_module.TargetOperationRequest:
+    """Build a target-operation request for wrapper tests."""
     return service_module.TargetOperationRequest(
         target=target,
         key="API_TOKEN",
@@ -146,6 +147,7 @@ def _target_request(tmp_path: Path, *, target: str) -> service_module.TargetOper
 
 
 def _assert_service_target_helpers(svc: EnvInspectorService, tmp_path: Path, monkeypatch) -> None:
+    """Exercise the service helper wrappers that resolve targets and records."""
     svc.wsl = type("NoWsl", (), {"available": lambda self: False})()  # type: ignore[assignment]
     ensure(svc._bridge_distros() == [])
     resolved = svc.resolve_effective("API_TOKEN", "linux", [_record("dotenv", ".env")])
@@ -164,6 +166,7 @@ def _assert_service_target_helpers(svc: EnvInspectorService, tmp_path: Path, mon
 
 
 def _assert_service_operation_wrappers(svc: EnvInspectorService, tmp_path: Path, monkeypatch) -> None:
+    """Exercise the service wrappers that preview and apply operations."""
     monkeypatch.setattr(svc, "_registry_write", lambda *args, **kwargs: ("before", "after", "registry", False, None))
     ensure(svc._plan_target_operation(_target_request(tmp_path, target="windows:user"), apply_changes=False)[2] == "registry")
 
@@ -199,12 +202,14 @@ def _assert_service_operation_wrappers(svc: EnvInspectorService, tmp_path: Path,
 
 
 def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
+    """Owned wrapper branches should stay covered through the compatibility surface."""
     svc = _service_with_broken_registry(tmp_path, monkeypatch)
     _assert_service_target_helpers(svc, tmp_path, monkeypatch)
     _assert_service_operation_wrappers(svc, tmp_path, monkeypatch)
 
 
 def test_service_listing_filters_cover_registry_fallback(tmp_path: Path, monkeypatch):
+    """Host-row filtering should survive a registry-provider failure."""
     _service_with_broken_registry(tmp_path, monkeypatch)
     profile = tmp_path / "profile.ps1"
 

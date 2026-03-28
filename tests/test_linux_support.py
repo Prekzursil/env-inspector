@@ -82,7 +82,7 @@ def _patch_linux_etc_environment_denied(monkeypatch: pytest.MonkeyPatch, etc_env
 def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
     bashrc = tmp_path / ".bashrc"
     etc_env = tmp_path / "etc_environment"
-    bashrc.write_text("export API_TOKEN='fixture-value'\nexport PATH='/usr/bin'\n", encoding="utf-8")
+    bashrc.write_text("export APP_MODE='fixture-mode'\nexport PATH='/usr/bin'\n", encoding="utf-8")
     etc_env.write_text("LANG=en_US.UTF-8\nEDITOR=vim\n", encoding="utf-8")
 
     rows = collect_linux_records(bashrc_path=bashrc, etc_environment_path=etc_env, context="linux")
@@ -91,13 +91,13 @@ def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path):
     ensure("linux_bashrc" in source_types)
     ensure("linux_etc_environment" in source_types)
     ensure(all(r.context == "linux" for r in rows))
-    ensure(any(r.name == "API_TOKEN" and r.value == "fixture-value" for r in rows))
+    ensure(any(r.name == "APP_MODE" and r.value == "fixture-mode" for r in rows))
     ensure(any(r.name == "LANG" and r.value == "en_US.UTF-8" for r in rows))
 
 def test_collect_dotenv_records_respects_runtime_context(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
-    env_file.write_text("API_TOKEN=fixture-value\n", encoding="utf-8")
+    env_file.write_text("APP_MODE=fixture-mode\n", encoding="utf-8")
 
     rows = collect_dotenv_records(tmp_path, max_depth=2, context="linux")
     ensure(rows)
@@ -132,12 +132,16 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(tmp_path: Path):
     ensure(contexts == ["linux", "wsl:Debian"])
 
 def test_service_list_contexts_without_wsl_returns_current_context_only(tmp_path: Path):
+    """Listing contexts without WSL should return only the runtime context."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "linux"
 
     class _NoWsl:
+        """WSL stub that reports the bridge as unavailable."""
+
         @staticmethod
         def available() -> bool:
+            """Return that WSL is unavailable."""
             return False
 
     svc.wsl = _NoWsl()  # type: ignore[assignment]
@@ -145,17 +149,22 @@ def test_service_list_contexts_without_wsl_returns_current_context_only(tmp_path
     ensure(svc.list_contexts() == ["linux"])
 
 def test_service_list_contexts_keeps_all_distros_without_active_linux_bridge(tmp_path: Path):
+    """Non-Linux hosts should keep all WSL bridge distros visible."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "windows"
     svc.current_wsl_distro = "Ubuntu"
 
     class _FakeWsl:
+        """WSL stub that exposes two bridge distros."""
+
         @staticmethod
         def available() -> bool:
+            """Return that WSL is available."""
             return True
 
         @staticmethod
         def list_distros_for_ui() -> List[str]:
+            """Return bridge distros for the context picker."""
             return ["Ubuntu", "Debian"]
 
     svc.wsl = _FakeWsl()  # type: ignore[assignment]
@@ -163,6 +172,7 @@ def test_service_list_contexts_keeps_all_distros_without_active_linux_bridge(tmp
     ensure(svc.list_contexts() == ["windows", "wsl:Ubuntu", "wsl:Debian"])
 
 def test_service_list_records_collects_linux_sources(tmp_path: Path, monkeypatch):
+    """Listing records on Linux should include collected Linux-backed sources."""
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "linux"

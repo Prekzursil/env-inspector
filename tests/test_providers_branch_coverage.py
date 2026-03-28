@@ -84,17 +84,23 @@ def test_normalize_and_validate_powershell_values_and_keys():
 
 
 def test_collect_wsl_records_includes_bashrc_and_etc_pairs():
+    """WSL collection should include both bashrc and `/etc/environment` sources."""
     class _FakeWsl:
+        """WSL stub that exposes bashrc and etc-environment content."""
+
         @staticmethod
         def available() -> bool:
+            """Return that WSL is available."""
             return True
 
         @staticmethod
         def list_distros() -> List[str]:
+            """Return a single distro for collection."""
             return ["Ubuntu"]
 
         @staticmethod
         def read_file(distro: str, path: str) -> str:
+            """Return canned WSL file contents for collection tests."""
             mapping = {
                 "~/.bashrc": "export API_TOKEN='abc'\n",
                 "/etc/environment": "LANG=en_US.UTF-8\n",
@@ -143,13 +149,16 @@ def test_collect_wsl_helpers_return_empty_when_wsl_unavailable():
 def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files():
     class _FakeWsl:
         def available(self) -> bool:
+            """Return that WSL is available."""
             return True
 
         @staticmethod
         def scan_dotenv_files(distro: str, root_path: str, max_depth: int) -> List[str]:
+            """Return the dotenv files that should be scanned."""
             return ["/workspace/.env"]
 
         def read_file(self, distro: str, path: str) -> str:
+            """Return the dotenv file content for collection tests."""
             return "A=1\n"
 
     rows = providers.collect_wsl_dotenv_records(_as_wsl_client(_FakeWsl()), "Ubuntu", "/workspace", 2)

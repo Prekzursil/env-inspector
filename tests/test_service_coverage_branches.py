@@ -40,6 +40,7 @@ def _record(source_type: str, source_path: str, *, context: str = "linux", sourc
 
 
 def _raise_unexpected_write(message: str) -> None:
+    """Raise when a preview path unexpectedly performs a write."""
     raise AssertionError(message)
 
 

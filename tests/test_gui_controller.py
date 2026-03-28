@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 from env_inspector_core.models import EnvRecord
@@ -49,13 +50,16 @@ class _BootstrapRoot:
     def __init__(self) -> None:
         self._geometry = "1480x860"
 
-    def title(self, _title: str) -> None:
+    @staticmethod
+    def title(_title: str) -> None:
         """Accept a window-title update."""
 
-    def protocol(self, *_args: object) -> None:
+    @staticmethod
+    def protocol(*_args: object) -> None:
         """Accept a protocol binding."""
 
-    def after_idle(self, _callback: Any) -> None:
+    @staticmethod
+    def after_idle(_callback: Any) -> None:
         """Ignore idle callbacks during tests."""
 
     def geometry(self, value: str | None = None) -> str:
@@ -64,27 +68,30 @@ class _BootstrapRoot:
             self._geometry = value
         return self._geometry
 
-    def bind(self, *_args: object) -> None:
+    @staticmethod
+    def bind(*_args: object) -> None:
         """Accept shortcut bindings."""
 
-    def focus_get(self) -> None:
+    @staticmethod
+    def focus_get() -> None:
         """Return no focused widget in tests."""
         return None
 
-    def destroy(self) -> None:
+    @staticmethod
+    def destroy() -> None:
         """Accept window-destroy requests."""
 
-    def mainloop(self) -> None:
+    @staticmethod
+    def mainloop() -> None:
         """Skip the GUI main loop in tests."""
 
 
-class _BootstrapTkModule:
-    """Minimal Tk module stub for controller bootstrap."""
-
-    Tk = _BootstrapRoot
-    StringVar = _Var
-    BooleanVar = _Var
-    IntVar = _Var
+_BOOTSTRAP_TK_MODULE = SimpleNamespace(
+    Tk=_BootstrapRoot,
+    StringVar=_Var,
+    BooleanVar=_Var,
+    IntVar=_Var,
+)
 
 
 class _BootstrapView:
@@ -111,7 +118,12 @@ class _ControllerHarness(EnvInspectorController):
     @staticmethod
     def _load_tk_modules() -> Tuple[Any, Any, Any, Any]:
         """Provide stub Tk modules for controller bootstrap."""
-        return _BootstrapTkModule, cast(Any, object()), cast(Any, object()), cast(Any, object())
+        return (
+            _BOOTSTRAP_TK_MODULE,
+            cast(Any, object()),
+            cast(Any, object()),
+            cast(Any, object()),
+        )
 
     def _init_root_window(self, _tk: Any) -> None:
         """Install a stub root window for controller bootstrap."""
