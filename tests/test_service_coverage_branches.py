@@ -22,6 +22,7 @@ from tests.assertions import ensure
 
 
 def _record(source_type: str, source_path: str, *, context: str = "linux", source_id: str = "Ubuntu") -> EnvRecord:
+    """Record."""
     return EnvRecord(
         source_type=source_type,
         source_id=source_id,
@@ -39,6 +40,7 @@ def _record(source_type: str, source_path: str, *, context: str = "linux", sourc
 
 
 def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path: Path) -> None:
+    """Test collect wsl rows uses linux exclusion and dotenv."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "linux"
     svc.current_wsl_distro = "Ubuntu"
@@ -47,10 +49,12 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
     calls: Dict[str, object] = {}
 
     def _fake_collect_wsl_records(wsl, include_etc: bool, exclude_distros) -> List[EnvRecord]:
+        """Fake collect wsl records."""
         calls["exclude"] = exclude_distros
         return [_record(SOURCE_WSL_BASHRC, "~/.bashrc", context="wsl:Debian", source_id="Debian")]
 
     def _fake_collect_wsl_dotenv_records(wsl, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
+        """Fake collect wsl dotenv records."""
         calls["dotenv"] = (distro, root_path, max_depth)
         return [_record(SOURCE_WSL_DOTENV, "Debian:/home/user/.env", context="wsl:Debian", source_id="Debian")]
 
@@ -65,10 +69,12 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
 
 
 def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path) -> None:
+    """Test collect wsl rows swallows collection errors."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
 
     def _raise_runtime_error(*_args, **_kwargs) -> None:
+        """Raise runtime error."""
         raise RuntimeError("boom")
 
     monkeypatch.setattr(service_module, "collect_wsl_records", _raise_runtime_error)
@@ -79,7 +85,32 @@ def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path
     ensure(rows == [])
 
 
+def test_list_records_accepts_request_without_kwargs(monkeypatch, tmp_path: Path) -> None:
+    """Test list records accepts request without kwargs."""
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    request = service_module.ListRecordsRequest(root=tmp_path, include_raw_secrets=True)
+
+    def _resolve_scan_root(root):
+        """Resolve scan root."""
+        return Path(root)
+
+    def _collect_host_rows(root_path, _scan_depth):
+        """Collect host rows."""
+        return [_record(SOURCE_DOTENV, str(root_path / ".env"))]
+
+    monkeypatch.setattr(service_module, "resolve_scan_root", _resolve_scan_root)
+    monkeypatch.setattr(svc, "_collect_host_rows", _collect_host_rows)
+    monkeypatch.setattr(svc, "_collect_wsl_rows", lambda **_kwargs: [])
+    monkeypatch.setattr(svc, "_apply_row_filters", lambda rows, source, context: rows)
+
+    rows = svc.list_records(request=request)
+
+    ensure(len(rows) == 1)
+    ensure(rows[0]["source_path"] == str(tmp_path / ".env"))
+
+
 def test_available_targets_maps_all_known_sources_and_filters_context(tmp_path: Path):
+    """Test available targets maps all known sources and filters context."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.win_provider = object()
     records = [
@@ -110,6 +141,7 @@ def test_available_targets_maps_all_known_sources_and_filters_context(tmp_path: 
 
 
 def test_registry_write_requires_provider(tmp_path: Path):
+    """Test registry write requires provider."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.win_provider = None
 
@@ -118,6 +150,7 @@ def test_registry_write_requires_provider(tmp_path: Path):
 
 
 def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path: Path):
+    """Test update helpers cover dispatch and error branches."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     with pytest.raises(RuntimeError, match="Unsupported Linux target"):
@@ -171,7 +204,64 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     ensure(svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps")
 
 
+def test_update_helpers_preview_paths_skip_writes_when_apply_changes_is_false(monkeypatch, tmp_path: Path) -> None:
+    """Test update helpers preview paths skip writes when apply changes is false."""
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+
+    monkeypatch.setattr(svc, "_resolve_wsl_target", lambda _target: ("Ubuntu", "~/.bashrc", "export", False))
+    monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "export A='1'\n")
+    monkeypatch.setattr(
+        svc.wsl,
+        "write_file",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("write_file should not run")),
+    )
+    monkeypatch.setattr(
+        svc.wsl,
+        "write_file_with_privilege",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("privileged write should not run")),
+    )
+
+    before, after, out_path, requires_priv, _ = svc._update_wsl_file(
+        target="wsl:Ubuntu:bashrc",
+        key="B",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+
+    ensure(before == "export A='1'\n")
+    ensure("export B='2'" in after)
+    ensure(out_path == "Ubuntu:~/.bashrc")
+    ensure(requires_priv is False)
+
+    profile = tmp_path / "profile.ps1"
+    monkeypatch.setattr(
+        EnvInspectorService,
+        "_powershell_target_path_and_roots",
+        lambda _self, _target: (profile, [tmp_path], False),
+    )
+    monkeypatch.setattr(
+        svc,
+        "_write_text_file",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("PowerShell write should not run")),
+    )
+
+    before, after, out_path, requires_priv, _ = svc._update_powershell_file(
+        target="powershell:current_user",
+        key="B",
+        value="2",
+        action="set",
+        apply_changes=False,
+    )
+
+    ensure(before == "")
+    ensure("$env:B = '2'" in after)
+    ensure(out_path == str(profile))
+    ensure(requires_priv is False)
+
+
 def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch) -> None:
+    """Test restore helpers cover linux and wsl targets."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
     fake_home.mkdir(parents=True, exist_ok=True)
@@ -202,6 +292,7 @@ def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch
 
 
 def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypatch) -> None:
+    """Test restore helpers cover powershell and registry."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
     fake_home.mkdir(parents=True, exist_ok=True)
@@ -216,18 +307,24 @@ def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypat
         svc._restore_windows_registry_target(target="windows:user", text="{}")
 
     class _FakeWinProvider:
+        """Minimal Windows provider stub for registry restore guard coverage."""
+
         def __init__(self) -> None:
+            """Init."""
             self.removed: List[Tuple[str, str]] = []
             self.sets: List[Tuple[str, str, str]] = []
 
         @staticmethod
         def list_scope(scope: str) -> Dict[str, str]:
+            """List scope."""
             return {"KEEP": "1", "DROP": "2"}
 
         def remove_scope_value(self, scope: str, key: str) -> None:
+            """Remove scope value."""
             self.removed.append((scope, key))
 
         def set_scope_value(self, scope: str, key: str, value: str) -> None:
+            """Set scope value."""
             self.sets.append((scope, key, value))
 
     fake = _FakeWinProvider()
@@ -238,6 +335,7 @@ def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypat
 
 
 def test_restore_helpers_cover_dispatch(tmp_path: Path, monkeypatch) -> None:
+    """Test restore helpers cover dispatch."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     calls: List[str] = []
     monkeypatch.setattr(svc, "_restore_linux_target", lambda **kwargs: calls.append("linux"))
@@ -253,6 +351,7 @@ def test_restore_helpers_cover_dispatch(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch) -> None:
+    """Test restore dotenv target rejects outside scope."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     allowed = tmp_path / "allowed"
     outside = tmp_path.parent / (tmp_path.name + "-outside")
@@ -261,7 +360,10 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
     outside.mkdir(parents=True, exist_ok=True)
 
     class _Scoped:
+        """Scoped target stub exposing the parsed dotenv path for guard checks."""
+
         def __init__(self, path: Path) -> None:
+            """Init."""
             self.path = path
             self.roots = [allowed]
 
@@ -276,6 +378,7 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
 
 
 def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path):
+    """Test registry write machine requires privilege and user scope."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     import types
@@ -328,6 +431,7 @@ def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path
 
 
 def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, monkeypatch):
+    """Test powershell profile path returns expected target paths."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     current = tmp_path / "current.ps1"
     all_users = tmp_path / "all.ps1"
@@ -341,6 +445,7 @@ def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, m
 
 
 def test_validate_wsl_dotenv_path_rejects_empty_and_wrong_filename(tmp_path: Path):
+    """Test validate wsl dotenv path rejects empty and wrong filename."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
@@ -351,6 +456,7 @@ def test_validate_wsl_dotenv_path_rejects_empty_and_wrong_filename(tmp_path: Pat
 
 
 def test_list_backups_uses_target_filter_when_provided(tmp_path: Path):
+    """Test list backups uses target filter when provided."""
     import unittest
 
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -365,6 +471,7 @@ def test_list_backups_uses_target_filter_when_provided(tmp_path: Path):
 
 
 def test_list_records_raw_builds_env_records_from_payload(tmp_path: Path, monkeypatch):
+    """Test list records raw builds env records from payload."""
     import unittest
 
     svc = EnvInspectorService(state_dir=tmp_path / "state")
