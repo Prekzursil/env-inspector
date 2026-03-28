@@ -135,8 +135,17 @@ def _service_with_broken_registry(tmp_path: Path, monkeypatch) -> EnvInspectorSe
     return svc
 
 
-def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
-    svc = _service_with_broken_registry(tmp_path, monkeypatch)
+def _target_request(tmp_path: Path, *, target: str) -> service_module.TargetOperationRequest:
+    return service_module.TargetOperationRequest(
+        target=target,
+        key="API_TOKEN",
+        value="1",
+        action="set",
+        scope_roots=[tmp_path],
+    )
+
+
+def _assert_service_target_helpers(svc: EnvInspectorService, tmp_path: Path, monkeypatch) -> None:
     svc.wsl = type("NoWsl", (), {"available": lambda self: False})()  # type: ignore[assignment]
     ensure(svc._bridge_distros() == [])
     resolved = svc.resolve_effective("API_TOKEN", "linux", [_record("dotenv", ".env")])
@@ -153,32 +162,13 @@ def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
     ensure(roots == [Path.home().resolve(strict=False)])
     ensure(requires_privilege is False)
 
+
+def _assert_service_operation_wrappers(svc: EnvInspectorService, tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(svc, "_registry_write", lambda *args, **kwargs: ("before", "after", "registry", False, None))
-    ensure(
-        svc._plan_target_operation(
-            service_module.TargetOperationRequest(
-                target="windows:user",
-                key="API_TOKEN",
-                value="1",
-                action="set",
-                scope_roots=[tmp_path],
-            ),
-            apply_changes=False,
-        )[2]
-        == "registry"
-    )
+    ensure(svc._plan_target_operation(_target_request(tmp_path, target="windows:user"), apply_changes=False)[2] == "registry")
 
     with pytest.raises(RuntimeError, match="Unsupported target"):
-        svc._file_update(
-            service_module.TargetOperationRequest(
-                target="custom:target",
-                key="API_TOKEN",
-                value="1",
-                action="set",
-                scope_roots=[tmp_path],
-            ),
-            apply_changes=False,
-        )
+        svc._file_update(_target_request(tmp_path, target="custom:target"), apply_changes=False)
 
     ensure(
         operation_result(
@@ -197,11 +187,21 @@ def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
         is True
     )
 
-    monkeypatch.setattr(svc, "_apply", lambda *args, **kwargs: [_result("linux:bashrc"), _result("linux:etc_environment", success=False)])
+    monkeypatch.setattr(
+        svc,
+        "_apply",
+        lambda *args, **kwargs: [_result("linux:bashrc"), _result("linux:etc_environment", success=False)],
+    )
     preview = svc.preview_remove(key="API_TOKEN", targets=["linux:bashrc", "linux:etc_environment"])
     ensure(len(preview) == 2)
     ensure(svc.set_key(key="API_TOKEN", value="1", targets=["linux:bashrc", "linux:etc_environment"])["success"] is False)
     ensure(svc.remove_key(key="API_TOKEN", targets=["linux:bashrc", "linux:etc_environment"])["success"] is False)
+
+
+def test_service_wrapper_owned_target_branches(tmp_path: Path, monkeypatch):
+    svc = _service_with_broken_registry(tmp_path, monkeypatch)
+    _assert_service_target_helpers(svc, tmp_path, monkeypatch)
+    _assert_service_operation_wrappers(svc, tmp_path, monkeypatch)
 
 
 def test_service_listing_filters_cover_registry_fallback(tmp_path: Path, monkeypatch):

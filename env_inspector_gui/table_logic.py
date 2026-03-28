@@ -3,11 +3,13 @@ from __future__ import absolute_import, division
 from dataclasses import dataclass
 from typing import Iterable, List
 
+from env_inspector_core.models import EnvRecord
+
 from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
 
-def _record_matches_filters(rec, *, context: str, only_secrets: bool) -> bool:
+def _record_matches_filters(rec: EnvRecord, *, context: str, only_secrets: bool) -> bool:
     if only_secrets and not rec.is_secret:
         return False
     if context and rec.context != context:
@@ -15,7 +17,7 @@ def _record_matches_filters(rec, *, context: str, only_secrets: bool) -> bool:
     return True
 
 
-def _to_displayed_row(rec, *, show_secrets: bool, search_value: str, idx: int) -> DisplayedRow:
+def _to_displayed_row(rec: EnvRecord, *, show_secrets: bool, search_value: str, idx: int) -> DisplayedRow:
     return DisplayedRow(
         record=rec,
         visible_value=build_visible_value(rec, show_secrets=show_secrets),
@@ -32,7 +34,7 @@ def _to_displayed_row(rec, *, show_secrets: bool, search_value: str, idx: int) -
 
 @dataclass(frozen=True)
 class DisplayRowsRequest:
-    records: Iterable
+    records: Iterable[EnvRecord]
     context: str
     query: str
     only_secrets: bool

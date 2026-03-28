@@ -175,6 +175,13 @@ def _build_request_target(path: str, query: Optional[Dict[str, str]]) -> str:
     return path + (f"?{query_text}" if query_text else "")
 
 
+def _build_https_url(host: str, request_target: str) -> str:
+    parsed_target = urllib.parse.urlsplit(request_target)
+    return urllib.parse.urlunsplit(
+        ("https", host, parsed_target.path, parsed_target.query, "")
+    )
+
+
 def _json_body_or_none(data: Optional[Dict[str, Any]]) -> Optional[str]:
     return json.dumps(data) if data is not None else None
 
@@ -206,7 +213,7 @@ def _read_https_error(exc: urllib.error.HTTPError) -> Tuple[int, str, str, Dict[
 
 def _execute_https_request(request: _HttpsExecutionRequest) -> Tuple[int, str, str, Dict[str, str]]:
     http_request = urllib.request.Request(
-        url=f"https://{request.host}{request.request_target}",
+        url=_build_https_url(request.host, request.request_target),
         data=request.body.encode("utf-8") if request.body is not None else None,
         headers=request.headers,
         method=request.method.upper(),
@@ -262,7 +269,7 @@ def request_json_https(*args: Any, **kwargs: Any) -> Tuple[Any, Dict[str, str]]:
         for header_name, header_value in response_headers.items():
             error_headers[header_name] = header_value
         raise urllib.error.HTTPError(
-            url=f"https://{validated_host}{request_target}",
+            url=_build_https_url(validated_host, request_target),
             code=status,
             msg=reason,
             hdrs=error_headers,

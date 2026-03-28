@@ -141,9 +141,10 @@ def _emit_stdout_rows(rows: List[Dict[str, Any]], *, output: str) -> None:
         sys.stdout.write("\n".join(lines) + "\n")
 
 
-def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> None:
+def _list_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
     _reject_raw_secret_stdout(args)
     _emit_stdout_rows(_stdout_safe_rows(service, args), output=args.output)
+    return 0
 
 
 def _export_records(service: EnvInspectorService, args: argparse.Namespace) -> int:
@@ -199,8 +200,6 @@ def run_cli(argv: Sequence[str] | None = None, *, service: EnvInspectorService |
     else:
         try:
             exit_code = handler(active_service, args)
-            if args.command == "list":
-                exit_code = 0
         except ValueError as exc:
             print(str(exc), file=sys.stderr)
     return exit_code

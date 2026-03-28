@@ -182,7 +182,8 @@ def remove_key_value(content: str, key: str) -> str:
 def upsert_powershell_env(content: str, key: str, value: str) -> str:
     validate_env_key(key)
     validate_env_value(value)
-    line_out = f"$env:{key} = '{value.replace("'", "''")}'"
+    escaped_value = value.replace("'", "''")
+    line_out = f"$env:{key} = '{escaped_value}'"
     lines = content.splitlines()
     out, replaced = _replace_first_match(lines, replacement=line_out, matcher=lambda line: _matches_powershell_key(line, key))
     if not replaced:

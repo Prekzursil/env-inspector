@@ -31,11 +31,16 @@ class _View:
         self.busy_states.append(busy)
 
 
-class _ControllerHarness(EnvInspectorController):
+class _ControllerHarness:
     def __init__(self) -> None:
         # Tests bypass the real GUI/service bootstrap and provide only the
         # attributes required by the controller path under test.
         pass
+
+    _resolve_operation_inputs = EnvInspectorController._resolve_operation_inputs
+    _safe_preview = EnvInspectorController._safe_preview
+    _safe_apply = EnvInspectorController._safe_apply
+    _report_operation_result = EnvInspectorController._report_operation_result
 
 
 class _ContextSelectionHarness(_ControllerHarness):
@@ -91,9 +96,16 @@ class _OperationHarness(_ControllerHarness):
         self.selected_targets = ["windows:user"]
         self.records_raw: List[EnvRecord] = []
         self.calls: List[Tuple[str, Optional[object]]] = []
+        self.messagebox = cast(Any, type("MessageBox", (), {"showerror": staticmethod(lambda *_args: None)})())
 
     def _set_status(self, _text: str) -> None:
         return None
+
+    def choose_targets(self) -> List[str]:
+        return list(self.selected_targets)
+
+    def _maybe_choose_dotenv_targets(self, _key: str, targets: List[str]) -> List[str]:
+        return list(targets)
 
     def _preview_operation(
         self, action: str, key: str, value: str, targets: List[str]

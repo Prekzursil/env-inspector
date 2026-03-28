@@ -39,6 +39,10 @@ def _record(source_type: str, source_path: str, *, context: str = "linux", sourc
     )
 
 
+def _raise_unexpected_write(message: str) -> None:
+    raise AssertionError(message)
+
+
 def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path: Path) -> None:
     """Test collect wsl rows uses linux exclusion and dotenv."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
@@ -213,12 +217,12 @@ def test_update_helpers_preview_paths_skip_writes_when_apply_changes_is_false(mo
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
-        lambda *_args: (_ for _ in ()).throw(AssertionError("write_file should not run")),
+        lambda *_args: _raise_unexpected_write("write_file should not run"),
     )
     monkeypatch.setattr(
         svc.wsl,
         "write_file_with_privilege",
-        lambda *_args: (_ for _ in ()).throw(AssertionError("privileged write should not run")),
+        lambda *_args: _raise_unexpected_write("privileged write should not run"),
     )
 
     before, after, out_path, requires_priv, _ = svc._update_wsl_file(
@@ -243,7 +247,7 @@ def test_update_helpers_preview_paths_skip_writes_when_apply_changes_is_false(mo
     monkeypatch.setattr(
         svc,
         "_write_text_file",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("PowerShell write should not run")),
+        lambda *_args, **_kwargs: _raise_unexpected_write("PowerShell write should not run"),
     )
 
     before, after, out_path, requires_priv, _ = svc._update_powershell_file(
@@ -258,6 +262,13 @@ def test_update_helpers_preview_paths_skip_writes_when_apply_changes_is_false(mo
     ensure("$env:B = '2'" in after)
     ensure(out_path == str(profile))
     ensure(requires_priv is False)
+
+    removed = svc._mutate_shell_content(
+        "A=1\nB=2\n",
+        service_module.ShellMutationRequest("A", None, "remove", "key_value"),
+    )
+    ensure("A=1" not in removed)
+    ensure("B=2" in removed)
 
 
 def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch) -> None:

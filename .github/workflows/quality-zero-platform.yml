@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@96a568a7c0688ed0ee8980d7b3855deebe8b9629
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@68bd6a3250c158cd4db25ff50e66df7c6f2c6814
     with:
       repo_slug: ${{ github.repository }}
       event_name: ${{ github.event_name }}
@@ -26,11 +26,10 @@ jobs:
       pull_request_head_ref: ${{ github.event.pull_request.head.ref || github.head_ref || '' }}
       sha: ${{ github.event.pull_request.head.sha || github.sha }}
       platform_repository: Prekzursil/quality-zero-platform
-      platform_ref: main
+      platform_ref: 68bd6a3250c158cd4db25ff50e66df7c6f2c6814
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       DEEPSCAN_API_TOKEN: ${{ secrets.DEEPSCAN_API_TOKEN }}
-
