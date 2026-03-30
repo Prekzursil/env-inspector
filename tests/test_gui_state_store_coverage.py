@@ -8,7 +8,6 @@ from pathlib import Path
 from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import (
     load_ui_state,
-    sanitize_loaded_state,
     _sanitize_context,
     _sanitize_root,
     _sanitize_sort_column,
@@ -43,7 +42,6 @@ def test_load_ui_state_from_dict_raises(tmp_path: Path):
     # Write a dict that would cause from_dict to fail if coerce functions
     # can't handle it — but actually from_dict is quite robust with coerce helpers.
     # We need to test the except clause. Let's monkey-patch from_dict temporarily.
-    import env_inspector_gui.state_store as mod
     original_from_dict = PersistedUiState.from_dict
 
     def bad_from_dict(payload):

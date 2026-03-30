@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 
 class EnvInspectorView:
+    """Tkinter-based GUI view for the environment inspector."""
+
     def __init__(self, tkmod: Any, ttk: Any, controller: Any) -> None:
         self.tkmod = tkmod
         self.ttk = ttk

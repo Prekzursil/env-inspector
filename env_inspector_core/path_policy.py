@@ -12,6 +12,8 @@ class PathPolicyError(ValueError):
 
 @dataclass(frozen=True)
 class ScopedPath:
+    """A filesystem path constrained to approved scope roots."""
+
     path: Path
     roots: Tuple[Path, ...]
 

@@ -13,7 +13,6 @@ from env_inspector_core.parsing import (
     _render_remove,
     _replace_first_match,
     upsert_export,
-    remove_export,
 )
 
 

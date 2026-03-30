@@ -9,9 +9,7 @@ import pytest
 from env_inspector_core.path_policy import (
     PathPolicyError,
     _as_raw_text,
-    _contains_null,
     normalize_scope_roots,
-    resolve_scan_root,
     validate_backup_path,
     parse_scoped_dotenv_target,
 )

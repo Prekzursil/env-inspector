@@ -2,17 +2,14 @@
 
 from __future__ import absolute_import, division
 
-import json
 import sys
 import unittest
 from io import StringIO
 from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
 
 import pytest
 
-from env_inspector_core.models import EnvRecord, OperationResult
+from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 from env_inspector_core.secrets import looks_secret, mask_value, _is_path_like, _is_base64_secret
 from env_inspector_core.storage import BackupManager
@@ -48,7 +45,7 @@ def test_cli_csv_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
 
 def test_cli_csv_empty_rows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """CLI list with csv output and no matching rows exercises empty CSV path (line 156)."""
-    from env_inspector_core.cli import run_cli, _emit_stdout_rows
+    from env_inspector_core.cli import _emit_stdout_rows
 
     captured = StringIO()
     monkeypatch.setattr(sys, "stdout", captured)

@@ -4,18 +4,19 @@ from __future__ import absolute_import, division
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Tuple, cast
 from unittest.mock import MagicMock, patch
 
 from env_inspector_core.models import EnvRecord
-from env_inspector_core.path_policy import PathPolicyError
 from env_inspector_gui.controller import EnvInspectorController, EnvInspectorApp
-from env_inspector_gui.models import DisplayedRow, PersistedUiState, SortState
+from env_inspector_gui.models import DisplayedRow, PersistedUiState
 
 from tests.assertions import ensure
 
 
 class _Var:
+    """Minimal tkinter variable stub for testing."""
+
     def __init__(self, value: Any = "") -> None:
         self._value = value
 
@@ -27,21 +28,23 @@ class _Var:
 
 
 class _BootstrapRoot:
+    """Minimal Tk root window stub for controller tests."""
+
     def __init__(self) -> None:
         self._geometry = "1480x860"
         self._focused = None
 
     @staticmethod
     def title(_title: str) -> None:
-        pass
+        """Stub for testing."""
 
     @staticmethod
     def protocol(*_args: object) -> None:
-        pass
+        """Stub for testing."""
 
     @staticmethod
     def after_idle(_callback: Any) -> None:
-        pass
+        """Stub for testing."""
 
     def geometry(self, value: str | None = None) -> str:
         if value is not None:
@@ -50,26 +53,26 @@ class _BootstrapRoot:
 
     @staticmethod
     def bind(*_args: object) -> None:
-        pass
+        """Stub for testing."""
 
     def focus_get(self) -> Any:
         return self._focused
 
     @staticmethod
     def destroy() -> None:
-        pass
+        """Stub for testing."""
 
     @staticmethod
     def mainloop() -> None:
-        pass
+        """Stub for testing."""
 
     @staticmethod
     def clipboard_clear() -> None:
-        pass
+        """Stub for testing."""
 
     @staticmethod
     def clipboard_append(_text: str) -> None:
-        pass
+        """Stub for testing."""
 
 
 _BOOTSTRAP_TK_MODULE = SimpleNamespace(
@@ -81,6 +84,8 @@ _BOOTSTRAP_TK_MODULE = SimpleNamespace(
 
 
 class _MockView:
+    """Stub view recording method calls for controller tests."""
+
     def __init__(self) -> None:
         self.enabled_states: List[bool] = []
         self.busy_states: List[bool] = []
@@ -126,13 +131,13 @@ class _MockView:
         self.context_values.append(contexts)
 
     def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
-        pass
+        """Stub for testing."""
 
     def configure_row_styles(self) -> None:
-        pass
+        """Stub for testing."""
 
     def clear_table(self) -> None:
-        pass
+        """Stub for testing."""
 
     def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
         return "item1"
@@ -144,7 +149,7 @@ class _MockView:
         self.details_enabled.append(enabled)
 
     def focus_filter(self) -> None:
-        pass
+        """Stub for testing."""
 
 
 class _Harness(EnvInspectorController):
@@ -168,7 +173,7 @@ class _Harness(EnvInspectorController):
         self.tk = _BootstrapRoot()
 
     def _apply_theme(self) -> None:
-        pass
+        """Stub for testing."""
 
     def _load_boot_state(self, _root_path: Path) -> Tuple[PersistedUiState, Path]:
         return PersistedUiState(context="linux"), Path.cwd()
@@ -177,7 +182,7 @@ class _Harness(EnvInspectorController):
         self.view = cast(Any, _MockView())
 
     def _bind_shortcuts(self) -> None:
-        pass
+        """Stub for testing."""
 
     def refresh_data(self) -> None:
         if getattr(self, "_during_bootstrap", False):
@@ -385,9 +390,9 @@ def test_choose_folder_selected(tmp_path: Path):
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
     ctrl.state_dir = Path("/tmp/test_state")
-    with patch("env_inspector_gui.controller.resolve_scan_root", return_value=tmp_path):
-        with patch("env_inspector_gui.controller.save_ui_state"):
-            ctrl.choose_folder()
+    with patch("env_inspector_gui.controller.resolve_scan_root", return_value=tmp_path), \
+         patch("env_inspector_gui.controller.save_ui_state"):
+        ctrl.choose_folder()
     ensure(str(ctrl.root_path) == str(tmp_path))
 
 
@@ -737,9 +742,9 @@ def test_run_operation_diff_rejected():
     ctrl.service = MagicMock()
     ctrl.service.preview_set = MagicMock(return_value=[{"success": True}])
 
-    with patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]):
-        with patch.object(ctrl, "_confirm_diff", return_value=False):
-            ctrl._run_operation("set")
+    with patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]), \
+         patch.object(ctrl, "_confirm_diff", return_value=False):
+        ctrl._run_operation("set")
 
     # Apply should NOT be called
     ctrl.service.set_key.assert_not_called()
@@ -756,9 +761,9 @@ def test_run_operation_apply_fails():
     ctrl.service.preview_set = MagicMock(return_value=[{"success": True}])
     ctrl.service.set_key = MagicMock(side_effect=RuntimeError("boom"))
 
-    with patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]):
-        with patch.object(ctrl, "_confirm_diff", return_value=True):
-            ctrl._run_operation("set")
+    with patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]), \
+         patch.object(ctrl, "_confirm_diff", return_value=True):
+        ctrl._run_operation("set")
 
     ctrl.messagebox.showerror.assert_called()
 
@@ -878,12 +883,12 @@ def test_resolve_root_path_invalid():
 
 # --- EnvInspectorApp ---
 def test_env_inspector_app():
-    with patch.object(EnvInspectorController, "__init__", return_value=None):
-        with patch.object(EnvInspectorController, "run"):
-            app = EnvInspectorApp(Path.cwd())
-            app._controller = MagicMock()
-            app.run()
-            app._controller.run.assert_called_once()
+    with patch.object(EnvInspectorController, "__init__", return_value=None), \
+         patch.object(EnvInspectorController, "run"):
+        app = EnvInspectorApp(Path.cwd())
+        app._controller = MagicMock()
+        app.run()
+        app._controller.run.assert_called_once()
 
 
 # --- Real method tests (not overridden) ---
@@ -906,10 +911,10 @@ def test_real_load_boot_state():
     ctrl.service.list_contexts = MagicMock(return_value=["linux"])
     ctrl.state_dir = Path("/tmp/nonexistent_state_dir_test")
     cwd = Path.cwd()
-    with patch("env_inspector_gui.controller.load_ui_state", return_value=PersistedUiState()):
-        with patch("env_inspector_gui.controller.resolve_scan_root", return_value=cwd):
-            with patch("env_inspector_gui.controller.sanitize_loaded_state", return_value=PersistedUiState(context="linux")):
-                boot_state, fallback = EnvInspectorController._load_boot_state(ctrl, cwd)
+    with patch("env_inspector_gui.controller.load_ui_state", return_value=PersistedUiState()), \
+         patch("env_inspector_gui.controller.resolve_scan_root", return_value=cwd), \
+         patch("env_inspector_gui.controller.sanitize_loaded_state", return_value=PersistedUiState(context="linux")):
+        boot_state, fallback = EnvInspectorController._load_boot_state(ctrl, cwd)
     ensure(isinstance(boot_state, PersistedUiState))
     ensure(boot_state.context == "linux")
 
@@ -967,7 +972,6 @@ def test_real_bind_shortcuts():
 def test_real_load_tk_modules():
     """Cover lines 56-63: _load_tk_modules with mocked tkinter."""
     import sys
-    mock_tk = MagicMock()
     mock_filedialog = MagicMock()
     mock_messagebox = MagicMock()
     mock_ttk = MagicMock()
@@ -1050,9 +1054,9 @@ def test_refresh_data_with_tk_none():
         original_render_table()
         ctrl.tk = None  # type: ignore[assignment]
 
-    with patch.object(ctrl, "_render_table", side_effect=render_then_clear_tk):
-        with patch("env_inspector_gui.controller.save_ui_state") as mock_save:
-            ctrl.refresh_data()
+    with patch.object(ctrl, "_render_table", side_effect=render_then_clear_tk), \
+         patch("env_inspector_gui.controller.save_ui_state") as mock_save:
+        ctrl.refresh_data()
 
     ensure(ctrl.last_refresh_at is not None)
     # _persist_state should NOT have been called since tk was None

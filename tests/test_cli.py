@@ -14,6 +14,8 @@ ServiceCall = Dict[str, object]
 
 
 class ListArgs(argparse.Namespace):
+    """Typed namespace for the 'list' subcommand arguments."""
+
     root: str
     context: str | None
     source: List[str]
@@ -23,6 +25,8 @@ class ListArgs(argparse.Namespace):
 
 
 class FakeService:
+    """Stub service capturing method calls for CLI contract tests."""
+
     def __init__(self) -> None:
         self.last_set: ServiceCall | None = None
         self.last_remove: ServiceCall | None = None
@@ -77,6 +81,8 @@ class FakeService:
 
 
 class FixedRowsService:
+    """Stub service returning a fixed set of record rows."""
+
     def __init__(self, rows: List[RecordRow]) -> None:
         self.last_list: ServiceCall | None = None
         self._rows = rows

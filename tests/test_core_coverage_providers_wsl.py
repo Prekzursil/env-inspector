@@ -3,11 +3,8 @@
 from __future__ import absolute_import, division
 
 import subprocess
-import types
 import unittest
-from pathlib import Path
-from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

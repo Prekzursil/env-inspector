@@ -28,6 +28,8 @@ SENTRY_API_HOST = "sentry.io"
 
 @dataclass(frozen=True)
 class SentryScanRequest:
+    """Parameters for scanning Sentry projects for unresolved issues."""
+
     org: str
     projects: List[str]
     token: str

@@ -2,19 +2,15 @@
 
 from __future__ import absolute_import, division
 
-import sys
 import types
 import unittest
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 import env_inspector_core.providers as providers
 from env_inspector_core.constants import (
-    SOURCE_DOTENV,
     SOURCE_LINUX_BASHRC,
     SOURCE_LINUX_ETC_ENV,
     SOURCE_POWERSHELL_PROFILE,
@@ -267,7 +263,7 @@ def test_collect_dotenv_records_falls_back_to_latin1(monkeypatch: pytest.MonkeyP
     # Write bytes that are valid latin-1 but invalid UTF-8
     env_file.write_bytes(b"KEY=caf\xe9\n")
 
-    monkeypatch.setattr(providers, "resolve_scan_root", lambda root: Path(root))
+    monkeypatch.setattr(providers, "resolve_scan_root", Path)
 
     records = providers.collect_dotenv_records(tmp_path, max_depth=0)
     case = _case()

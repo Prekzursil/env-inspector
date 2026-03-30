@@ -9,7 +9,6 @@ import pytest
 from env_inspector_core.service_ops_request import (
     _raise_mixed_request_usage,
     _extract_request_object,
-    _target_operation_payload,
     _target_operation_batch_payload,
     _coerce_string,
     _coerce_optional_string,

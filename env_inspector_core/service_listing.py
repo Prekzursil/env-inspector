@@ -26,6 +26,8 @@ TARGET_WINDOWS_MACHINE = "windows:machine"
 
 @dataclass(frozen=True)
 class HostCollectionRequest:
+    """Parameters for collecting environment records from the host system."""
+
     runtime_context: str
     root_path: Path
     scan_depth: int
@@ -35,6 +37,8 @@ class HostCollectionRequest:
 
 @dataclass(frozen=True)
 class HostRowCollectors:
+    """Callable references for each host record collection strategy."""
+
     collect_process_records_fn: Callable[..., List[EnvRecord]]
     collect_dotenv_records_fn: Callable[..., List[EnvRecord]]
     build_registry_records_fn: Callable[[Any], List[EnvRecord]]
@@ -44,6 +48,8 @@ class HostRowCollectors:
 
 @dataclass(frozen=True)
 class _WslDotenvRequest:
+    """Parameters for a WSL dotenv file scan."""
+
     distro: str | None
     wsl_path: str | None
     scan_depth: int

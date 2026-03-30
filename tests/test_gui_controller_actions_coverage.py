@@ -3,7 +3,6 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
@@ -53,6 +52,8 @@ def _make_row(rec: EnvRecord) -> DisplayedRow:
 
 
 class _Var:
+    """Minimal tkinter variable stub for testing."""
+
     def __init__(self, value: Any = "") -> None:
         self._value = value
 

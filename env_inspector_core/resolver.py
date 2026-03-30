@@ -30,7 +30,7 @@ LINUX_PRECEDENCE = {
 
 def resolve_effective_value(records: List[EnvRecord], key: str, context: str) -> EnvRecord | None:
     key_norm = key.strip().lower()
-    candidates = [r for r in records if r.name.lower() == key_norm and (r.context == context or r.context == "global")]
+    candidates = [r for r in records if r.name.lower() == key_norm and r.context in (context, "global")]
     if not candidates:
         return None
 

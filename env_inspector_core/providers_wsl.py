@@ -18,6 +18,8 @@ _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGN
 
 
 class WslProvider:
+    """Provider for WSL distro discovery and file operations."""
+
     def __init__(
         self,
         runner: Callable[..., CompletedProcess] | None = None,
@@ -138,6 +140,8 @@ class WslProvider:
 
 @dataclass(frozen=True)
 class _WslRecordBatch:
+    """Intermediate batch of WSL environment records for a single distro source."""
+
     distro: str
     context: str
     source_type: str

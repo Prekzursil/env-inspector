@@ -3,8 +3,7 @@
 from __future__ import absolute_import, division
 
 import sys
-from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from tests.assertions import ensure
@@ -93,6 +92,8 @@ def _install_mock_tkinter():
 # --- TargetPickerDialog ---
 
 class TestTargetPickerDialog:
+    """Tests for TargetPickerDialog behaviour with mocked tkinter."""
+
     def _build(self, targets=None, selected=None):
         if targets is None:
             targets = ["dotenv:/a/.env", "windows:user", "wsl:Ubuntu:bashrc"]
@@ -225,6 +226,8 @@ class TestTargetPickerDialog:
 # --- DotenvTargetDialog ---
 
 class TestDotenvTargetDialog:
+    """Tests for DotenvTargetDialog behaviour with mocked tkinter."""
+
     def _build(self, key="API_KEY", targets=None):
         if targets is None:
             targets = ["dotenv:/a/.env", "dotenv:/b/.env"]
@@ -261,6 +264,8 @@ class TestDotenvTargetDialog:
 # --- DiffPreviewDialog ---
 
 class TestDiffPreviewDialog:
+    """Tests for DiffPreviewDialog behaviour with mocked tkinter."""
+
     def _build(self, action="set", previews=None, preview_only=False):
         if previews is None:
             previews = [
@@ -337,6 +342,8 @@ class TestDiffPreviewDialog:
 # --- BackupPickerDialog ---
 
 class TestBackupPickerDialog:
+    """Tests for BackupPickerDialog behaviour with mocked tkinter."""
+
     def _build(self, backups=None):
         if backups is None:
             backups = ["backup1.zip", "backup2.zip"]

@@ -33,6 +33,8 @@ def test_backup_manager_uses_unique_path_when_timestamp_collides(tmp_path: Path,
     fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     class _FixedDateTime(datetime):
+        """Datetime subclass returning a fixed timestamp for tests."""
+
         @classmethod
         def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
             return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
@@ -55,6 +57,8 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Pat
     fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     class _FixedDateTime(datetime):
+        """Datetime subclass returning a fixed timestamp for tests."""
+
         @classmethod
         def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
             return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
