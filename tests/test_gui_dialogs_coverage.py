@@ -232,7 +232,7 @@ class TestDotenvTargetDialog:
         if targets is None:
             targets = ["dotenv:/a/.env", "dotenv:/b/.env"]
 
-        tk, ttk, font, scrolledtext = _install_mock_tkinter()
+        tk, ttk, _font, _scrolledtext = _install_mock_tkinter()
 
         with patch.dict(sys.modules, {
             "tkinter": tk,
@@ -348,7 +348,7 @@ class TestBackupPickerDialog:
         if backups is None:
             backups = ["backup1.zip", "backup2.zip"]
 
-        tk, ttk, font, scrolledtext = _install_mock_tkinter()
+        tk, ttk, _font, _scrolledtext = _install_mock_tkinter()
 
         with patch.dict(sys.modules, {
             "tkinter": tk,

@@ -25,15 +25,18 @@ class _MockTkModule:
 
     def __init__(self) -> None:
         self._vars: List[MagicMock] = []
+        # Expose PascalCase aliases matching real tkinter API
+        self.StringVar = self.string_var
+        self.Text = self.text_widget
 
-    def StringVar(self, value: str = "") -> MagicMock:
+    def string_var(self, value: str = "") -> MagicMock:
         var = MagicMock()
         var.get = MagicMock(return_value=value)
         var.set = MagicMock()
         self._vars.append(var)
         return var
 
-    def Text(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def text_widget(self, parent: Any, **kwargs: Any) -> MagicMock:
         t = _make_mock_widget()
         t.delete = MagicMock()
         t.insert = MagicMock()
@@ -44,45 +47,60 @@ class _MockTkModule:
 class _MockTtk:
     """Mock for tkinter.ttk module."""
 
-    def Frame(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def __init__(self) -> None:
+        # Expose PascalCase aliases matching real tkinter.ttk API
+        self.Frame = self.frame
+        self.Label = self.label
+        self.Button = self.button
+        self.Entry = self.entry
+        self.Combobox = self.combobox
+        self.Checkbutton = self.checkbutton
+        self.Scrollbar = self.scrollbar
+        self.LabelFrame = self.label_frame
+        self.PanedWindow = self.paned_window
+        self.Treeview = self.treeview
+        self.Spinbox = self.spinbox
+        self.Progressbar = self.progressbar
+
+    def frame(self, parent: Any, **kwargs: Any) -> MagicMock:
         return _make_mock_widget()
 
-    def Label(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def label(self, parent: Any, **kwargs: Any) -> MagicMock:
         return _make_mock_widget()
 
-    def Button(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def button(self, parent: Any, **kwargs: Any) -> MagicMock:
         return _make_mock_widget()
 
-    def Entry(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def entry(self, parent: Any, **kwargs: Any) -> MagicMock:
         w = _make_mock_widget()
         w.bind = MagicMock()
         w.focus_set = MagicMock()
         w.selection_range = MagicMock()
         return w
 
-    def Combobox(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def combobox(self, parent: Any, **kwargs: Any) -> MagicMock:
         w = _make_mock_widget()
         w.bind = MagicMock()
         return w
 
-    def Checkbutton(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def checkbutton(self, parent: Any, **kwargs: Any) -> MagicMock:
         return _make_mock_widget()
 
-    def Scrollbar(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def scrollbar(self, parent: Any, **kwargs: Any) -> MagicMock:
         return _make_mock_widget()
 
-    def LabelFrame(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def label_frame(self, parent: Any, **kwargs: Any) -> MagicMock:
         w = _make_mock_widget()
         w.columnconfigure = MagicMock()
         w.rowconfigure = MagicMock()
         return w
 
-    def PanedWindow(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def paned_window(self, parent: Any, **kwargs: Any) -> MagicMock:
         w = _make_mock_widget()
         w.add = MagicMock()
         return w
 
-    def Treeview(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def treeview(self, parent: Any, **kwargs: Any) -> MagicMock:
         w = _make_mock_widget()
         w.heading = MagicMock()
         w.column = MagicMock()
@@ -97,10 +115,10 @@ class _MockTtk:
         w.set = MagicMock()
         return w
 
-    def Spinbox(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def spinbox(self, parent: Any, **kwargs: Any) -> MagicMock:
         return _make_mock_widget()
 
-    def Progressbar(self, parent: Any, **kwargs: Any) -> MagicMock:
+    def progressbar(self, parent: Any, **kwargs: Any) -> MagicMock:
         w = _make_mock_widget()
         w.start = MagicMock()
         w.stop = MagicMock()
