@@ -18,12 +18,15 @@ class _Var:
     """Minimal tkinter variable stub for testing."""
 
     def __init__(self, value: Any = "") -> None:
+        """Handle   init  ."""
         self._value = value
 
     def get(self) -> Any:
+        """Handle get."""
         return self._value
 
     def set(self, value: Any) -> None:
+        """Handle set."""
         self._value = value
 
 
@@ -31,6 +34,7 @@ class _BootstrapRoot:
     """Minimal Tk root window stub for controller tests."""
 
     def __init__(self) -> None:
+        """Handle   init  ."""
         self._geometry = "1480x860"
         self._focused = None
 
@@ -47,6 +51,7 @@ class _BootstrapRoot:
         """Stub for testing."""
 
     def geometry(self, value: str | None = None) -> str:
+        """Handle geometry."""
         if value is not None:
             self._geometry = value
         return self._geometry
@@ -56,6 +61,7 @@ class _BootstrapRoot:
         """Stub for testing."""
 
     def focus_get(self) -> Any:
+        """Handle focus get."""
         return self._focused
 
     @staticmethod
@@ -87,6 +93,7 @@ class _MockView:
     """Stub view recording method calls for controller tests."""
 
     def __init__(self) -> None:
+        """Handle   init  ."""
         self.enabled_states: List[bool] = []
         self.busy_states: List[bool] = []
         self.status_texts: List[str] = []
@@ -116,18 +123,23 @@ class _MockView:
         self.filter_entry = MagicMock()
 
     def set_mutation_actions_enabled(self, enabled: bool) -> None:
+        """Handle set mutation actions enabled."""
         self.enabled_states.append(enabled)
 
     def set_refresh_busy(self, busy: bool) -> None:
+        """Handle set refresh busy."""
         self.busy_states.append(busy)
 
     def set_status(self, text: str) -> None:
+        """Handle set status."""
         self.status_texts.append(text)
 
     def set_root_label(self, text: str) -> None:
+        """Handle set root label."""
         self.root_labels.append(text)
 
     def set_context_values(self, contexts: List[str]) -> None:
+        """Handle set context values."""
         self.context_values.append(contexts)
 
     def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
@@ -140,12 +152,15 @@ class _MockView:
         """Stub for testing."""
 
     def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
+        """Handle insert table row."""
         return "item1"
 
     def update_details_value(self, text: str) -> None:
+        """Handle update details value."""
         self.details_values.append(text)
 
     def set_details_enabled(self, enabled: bool) -> None:
+        """Handle set details enabled."""
         self.details_enabled.append(enabled)
 
     def focus_filter(self) -> None:
@@ -156,12 +171,14 @@ class _Harness(EnvInspectorController):
     """Full harness with mocked internals."""
 
     def __init__(self) -> None:
+        """Handle   init  ."""
         self._during_bootstrap = True
         super().__init__(Path.cwd())
         self._during_bootstrap = False
 
     @staticmethod
     def _load_tk_modules() -> Tuple[Any, Any, Any, Any]:
+        """Handle  load tk modules."""
         return (
             _BOOTSTRAP_TK_MODULE,
             MagicMock(),
@@ -170,27 +187,32 @@ class _Harness(EnvInspectorController):
         )
 
     def _init_root_window(self, _tk: Any) -> None:
+        """Handle  init root window."""
         self.tk = _BootstrapRoot()
 
     def _apply_theme(self) -> None:
         """Stub for testing."""
 
     def _load_boot_state(self, _root_path: Path) -> Tuple[PersistedUiState, Path]:
+        """Handle  load boot state."""
         return PersistedUiState(context="linux"), Path.cwd()
 
     def _initialize_view(self, _tk: Any, _ttk: Any, _boot_state: PersistedUiState) -> None:
+        """Handle  initialize view."""
         self.view = cast(Any, _MockView())
 
     def _bind_shortcuts(self) -> None:
         """Stub for testing."""
 
     def refresh_data(self) -> None:
+        """Handle refresh data."""
         if getattr(self, "_during_bootstrap", False):
             return
         super().refresh_data()
 
 
 def _make_record(**overrides: object) -> EnvRecord:
+    """Handle  make record."""
     defaults: Dict[str, Any] = {
         "source_type": "dotenv",
         "source_id": "dotenv:/workspace/.env",
@@ -210,6 +232,7 @@ def _make_record(**overrides: object) -> EnvRecord:
 
 
 def _make_row(rec: EnvRecord) -> DisplayedRow:
+    """Handle  make row."""
     return DisplayedRow(
         record=rec,
         visible_value=rec.value,
@@ -226,6 +249,7 @@ def _make_row(rec: EnvRecord) -> DisplayedRow:
 
 # --- _record_flag ---
 def test_record_flag():
+    """Test record flag."""
     rec = _make_record(is_secret=True)
     ensure(EnvInspectorController._record_flag(rec, "is_secret") is True)
     ensure(EnvInspectorController._record_flag(rec, "nonexistent") is False)
@@ -233,11 +257,13 @@ def test_record_flag():
 
 # --- _selected_row ---
 def test_selected_row_none():
+    """Test selected row none."""
     ctrl = _Harness()
     ensure(ctrl._selected_row() is None)
 
 
 def test_selected_row_with_item():
+    """Test selected row with item."""
     ctrl = _Harness()
     rec = _make_record()
     row = _make_row(rec)
@@ -250,12 +276,14 @@ def test_selected_row_with_item():
 
 # --- _on_row_selected_update_details ---
 def test_on_row_selected_update_details_none():
+    """Test on row selected update details none."""
     ctrl = _Harness()
     ctrl._on_row_selected_update_details(None)
     ensure(False in ctrl.view.details_enabled)
 
 
 def test_on_row_selected_update_details_with_row():
+    """Test on row selected update details with row."""
     ctrl = _Harness()
     rec = _make_record(name="MY_VAR", is_secret=True, is_persistent=True, is_mutable=False)
     row = _make_row(rec)
@@ -269,6 +297,7 @@ def test_on_row_selected_update_details_with_row():
 
 # --- _clear_details ---
 def test_clear_details():
+    """Test clear details."""
     ctrl = _Harness()
     ctrl._clear_details()
     ensure(ctrl.view.details_vars["name"].get() == "")
@@ -277,6 +306,7 @@ def test_clear_details():
 
 # --- _set_detail_values ---
 def test_set_detail_values():
+    """Test set detail values."""
     ctrl = _Harness()
     ctrl._set_detail_values({"name": "X", "context": "linux", "nonexistent_key": "ignored"})
     ensure(ctrl.view.details_vars["name"].get() == "X")
@@ -285,6 +315,7 @@ def test_set_detail_values():
 
 # --- _set_detail_pairs ---
 def test_set_detail_pairs():
+    """Test set detail pairs."""
     ctrl = _Harness()
     ctrl._set_detail_pairs((("name", "A"), ("source", "dotenv"), ("bad_key", "ignored")))
     ensure(ctrl.view.details_vars["name"].get() == "A")
@@ -293,6 +324,7 @@ def test_set_detail_pairs():
 
 # --- on_tree_selected ---
 def test_on_tree_selected_with_row():
+    """Test on tree selected with row."""
     ctrl = _Harness()
     rec = _make_record(name="FOUND")
     row = _make_row(rec)
@@ -306,6 +338,7 @@ def test_on_tree_selected_with_row():
 
 
 def test_on_tree_selected_no_row():
+    """Test on tree selected no row."""
     ctrl = _Harness()
     ctrl.view.tree.selection.return_value = ()
     ctrl.on_tree_selected()
@@ -315,6 +348,7 @@ def test_on_tree_selected_no_row():
 
 # --- on_filter_changed ---
 def test_on_filter_changed_with_key():
+    """Test on filter changed with key."""
     ctrl = _Harness()
     ctrl.key_text = _Var("TEST_KEY")
     ctrl.records_raw = []
@@ -327,6 +361,7 @@ def test_on_filter_changed_with_key():
 
 
 def test_on_filter_changed_no_key():
+    """Test on filter changed no key."""
     ctrl = _Harness()
     ctrl.key_text = _Var("")
     ctrl.records_raw = []
@@ -339,6 +374,7 @@ def test_on_filter_changed_no_key():
 
 # --- on_filter_escape ---
 def test_on_filter_escape_with_text():
+    """Test on filter escape with text."""
     ctrl = _Harness()
     ctrl.filter_text = _Var("something")
     ctrl.key_text = _Var("")
@@ -352,6 +388,7 @@ def test_on_filter_escape_with_text():
 
 
 def test_on_filter_escape_empty():
+    """Test on filter escape empty."""
     ctrl = _Harness()
     ctrl.filter_text = _Var("")
     ctrl.on_filter_escape()
@@ -360,6 +397,7 @@ def test_on_filter_escape_empty():
 
 # --- on_sort_column ---
 def test_on_sort_column():
+    """Test on sort column."""
     ctrl = _Harness()
     ctrl.records_raw = []
     ctrl.service = MagicMock()
@@ -372,6 +410,7 @@ def test_on_sort_column():
 
 # --- choose_folder ---
 def test_choose_folder_cancelled():
+    """Test choose folder cancelled."""
     ctrl = _Harness()
     ctrl.filedialog = MagicMock()
     ctrl.filedialog.askdirectory = MagicMock(return_value="")
@@ -380,6 +419,7 @@ def test_choose_folder_cancelled():
 
 
 def test_choose_folder_selected(tmp_path: Path):
+    """Test choose folder selected."""
     ctrl = _Harness()
     ctrl.filedialog = MagicMock()
     ctrl.filedialog.askdirectory = MagicMock(return_value=str(tmp_path))
@@ -398,6 +438,7 @@ def test_choose_folder_selected(tmp_path: Path):
 
 # --- _build_state ---
 def test_build_state():
+    """Test build state."""
     ctrl = _Harness()
     state = ctrl._build_state()
     ensure(isinstance(state, PersistedUiState))
@@ -406,6 +447,7 @@ def test_build_state():
 
 # --- on_close ---
 def test_on_close():
+    """Test on close."""
     ctrl = _Harness()
     ctrl.state_dir = Path("/tmp/test_state")
     with patch("env_inspector_gui.controller.save_ui_state"):
@@ -414,6 +456,7 @@ def test_on_close():
 
 # --- run ---
 def test_run():
+    """Test run."""
     ctrl = _Harness()
     ctrl.tk = MagicMock()
     ctrl.run()
@@ -422,6 +465,7 @@ def test_run():
 
 # --- _set_status with no view ---
 def test_set_status_no_view():
+    """Test set status no view."""
     ctrl = _Harness()
     ctrl.view = None
     ctrl._set_status("test")  # Should not raise
@@ -429,6 +473,7 @@ def test_set_status_no_view():
 
 # --- _set_busy with no view ---
 def test_set_busy_no_view():
+    """Test set busy no view."""
     ctrl = _Harness()
     ctrl.view = None
     ctrl._set_busy(True)  # Should not raise
@@ -436,6 +481,7 @@ def test_set_busy_no_view():
 
 # --- _collect_dotenv_targets ---
 def test_collect_dotenv_targets():
+    """Test collect dotenv targets."""
     result = EnvInspectorController._collect_dotenv_targets(
         ["dotenv:/a", "windows:user", "wsl_dotenv:/b"]
     )
@@ -444,6 +490,7 @@ def test_collect_dotenv_targets():
 
 # --- _has_multiple_dotenv_matches ---
 def test_has_multiple_dotenv_matches():
+    """Test has multiple dotenv matches."""
     ctrl = _Harness()
     ctrl.records_raw = [
         _make_record(name="K", source_type="dotenv"),
@@ -454,6 +501,7 @@ def test_has_multiple_dotenv_matches():
 
 # --- choose_targets ---
 def test_choose_targets_no_available():
+    """Test choose targets no available."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=[])
@@ -464,6 +512,7 @@ def test_choose_targets_no_available():
 
 
 def test_choose_targets_cancelled():
+    """Test choose targets cancelled."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
@@ -482,6 +531,7 @@ def test_choose_targets_cancelled():
 
 
 def test_choose_targets_selected():
+    """Test choose targets selected."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
@@ -503,6 +553,7 @@ def test_choose_targets_selected():
 
 
 def test_choose_targets_empty_selection():
+    """Test choose targets empty selection."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
@@ -523,6 +574,7 @@ def test_choose_targets_empty_selection():
 
 # --- _maybe_choose_dotenv_targets ---
 def test_maybe_choose_dotenv_targets_single():
+    """Test maybe choose dotenv targets single."""
     ctrl = _Harness()
     ctrl.records_raw = []
     result = ctrl._maybe_choose_dotenv_targets("KEY", ["dotenv:/a"])
@@ -530,6 +582,7 @@ def test_maybe_choose_dotenv_targets_single():
 
 
 def test_maybe_choose_dotenv_targets_multiple_cancelled():
+    """Test maybe choose dotenv targets multiple cancelled."""
     ctrl = _Harness()
     ctrl.records_raw = [
         _make_record(name="KEY", source_type="dotenv"),
@@ -548,6 +601,7 @@ def test_maybe_choose_dotenv_targets_multiple_cancelled():
 
 
 def test_maybe_choose_dotenv_targets_multiple_selected():
+    """Test maybe choose dotenv targets multiple selected."""
     ctrl = _Harness()
     ctrl.records_raw = [
         _make_record(name="KEY", source_type="dotenv"),
@@ -570,6 +624,7 @@ def test_maybe_choose_dotenv_targets_multiple_selected():
 
 # --- _preview_operation ---
 def test_preview_operation_set():
+    """Test preview operation set."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.preview_set = MagicMock(return_value=[{"success": True}])
@@ -578,6 +633,7 @@ def test_preview_operation_set():
 
 
 def test_preview_operation_remove():
+    """Test preview operation remove."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.preview_remove = MagicMock(return_value=[{"success": True}])
@@ -587,6 +643,7 @@ def test_preview_operation_remove():
 
 # --- _confirm_diff ---
 def test_confirm_diff():
+    """Test confirm diff."""
     ctrl = _Harness()
     with patch("env_inspector_gui.controller.DiffPreviewDialog") as MockDialog:
         instance = MagicMock()
@@ -600,6 +657,7 @@ def test_confirm_diff():
 
 # --- _apply_operation ---
 def test_apply_operation_set():
+    """Test apply operation set."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.set_key = MagicMock(return_value={"success": True})
@@ -608,6 +666,7 @@ def test_apply_operation_set():
 
 
 def test_apply_operation_remove():
+    """Test apply operation remove."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.remove_key = MagicMock(return_value={"success": True})
@@ -617,6 +676,7 @@ def test_apply_operation_remove():
 
 # --- _resolve_operation_inputs ---
 def test_resolve_operation_inputs_no_key():
+    """Test resolve operation inputs no key."""
     ctrl = _Harness()
     ctrl.key_text = _Var("")
     ctrl.messagebox = MagicMock()
@@ -626,6 +686,7 @@ def test_resolve_operation_inputs_no_key():
 
 
 def test_resolve_operation_inputs_with_key():
+    """Test resolve operation inputs with key."""
     ctrl = _Harness()
     ctrl.key_text = _Var("TEST")
     ctrl.value_text = _Var("val")
@@ -641,6 +702,7 @@ def test_resolve_operation_inputs_with_key():
 
 
 def test_resolve_operation_inputs_scoped_none():
+    """Test resolve operation inputs scoped none."""
     ctrl = _Harness()
     ctrl.key_text = _Var("TEST")
     ctrl.value_text = _Var("val")
@@ -656,6 +718,7 @@ def test_resolve_operation_inputs_scoped_none():
 
 # --- _safe_preview ---
 def test_safe_preview_success():
+    """Test safe preview success."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.preview_set = MagicMock(return_value=[{"success": True}])
@@ -664,6 +727,7 @@ def test_safe_preview_success():
 
 
 def test_safe_preview_error():
+    """Test safe preview error."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.preview_set = MagicMock(side_effect=OSError("disk full"))
@@ -675,6 +739,7 @@ def test_safe_preview_error():
 
 # --- _safe_apply ---
 def test_safe_apply_success():
+    """Test safe apply success."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.set_key = MagicMock(return_value={"success": True})
@@ -683,6 +748,7 @@ def test_safe_apply_success():
 
 
 def test_safe_apply_error():
+    """Test safe apply error."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.set_key = MagicMock(side_effect=RuntimeError("fail"))
@@ -694,6 +760,7 @@ def test_safe_apply_error():
 
 # --- _report_operation_result ---
 def test_report_operation_result_success():
+    """Test report operation result success."""
     ctrl = _Harness()
     ctrl.messagebox = MagicMock()
     ctrl._report_operation_result("set", {"success": True, "operation_id": "op-1"})
@@ -701,6 +768,7 @@ def test_report_operation_result_success():
 
 
 def test_report_operation_result_failure():
+    """Test report operation result failure."""
     ctrl = _Harness()
     ctrl.messagebox = MagicMock()
     ctrl._report_operation_result("set", {"success": False, "error_message": "bad"})
@@ -709,6 +777,7 @@ def test_report_operation_result_failure():
 
 # --- _run_operation full flow ---
 def test_run_operation_no_key():
+    """Test run operation no key."""
     ctrl = _Harness()
     ctrl.key_text = _Var("")
     ctrl.messagebox = MagicMock()
@@ -717,6 +786,7 @@ def test_run_operation_no_key():
 
 
 def test_run_operation_preview_fails():
+    """Test run operation preview fails."""
     ctrl = _Harness()
     ctrl.key_text = _Var("K")
     ctrl.value_text = _Var("v")
@@ -733,6 +803,7 @@ def test_run_operation_preview_fails():
 
 
 def test_run_operation_diff_rejected():
+    """Test run operation diff rejected."""
     ctrl = _Harness()
     ctrl.key_text = _Var("K")
     ctrl.value_text = _Var("v")
@@ -751,6 +822,7 @@ def test_run_operation_diff_rejected():
 
 
 def test_run_operation_apply_fails():
+    """Test run operation apply fails."""
     ctrl = _Harness()
     ctrl.key_text = _Var("K")
     ctrl.value_text = _Var("v")
@@ -770,6 +842,7 @@ def test_run_operation_apply_fails():
 
 # --- _update_context_values ---
 def test_update_context_values():
+    """Test update context values."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.list_contexts = MagicMock(return_value=["linux", "wsl:Ubuntu"])
@@ -780,6 +853,7 @@ def test_update_context_values():
 
 # --- _fetch_records ---
 def test_fetch_records_basic():
+    """Test fetch records basic."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.list_records_raw = MagicMock(return_value=[])
@@ -788,6 +862,7 @@ def test_fetch_records_basic():
 
 
 def test_fetch_records_with_wsl():
+    """Test fetch records with wsl."""
     ctrl = _Harness()
     ctrl.wsl_distro_var = _Var("Ubuntu")
     ctrl.wsl_path_var = _Var("/home/user")
@@ -799,6 +874,7 @@ def test_fetch_records_with_wsl():
 
 # --- _reconcile_targets ---
 def test_reconcile_targets():
+    """Test reconcile targets."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
@@ -810,6 +886,7 @@ def test_reconcile_targets():
 
 # --- _render_table ---
 def test_render_table():
+    """Test render table."""
     ctrl = _Harness()
     ctrl.records_raw = [_make_record(name="A", value="1")]
     ctrl.service = MagicMock()
@@ -820,6 +897,7 @@ def test_render_table():
 
 # --- _update_effective ---
 def test_update_effective():
+    """Test update effective."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.resolve_effective = MagicMock(return_value=None)
@@ -830,6 +908,7 @@ def test_update_effective():
 
 # --- _on_ctrl_f ---
 def test_on_ctrl_f():
+    """Test on ctrl f."""
     ctrl = _Harness()
     result = ctrl._on_ctrl_f(None)
     ensure(result == "break")
@@ -837,6 +916,7 @@ def test_on_ctrl_f():
 
 # --- _on_f5 ---
 def test_on_f5():
+    """Test on f5."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.list_contexts = MagicMock(return_value=["linux"])
@@ -852,6 +932,7 @@ def test_on_f5():
 
 # --- _on_ctrl_c ---
 def test_on_ctrl_c_on_tree():
+    """Test on ctrl c on tree."""
     ctrl = _Harness()
     ctrl.tk._focused = ctrl.view.tree
     ctrl.messagebox = MagicMock()
@@ -861,6 +942,7 @@ def test_on_ctrl_c_on_tree():
 
 
 def test_on_ctrl_c_not_on_tree():
+    """Test on ctrl c not on tree."""
     ctrl = _Harness()
     ctrl.tk._focused = None
     result = ctrl._on_ctrl_c(None)
@@ -869,12 +951,14 @@ def test_on_ctrl_c_not_on_tree():
 
 # --- _resolve_root_path ---
 def test_resolve_root_path_valid(tmp_path: Path):
+    """Test resolve root path valid."""
     state = PersistedUiState(root_path=str(tmp_path))
     result = EnvInspectorController._resolve_root_path(state, tmp_path)
     ensure(str(result) == str(tmp_path))
 
 
 def test_resolve_root_path_invalid():
+    """Test resolve root path invalid."""
     state = PersistedUiState(root_path="/nonexistent/invalid/path/xxx")
     fallback = Path.cwd()
     result = EnvInspectorController._resolve_root_path(state, fallback)
@@ -883,6 +967,7 @@ def test_resolve_root_path_invalid():
 
 # --- EnvInspectorApp ---
 def test_env_inspector_app():
+    """Test env inspector app."""
     with patch.object(EnvInspectorController, "__init__", return_value=None), \
          patch.object(EnvInspectorController, "run"):
         app = EnvInspectorApp(Path.cwd())
@@ -1051,6 +1136,7 @@ def test_refresh_data_with_tk_none():
     original_render_table = ctrl._render_table
 
     def render_then_clear_tk():
+        """Handle render then clear tk."""
         original_render_table()
         ctrl.tk = None  # type: ignore[assignment]
 
@@ -1078,6 +1164,7 @@ def test_report_operation_result_both_none():
 
 # --- refresh_data full flow ---
 def test_refresh_data_full():
+    """Test refresh data full."""
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.list_contexts = MagicMock(return_value=["linux"])
