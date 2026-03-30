@@ -10,6 +10,7 @@ from tests.assertions import ensure
 
 
 def _make_mock_widget(**extras: Any) -> MagicMock:
+    """Handle  make mock widget."""
     w = MagicMock()
     w.pack = MagicMock()
     w.grid = MagicMock()
@@ -48,6 +49,7 @@ def _mock_tk_module():
 
 
 def _mock_ttk_module():
+    """Handle  mock ttk module."""
     ttk = MagicMock()
     for widget_name in ("Frame", "Label", "Button", "Entry", "Checkbutton",
                         "Scrollbar", "Notebook", "LabelFrame"):
@@ -57,12 +59,14 @@ def _mock_ttk_module():
 
 
 def _mock_font_module():
+    """Handle  mock font module."""
     font = MagicMock()
     font.nametofont = MagicMock(return_value=MagicMock())
     return font
 
 
 def _mock_scrolledtext_module():
+    """Handle  mock scrolledtext module."""
     st = MagicMock()
     txt_widget = _make_mock_widget(
         insert=MagicMock(),
@@ -95,6 +99,7 @@ class TestTargetPickerDialog:
     """Tests for TargetPickerDialog behaviour with mocked tkinter."""
 
     def _build(self, targets=None, selected=None):
+        """Handle  build."""
         if targets is None:
             targets = ["dotenv:/a/.env", "windows:user", "wsl:Ubuntu:bashrc"]
 
@@ -115,15 +120,18 @@ class TestTargetPickerDialog:
         return dialog
 
     def test_creates_dialog(self):
+        """Test creates dialog."""
         dialog = self._build()
         ensure(dialog.result is None)
         ensure(len(dialog._vars) == 3)
 
     def test_with_selected(self):
+        """Test with selected."""
         dialog = self._build(selected=["windows:user"])
         ensure(dialog.result is None)
 
     def test_apply(self):
+        """Test apply."""
         dialog = self._build()
         # Set all vars to True
         for var in dialog._vars.values():
@@ -133,28 +141,33 @@ class TestTargetPickerDialog:
         ensure(len(dialog.result) == 3)
 
     def test_cancel(self):
+        """Test cancel."""
         dialog = self._build()
         dialog._cancel()
         ensure(dialog.result is None)
 
     def test_on_escape(self):
+        """Test on escape."""
         dialog = self._build()
         dialog._on_escape(None)
         ensure(dialog.result is None)
 
     def test_select_all(self):
+        """Test select all."""
         dialog = self._build()
         dialog._select_all()
         for var in dialog._vars.values():
             var.set.assert_called_with(True)
 
     def test_select_none(self):
+        """Test select none."""
         dialog = self._build()
         dialog._select_none()
         for var in dialog._vars.values():
             var.set.assert_called_with(False)
 
     def test_select_dotenv(self):
+        """Test select dotenv."""
         dialog = self._build()
         dialog._select_dotenv()
         # dotenv:/a/.env should be True, others False
@@ -162,6 +175,7 @@ class TestTargetPickerDialog:
         dialog._vars["windows:user"].set.assert_called_with(False)
 
     def test_select_windows(self):
+        """Test select windows."""
         dialog = self._build(targets=["windows:user", "powershell:machine", "dotenv:/a"])
         dialog._select_windows()
         dialog._vars["windows:user"].set.assert_called_with(True)
@@ -169,6 +183,7 @@ class TestTargetPickerDialog:
         dialog._vars["dotenv:/a"].set.assert_called_with(False)
 
     def test_select_wsl(self):
+        """Test select wsl."""
         dialog = self._build(targets=["wsl:Ubuntu:bashrc", "wsl_dotenv:/a", "windows:user"])
         dialog._select_wsl()
         dialog._vars["wsl:Ubuntu:bashrc"].set.assert_called_with(True)
@@ -176,16 +191,19 @@ class TestTargetPickerDialog:
         dialog._vars["windows:user"].set.assert_called_with(False)
 
     def test_apply_filter_hides_non_matching(self):
+        """Test apply filter hides non matching."""
         dialog = self._build()
         dialog.search_var.get.return_value = "dotenv"
         dialog._apply_filter()
 
     def test_apply_filter_shows_all_on_empty(self):
+        """Test apply filter shows all on empty."""
         dialog = self._build()
         dialog.search_var.get.return_value = ""
         dialog._apply_filter()
 
     def test_apply_filter_hidden_check_repacked(self):
+        """Test apply filter hidden check repacked."""
         dialog = self._build()
         # Simulate a check that is hidden (winfo_manager returns "")
         for check in dialog._checks.values():
@@ -207,11 +225,13 @@ class TestTargetPickerDialog:
             check.pack_forget.assert_not_called()
 
     def test_on_search_keyrelease(self):
+        """Test on search keyrelease."""
         dialog = self._build()
         dialog.search_var.get.return_value = "test"
         dialog._on_search_keyrelease(None)
 
     def test_update_selected_count(self):
+        """Test update selected count."""
         dialog = self._build()
         for var in dialog._vars.values():
             var.get.return_value = True
@@ -219,6 +239,7 @@ class TestTargetPickerDialog:
         dialog.selected_count_label.configure.assert_called()
 
     def test_sync_scrollregion(self):
+        """Test sync scrollregion."""
         dialog = self._build()
         dialog._sync_scrollregion(None)
 
@@ -229,10 +250,11 @@ class TestDotenvTargetDialog:
     """Tests for DotenvTargetDialog behaviour with mocked tkinter."""
 
     def _build(self, key="API_KEY", targets=None):
+        """Handle  build."""
         if targets is None:
             targets = ["dotenv:/a/.env", "dotenv:/b/.env"]
 
-        tk, ttk, _font, _scrolledtext = _install_mock_tkinter()
+        tk, ttk, *_ = _install_mock_tkinter()
 
         with patch.dict(sys.modules, {
             "tkinter": tk,
@@ -244,11 +266,13 @@ class TestDotenvTargetDialog:
         return dialog
 
     def test_creates_dialog(self):
+        """Test creates dialog."""
         dialog = self._build()
         ensure(dialog.result is None)
         ensure(len(dialog._vars) == 2)
 
     def test_apply(self):
+        """Test apply."""
         dialog = self._build()
         for name, var in dialog._vars:
             var.get.return_value = True
@@ -256,6 +280,7 @@ class TestDotenvTargetDialog:
         ensure(dialog.result is not None)
 
     def test_cancel(self):
+        """Test cancel."""
         dialog = self._build()
         dialog._cancel()
         ensure(dialog.result is None)
@@ -267,6 +292,7 @@ class TestDiffPreviewDialog:
     """Tests for DiffPreviewDialog behaviour with mocked tkinter."""
 
     def _build(self, action="set", previews=None, preview_only=False):
+        """Handle  build."""
         if previews is None:
             previews = [
                 {
@@ -297,29 +323,35 @@ class TestDiffPreviewDialog:
         return dialog
 
     def test_creates_dialog(self):
+        """Test creates dialog."""
         dialog = self._build()
         ensure(dialog.confirmed is False)
 
     def test_apply(self):
+        """Test apply."""
         dialog = self._build()
         dialog._apply()
         ensure(dialog.confirmed is True)
 
     def test_cancel(self):
+        """Test cancel."""
         dialog = self._build()
         dialog._cancel()
         ensure(dialog.confirmed is False)
 
     def test_on_escape(self):
+        """Test on escape."""
         dialog = self._build()
         dialog._on_escape(None)
         ensure(dialog.confirmed is False)
 
     def test_preview_only_mode(self):
+        """Test preview only mode."""
         dialog = self._build(preview_only=True)
         ensure(dialog.confirmed is False)
 
     def test_diff_tag_static_method(self):
+        """Test diff tag static method."""
         from env_inspector_gui.dialogs import DiffPreviewDialog
         ensure(DiffPreviewDialog._diff_tag("@@ -1,2 +1,3 @@") == "diff_hunk")
         ensure(DiffPreviewDialog._diff_tag("+added line") == "diff_add")
@@ -345,10 +377,11 @@ class TestBackupPickerDialog:
     """Tests for BackupPickerDialog behaviour with mocked tkinter."""
 
     def _build(self, backups=None):
+        """Handle  build."""
         if backups is None:
             backups = ["backup1.zip", "backup2.zip"]
 
-        tk, ttk, _font, _scrolledtext = _install_mock_tkinter()
+        tk, ttk, *_ = _install_mock_tkinter()
 
         with patch.dict(sys.modules, {
             "tkinter": tk,
@@ -360,10 +393,12 @@ class TestBackupPickerDialog:
         return dialog
 
     def test_creates_dialog(self):
+        """Test creates dialog."""
         dialog = self._build()
         ensure(dialog.result is None)
 
     def test_restore_with_selection(self):
+        """Test restore with selection."""
         dialog = self._build()
         dialog.listbox.curselection.return_value = (0,)
         dialog.listbox.get.return_value = "backup1.zip"
@@ -371,12 +406,14 @@ class TestBackupPickerDialog:
         ensure(dialog.result == "backup1.zip")
 
     def test_restore_no_selection(self):
+        """Test restore no selection."""
         dialog = self._build()
         dialog.listbox.curselection.return_value = ()
         dialog._restore()
         ensure(dialog.result is None)
 
     def test_cancel(self):
+        """Test cancel."""
         dialog = self._build()
         dialog._cancel()
         ensure(dialog.result is None)

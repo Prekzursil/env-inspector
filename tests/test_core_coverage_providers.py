@@ -20,6 +20,7 @@ from env_inspector_core.constants import (
 
 
 def _case() -> unittest.TestCase:
+    """Handle  case."""
     return unittest.TestCase()
 
 
