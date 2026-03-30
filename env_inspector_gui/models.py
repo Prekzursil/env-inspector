@@ -45,12 +45,16 @@ def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class SortState:
+    """Current table sort column and direction."""
+
     column: str = "name"
     descending: bool = False
 
 
 @dataclass
 class PersistedUiState:
+    """Serializable snapshot of user-facing GUI state."""
+
     version: int = 1
     window_geometry: str = "1480x860"
     root_path: str = ""
@@ -89,6 +93,8 @@ class PersistedUiState:
 
 @dataclass
 class DisplayedRow:
+    """A single row rendered in the GUI table."""
+
     record: EnvRecord
     visible_value: str
     search_value: str
@@ -103,6 +109,8 @@ class DisplayedRow:
 
 @dataclass(frozen=True)
 class ContextSelection:
+    """Resolved context, WSL distro, and available distro list."""
+
     context: str
     wsl_distro: str
     distros: List[str]
@@ -110,6 +118,8 @@ class ContextSelection:
 
 @dataclass(frozen=True)
 class OperationResultSummary:
+    """Summary of an operation result for user-facing display."""
+
     status_message: str | None
     error_message: str | None
 

@@ -14,6 +14,8 @@ normalize_target_operation_request = _service_ops_request.normalize_target_opera
 
 @dataclass(frozen=True)
 class OperationResultInput:
+    """Raw inputs for constructing an operation result."""
+
     operation_id: str
     target: str
     action: str

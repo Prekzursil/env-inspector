@@ -32,7 +32,32 @@ from .view import EnvInspectorView
 
 
 class EnvInspectorController(EnvInspectorControllerActionsMixin):
+    """Main controller wiring the service layer to the GUI view."""
+
     def __init__(self, root_path: Path) -> None:
+        self.tkmod: Any = None
+        self.ttk: Any = None
+        self.filedialog: Any = None
+        self.messagebox: Any = None
+        self.tk: Any = None
+        self.view: Any = None
+        self.root_path: Path = root_path
+        self.records_raw: List[EnvRecord] = []
+        self.displayed_rows: List[DisplayedRow] = []
+        self.rows_by_item: Dict[str, DisplayedRow] = {}
+        self.selected_targets: List[str] = []
+        self.last_refresh_at: datetime | None = None
+        self.filter_text: Any = None
+        self.show_secrets: Any = None
+        self.only_secrets: Any = None
+        self.context_var: Any = None
+        self.wsl_distro_var: Any = None
+        self.wsl_path_var: Any = None
+        self.scan_depth_var: Any = None
+        self.key_text: Any = None
+        self.value_text: Any = None
+        self.effective_value_var: Any = None
+        self.targets_summary_var: Any = None
         tk, filedialog, messagebox, ttk = self._load_tk_modules()
         self._assign_tk_modules(tk, filedialog, messagebox, ttk)
         self.service = EnvInspectorService()
@@ -487,6 +512,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
 
 class EnvInspectorApp:
+    """Top-level application entry point wrapping the controller."""
+
     def __init__(self, root_path: Path) -> None:
         self._controller = EnvInspectorController(root_path)
 

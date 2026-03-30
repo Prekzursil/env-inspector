@@ -21,6 +21,8 @@ SplitValidatedHttpsUrl = Callable[..., Tuple[str, str, Dict[str, str]]]
 
 @dataclass(frozen=True)
 class DeepScanRequest:
+    """Parameters for a DeepScan API open-issues request."""
+
     host: str
     path: str
     query: dict
