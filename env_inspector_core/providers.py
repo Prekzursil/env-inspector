@@ -167,17 +167,14 @@ class WindowsRegistryProvider:
             raise ValueError(f"Unsupported scope: {scope}")
 
         registry = _require_winreg()
-        try:
-            root, path, scoped_access = {
-                WindowsRegistryProvider.USER_SCOPE: (registry.HKEY_CURRENT_USER, r"Environment", access),
-                WindowsRegistryProvider.MACHINE_SCOPE: (
-                    registry.HKEY_LOCAL_MACHINE,
-                    r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
-                    access | getattr(registry, "KEY_WOW64_64KEY", 0),
-                ),
-            }[scope]
-        except KeyError as exc:
-            raise ValueError(f"Unsupported scope: {scope}") from exc
+        root, path, scoped_access = {
+            WindowsRegistryProvider.USER_SCOPE: (registry.HKEY_CURRENT_USER, r"Environment", access),
+            WindowsRegistryProvider.MACHINE_SCOPE: (
+                registry.HKEY_LOCAL_MACHINE,
+                r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
+                access | getattr(registry, "KEY_WOW64_64KEY", 0),
+            ),
+        }[scope]
         return root, path, scoped_access
 
     @staticmethod
