@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 
 @dataclass(frozen=True)
 class SettledChecksRequest:
+    """Parameters for polling GitHub check contexts until they settle."""
+
     owner_slug: str
     repo_slug: str
     repo_arg: str
@@ -125,10 +127,10 @@ def _snapshot(
 
 
 def _has_in_progress_check_run(contexts: Dict[str, Dict[str, str]]) -> bool:
-    for observed in contexts.values():
-        if observed.get("source") == "check_run" and observed.get("state") != "completed":
-            return True
-    return False
+    return any(
+        observed.get("source") == "check_run" and observed.get("state") != "completed"
+        for observed in contexts.values()
+    )
 
 
 def _should_wait(payload: Dict[str, Any]) -> bool:

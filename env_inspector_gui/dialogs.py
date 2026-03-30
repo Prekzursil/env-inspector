@@ -4,6 +4,8 @@ from typing import Any, Callable, Dict, List, Set, Tuple
 
 
 class _PreviewTabDeps:
+    """Dependencies injected into diff-preview tab builders."""
+
     def __init__(self, mono: Any, ttk: Any, scrolledtext: Any) -> None:
         self.mono = mono
         self.ttk = ttk
@@ -11,6 +13,8 @@ class _PreviewTabDeps:
 
 
 class TargetPickerDialog:
+    """Modal dialog for selecting mutation targets."""
+
     def __init__(self, parent: Any, targets: List[str], selected: List[str] | None = None) -> None:
         import tkinter as tk
         from tkinter import ttk
@@ -19,6 +23,10 @@ class TargetPickerDialog:
         self._targets = list(targets)
         self._vars: Dict[str, tk.BooleanVar] = {}
         self._checks: Dict[str, Any] = {}
+        self.search_var: Any = None
+        self.search_entry: Any = None
+        self.selected_count_label: Any = None
+        self._scroll_canvas: Any = None
         selected_set = set(selected or [])
 
         self.win = tk.Toplevel(parent)
@@ -146,6 +154,8 @@ class TargetPickerDialog:
 
 
 class DotenvTargetDialog:
+    """Modal dialog for choosing among multiple dotenv file targets."""
+
     def __init__(self, parent: Any, key: str, targets: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
@@ -186,6 +196,8 @@ class DotenvTargetDialog:
 
 
 class DiffPreviewDialog:
+    """Modal dialog showing a unified diff preview before applying changes."""
+
     def __init__(
         self,
         parent: Any,
@@ -298,6 +310,8 @@ class DiffPreviewDialog:
 
 
 class BackupPickerDialog:
+    """Modal dialog for selecting a backup file to restore."""
+
     def __init__(self, parent: Any, backups: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk

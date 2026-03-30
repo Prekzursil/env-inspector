@@ -30,6 +30,8 @@ if TYPE_CHECKING:
     from typing_extensions import Protocol
 
     class WinregModule(Protocol):
+        """Protocol for the Windows registry module."""
+
         HKEY_CURRENT_USER: Any
         HKEY_LOCAL_MACHINE: Any
         KEY_READ: int
@@ -45,6 +47,8 @@ if TYPE_CHECKING:
 
 
     class WslClient(Protocol):
+        """Protocol for the WSL interop client."""
+
         available: Callable[[], bool]
         list_distros: Callable[[], List[str]]
         read_file: Callable[[str, str], str]
@@ -154,6 +158,8 @@ def collect_process_records(context: str = "windows") -> List[EnvRecord]:
 
 
 class WindowsRegistryProvider:
+    """Provider for reading and writing Windows registry environment variables."""
+
     USER_SCOPE = "User"
     MACHINE_SCOPE = "Machine"
 
@@ -203,9 +209,8 @@ class WindowsRegistryProvider:
     def remove_scope_value(self, scope: str, key: str) -> None:
         registry = _require_winreg()
         root, path, access = self._scope_details(scope, registry.KEY_SET_VALUE)
-        with registry.OpenKey(root, path, 0, access) as regkey:
-            with suppress(FileNotFoundError):
-                registry.DeleteValue(regkey, key)
+        with registry.OpenKey(root, path, 0, access) as regkey, suppress(FileNotFoundError):
+            registry.DeleteValue(regkey, key)
 
 
 def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]:

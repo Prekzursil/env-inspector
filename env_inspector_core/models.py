@@ -6,6 +6,8 @@ from typing import Any, Dict
 
 @dataclass
 class EnvRecord:
+    """Environment variable record from any source."""
+
     source_type: str
     source_id: str
     source_path: str
@@ -29,6 +31,8 @@ class EnvRecord:
 
 @dataclass
 class OperationResult:
+    """Result of a set, remove, or restore operation."""
+
     operation_id: str
     target: str
     action: str

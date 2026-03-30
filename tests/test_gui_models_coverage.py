@@ -3,12 +3,11 @@
 from __future__ import absolute_import, division
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import (
     PersistedUiState,
-    SortState,
     build_effective_value_text,
     build_status_line,
     has_multiple_dotenv_matches,
@@ -364,9 +363,11 @@ def test_select_target_dialog_result_none():
 
 def test_select_target_dialog_result_empty():
     class FakeMsgBox:
+        """Stub messagebox for testing dialog result helpers."""
+
         @staticmethod
         def showinfo(*_args: object) -> None:
-            pass
+            """Stub for testing."""
 
     result = select_target_dialog_result([], messagebox=FakeMsgBox(), app_name="Test")
     ensure(result is None)

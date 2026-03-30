@@ -19,6 +19,8 @@ _NONE_LIST_ITEM = "- None"
 
 @dataclass
 class CoverageStats:
+    """Coverage statistics for a single report component."""
+
     name: str
     path: str
     covered: int

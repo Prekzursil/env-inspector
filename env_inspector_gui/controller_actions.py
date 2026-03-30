@@ -15,6 +15,8 @@ COPY_PROMPT_TITLE = "Confirm Sensitive Value"
 
 
 class EnvInspectorControllerActionsMixin:
+    """Mixin providing clipboard, export, and backup actions for the controller."""
+
     tk: Any
     messagebox: Any
     filedialog: Any

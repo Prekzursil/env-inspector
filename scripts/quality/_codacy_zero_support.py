@@ -19,6 +19,8 @@ SafeOutputPathInWorkspace = Callable[..., Path]
 
 @dataclass(frozen=True)
 class CodacyRequest:
+    """Parameters for a Codacy API issue-search request."""
+
     provider: str
     owner: str
     repo: str

@@ -2,8 +2,7 @@
 
 from __future__ import absolute_import, division
 
-from types import SimpleNamespace
-from typing import Any, Dict, List
+from typing import Any, List
 from unittest.mock import MagicMock
 
 from tests.assertions import ensure
@@ -127,55 +126,55 @@ class _MockController:
         self.effective_value_var = MagicMock()
 
     def choose_folder(self) -> None:
-        pass
+        """Stub for testing."""
 
     def refresh_data(self) -> None:
-        pass
+        """Stub for testing."""
 
     def on_context_selected(self) -> None:
-        pass
+        """Stub for testing."""
 
     def on_filter_changed(self) -> None:
-        pass
+        """Stub for testing."""
 
     def on_filter_escape(self) -> None:
-        pass
+        """Stub for testing."""
 
     def on_sort_column(self, col: str) -> None:
-        pass
+        """Stub for testing."""
 
     def on_tree_selected(self) -> None:
-        pass
+        """Stub for testing."""
 
     def copy_selected_name(self) -> None:
-        pass
+        """Stub for testing."""
 
     def copy_selected_value(self) -> None:
-        pass
+        """Stub for testing."""
 
     def copy_selected_pair(self) -> None:
-        pass
+        """Stub for testing."""
 
     def copy_selected_source_path(self) -> None:
-        pass
+        """Stub for testing."""
 
     def open_selected_source(self) -> None:
-        pass
+        """Stub for testing."""
 
     def load_selected(self) -> None:
-        pass
+        """Stub for testing."""
 
     def choose_targets(self) -> None:
-        pass
+        """Stub for testing."""
 
     def _run_operation(self, action: str) -> None:
-        pass
+        """Stub for testing."""
 
     def export_records(self, fmt: str) -> None:
-        pass
+        """Stub for testing."""
 
     def restore_backup(self) -> None:
-        pass
+        """Stub for testing."""
 
 
 def _build_view():
@@ -308,7 +307,7 @@ def test_insert_table_row():
 def test_insert_table_row_odd():
     view = _build_view()
     view.tree.insert.return_value = "new_item"
-    result = view.insert_table_row(("a",), striped=False)
+    view.insert_table_row(("a",), striped=False)
     view.tree.insert.assert_called_with("", "end", values=("a",), tags=("row_odd",))
 
 

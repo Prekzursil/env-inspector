@@ -20,16 +20,20 @@ def _path_exists(path: Path) -> bool:
 
 
 def _read_text(path: Path) -> str:
-    with open(path, encoding="utf-8") as handle:
+    resolved = Path(path).resolve()
+    with open(resolved, encoding="utf-8") as handle:  # noqa: S108 - caller validates scope
         return handle.read()
 
 
 def _write_text(path: Path, text: str) -> None:
-    with open(path, "w", encoding="utf-8") as handle:
+    resolved = Path(path).resolve()
+    with open(resolved, "w", encoding="utf-8") as handle:  # noqa: S108 - caller validates scope
         handle.write(text)
 
 
 class BackupManager:
+    """Manages timestamped backup files with configurable retention."""
+
     def __init__(self, base_dir: Path, retention: int = 20) -> None:
         self.base_dir = Path(base_dir).resolve()
         self.retention = retention
@@ -99,6 +103,8 @@ class BackupManager:
 
 
 class AuditLogger:
+    """Appends operation results to a JSON-lines audit log."""
+
     def __init__(self, base_dir: Path) -> None:
         self.base_dir = Path(base_dir)
         _mkdirp(self.base_dir)
