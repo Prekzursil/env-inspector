@@ -52,7 +52,7 @@ def test_windows_registry_provider_init_succeeds_on_windows(monkeypatch: pytest.
     fake_winreg = types.SimpleNamespace()
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
     provider = providers.WindowsRegistryProvider()
-    assert provider is not None
+    assert isinstance(provider, providers.WindowsRegistryProvider)
 
 
 # ---------------------------------------------------------------------------

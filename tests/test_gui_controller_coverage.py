@@ -815,7 +815,7 @@ def test_render_table():
     ctrl.service = MagicMock()
     ctrl.service.runtime_context = "linux"
     ctrl._render_table()
-    ensure(len(ctrl.displayed_rows) >= 0)
+    ensure(len(ctrl.displayed_rows) > 0)
 
 
 # --- _update_effective ---
@@ -914,7 +914,7 @@ def test_real_load_boot_state():
     with patch("env_inspector_gui.controller.load_ui_state", return_value=PersistedUiState()), \
          patch("env_inspector_gui.controller.resolve_scan_root", return_value=cwd), \
          patch("env_inspector_gui.controller.sanitize_loaded_state", return_value=PersistedUiState(context="linux")):
-        boot_state, fallback = EnvInspectorController._load_boot_state(ctrl, cwd)
+        boot_state, _fallback = EnvInspectorController._load_boot_state(ctrl, cwd)
     ensure(isinstance(boot_state, PersistedUiState))
     ensure(boot_state.context == "linux")
 
@@ -989,7 +989,7 @@ def test_real_load_tk_modules():
     sys.modules["tkinter.messagebox"] = mock_messagebox
     sys.modules["tkinter.ttk"] = mock_ttk
     try:
-        tk, fd, mb, t = EnvInspectorController._load_tk_modules()
+        tk, _fd, _mb, _t = EnvInspectorController._load_tk_modules()
         ensure(tk is mock_tkinter)
     finally:
         for mod_name, original in saved.items():
