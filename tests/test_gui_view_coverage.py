@@ -23,12 +23,21 @@ def _make_mock_widget(**extras: Any) -> MagicMock:
 class _MockTkModule:
     """Mock for the `tkinter` module (tkmod)."""
 
+    _PASCAL_TO_SNAKE = {
+        "StringVar": "string_var",
+        "Text": "text_widget",
+    }
+
     def __init__(self) -> None:
         """Handle   init  ."""
         self._vars: List[MagicMock] = []
-        # Expose PascalCase aliases matching real tkinter API
-        self.StringVar = self.string_var
-        self.Text = self.text_widget
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate PascalCase tkinter names to snake_case methods."""
+        snake = self._PASCAL_TO_SNAKE.get(name)
+        if snake is not None:
+            return getattr(self, snake)
+        raise AttributeError(name)
 
     def string_var(self, value: str = "") -> MagicMock:
         """Handle string var."""
@@ -50,21 +59,27 @@ class _MockTkModule:
 class _MockTtk:
     """Mock for tkinter.ttk module."""
 
-    def __init__(self) -> None:
-        # Expose PascalCase aliases matching real tkinter.ttk API
-        """Handle   init  ."""
-        self.Frame = self.frame
-        self.Label = self.label
-        self.Button = self.button
-        self.Entry = self.entry
-        self.Combobox = self.combobox
-        self.Checkbutton = self.checkbutton
-        self.Scrollbar = self.scrollbar
-        self.LabelFrame = self.label_frame
-        self.PanedWindow = self.paned_window
-        self.Treeview = self.treeview
-        self.Spinbox = self.spinbox
-        self.Progressbar = self.progressbar
+    _PASCAL_TO_SNAKE = {
+        "Frame": "frame",
+        "Label": "label",
+        "Button": "button",
+        "Entry": "entry",
+        "Combobox": "combobox",
+        "Checkbutton": "checkbutton",
+        "Scrollbar": "scrollbar",
+        "LabelFrame": "label_frame",
+        "PanedWindow": "paned_window",
+        "Treeview": "treeview",
+        "Spinbox": "spinbox",
+        "Progressbar": "progressbar",
+    }
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate PascalCase tkinter.ttk names to snake_case methods."""
+        snake = self._PASCAL_TO_SNAKE.get(name)
+        if snake is not None:
+            return getattr(self, snake)
+        raise AttributeError(name)
 
     def frame(self, parent: Any, **kwargs: Any) -> MagicMock:
         """Handle frame."""
