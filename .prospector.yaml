@@ -1,0 +1,25 @@
+# Prospector configuration for Codacy. Suppress only well-known
+# style/preference rules; every real finding still surfaces under
+# Bandit, PyLintPython3, Pyright, Ruff, and the rest of the matrix.
+
+strictness: high
+test-warnings: true
+doc-warnings: true
+
+pydocstyle:
+  disable:
+    # D107: Missing docstring in __init__ — class-level docstrings cover the
+    #       constructor; PEP 257 considers __init__ documentation optional.
+    # D203: 1 blank line required before class docstring — conflicts with
+    #       D211 (no blank line); we follow D211 to match black/ruff.
+    # D213: Multi-line docstring summary should start at the second line —
+    #       conflicts with D212 (start at first line); we follow D212.
+    - D107
+    - D203
+    - D213
+
+pyflakes:
+  disable: []
+
+mccabe:
+  disable: []
