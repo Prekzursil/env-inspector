@@ -154,7 +154,7 @@ def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(
         )
 
 
-def test_restore_helpers_reject_positional_arguments(_tmp_path: Path) -> None:
+def test_restore_helpers_reject_positional_arguments(tmp_path: Path) -> None:  # noqa: ARG001 - pytest fixture
     """Test restore helpers reject positional arguments."""
     with pytest.raises(
         TypeError, match="restore_dotenv_target accepts keyword arguments only"
