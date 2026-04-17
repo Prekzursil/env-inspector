@@ -1,5 +1,5 @@
-"""Codacy zero impl module."""
 #!/usr/bin/env python3
+"""Codacy zero impl module."""
 
 import argparse
 import sys
@@ -228,9 +228,7 @@ def _query_open_issues(
             return open_issues, findings
         last_exc = error
     providers_text = ", ".join(provider_candidates_fn(request.provider))
-    findings = [
-        f"Codacy API endpoint was not found for provider(s): {providers_text}."
-    ]
+    findings = [f"Codacy API endpoint was not found for provider(s): {providers_text}."]
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")
     return None, findings

@@ -1,5 +1,5 @@
-"""Check sonar zero module."""
 #!/usr/bin/env python3
+"""Check sonar zero module."""
 
 import argparse
 import base64
@@ -30,7 +30,9 @@ SONAR_API_BASE = f"https://{SONAR_API_HOST}"
 def _parse_args() -> argparse.Namespace:
     """Parse args."""
     parser = argparse.ArgumentParser(
-        description="Assert SonarCloud has zero open issues and zero open security hotspots."
+        description=(
+            "Assert SonarCloud has zero open issues and zero open security hotspots."
+        )
     )
     parser.add_argument("--project-key", required=True, help="Sonar project key")
     parser.add_argument(
@@ -202,7 +204,8 @@ def _evaluate_sonar(
         findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
     if open_hotspots != 0:
         findings.append(
-            f"Sonar reports {open_hotspots} open security hotspots pending review (expected 0)."
+            f"Sonar reports {open_hotspots} open security hotspots "
+            "pending review (expected 0)."
         )
     if quality_gate != "OK":
         quality_gate_warning = (

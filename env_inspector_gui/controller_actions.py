@@ -61,7 +61,8 @@ class EnvInspectorControllerActionsMixin:
             rec,
             show_secrets=bool(self.show_secrets.get()),
             confirm_raw=lambda: self._confirm_hidden_secret(
-                "This value appears to be a secret and is hidden. Load raw value into the editor?"
+                "This value appears to be a secret and is hidden. "
+                "Load raw value into the editor?"
             ),
         )
 
@@ -104,7 +105,8 @@ class EnvInspectorControllerActionsMixin:
             rec,
             show_secrets=bool(self.show_secrets.get()),
             confirm_raw=lambda: self._confirm_hidden_secret(
-                "This value appears to be a secret and is hidden. Copy raw value to clipboard?"
+                "This value appears to be a secret and is hidden. "
+                "Copy raw value to clipboard?"
             ),
             as_pair=False,
         )
@@ -128,7 +130,8 @@ class EnvInspectorControllerActionsMixin:
             rec,
             show_secrets=bool(self.show_secrets.get()),
             confirm_raw=lambda: self._confirm_hidden_secret(
-                "This value appears to be a secret and is hidden. Copy raw name=value to clipboard?"
+                "This value appears to be a secret and is hidden. "
+                "Copy raw name=value to clipboard?"
             ),
             as_pair=True,
         )

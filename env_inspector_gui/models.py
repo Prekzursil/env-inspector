@@ -233,7 +233,9 @@ def summarize_operation_result(
                 + "\n".join(str(item.get("error_message", "")) for item in failures),
             )
         return OperationResultSummary(
-            status_message=f"{action.title()} succeeded for {len(result['results'])} targets",
+            status_message=(
+                f"{action.title()} succeeded for {len(result['results'])} targets"
+            ),
             error_message=None,
         )
 

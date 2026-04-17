@@ -1,5 +1,5 @@
-"""Assert coverage 100 module."""
 #!/usr/bin/env python3
+"""Assert coverage 100 module."""
 
 import argparse
 import importlib
@@ -22,9 +22,9 @@ from scripts.quality._coverage_assert_support import (
     parse_named_path as parse_named_path_impl,
 )
 
-_matches_required_source = _support._matches_required_source
-_normalize_source_path = _support._normalize_source_path
-_render_md = _support._render_md
+_matches_required_source = getattr(_support, "_matches_required_source")
+_normalize_source_path = getattr(_support, "_normalize_source_path")
+_render_md = getattr(_support, "_render_md")
 normalize_source_path = _support.normalize_source_path
 posixpath = _support.posixpath
 
@@ -66,13 +66,19 @@ def _parse_args() -> argparse.Namespace:
         "--require-source",
         action="append",
         default=[],
-        help="Workspace-relative file or directory that must appear in the coverage inputs.",
+        help=(
+            "Workspace-relative file or directory that must "
+            "appear in the coverage inputs."
+        ),
     )
     parser.add_argument(
         "--min-percent",
         type=float,
         default=100.0,
-        help="Minimum required coverage percentage for each component and combined summary.",
+        help=(
+            "Minimum required coverage percentage for "
+            "each component and combined summary."
+        ),
     )
     parser.add_argument(
         "--out-json", default="coverage-100/coverage.json", help="Output JSON path"

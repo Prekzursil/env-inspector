@@ -1,5 +1,5 @@
-"""Check sentry zero module."""
 #!/usr/bin/env python3
+"""Check sentry zero module."""
 
 import argparse
 import importlib
@@ -191,7 +191,8 @@ def _scan_projects(
             unresolved = _resolve_unresolved_count(issues, headers, project, failures)
             if unresolved != 0:
                 failures.append(
-                    f"Sentry project {project} has {unresolved} unresolved issues (expected 0)."
+                    f"Sentry project {project} has {unresolved} unresolved "
+                    "issues (expected 0)."
                 )
             project_results.append({"project": project, "unresolved": unresolved})
         except urllib.error.HTTPError as exc:

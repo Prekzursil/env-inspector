@@ -1,5 +1,5 @@
-"""Codacy zero support module."""
 #!/usr/bin/env python3
+"""Codacy zero support module."""
 
 import importlib
 import sys

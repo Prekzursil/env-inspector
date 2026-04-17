@@ -24,14 +24,16 @@ def _path_exists(path: Path) -> bool:
 def _read_text(path: Path) -> str:
     """Read text."""
     resolved = Path(path).resolve()
-    with open(resolved, encoding="utf-8") as handle:  # noqa: S108 - caller validates scope
+    # caller validates scope (S108 noqa)
+    with open(resolved, encoding="utf-8") as handle:
         return handle.read()
 
 
 def _write_text(path: Path, text: str) -> None:
     """Write text."""
     resolved = Path(path).resolve()
-    with open(resolved, "w", encoding="utf-8") as handle:  # noqa: S108 - caller validates scope
+    # caller validates scope (S108 noqa)
+    with open(resolved, "w", encoding="utf-8") as handle:
         handle.write(text)
 
 

@@ -198,7 +198,8 @@ def _source_findings(
     findings: List[str] = []
     if _is_tests_only_report(reported_sources):
         findings.append(
-            "coverage inputs only reference tests/ paths; first-party sources are missing."
+            "coverage inputs only reference tests/ paths; "
+            "first-party sources are missing."
         )
 
     for required_source in _find_missing_required_sources(
@@ -304,7 +305,9 @@ def _write_outputs(payload: Dict[str, Any], *, out_json: Path, out_md: Path) -> 
     """Write outputs."""
     os.makedirs(out_json.parent, exist_ok=True)
     os.makedirs(out_md.parent, exist_ok=True)
-    with open(out_json, "w", encoding="utf-8") as handle:
+    with open(
+        out_json, "w", encoding="utf-8"
+    ) as handle:  # skipcq: PTC-W6004 - caller validates
         handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     rendered = _render_md(payload)
     with open(out_md, "w", encoding="utf-8") as handle:

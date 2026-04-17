@@ -166,13 +166,13 @@ class EnvInspectorView:
         )
         self.choose_targets_button.grid(row=0, column=5, padx=(0, 6))
         self.set_button = ttk.Button(
-            mutate, text="Set", command=lambda: self.controller._run_operation("set")
+            mutate, text="Set", command=lambda: self.controller.run_operation("set")
         )
         self.set_button.grid(row=0, column=6, padx=(0, 6))
         self.remove_button = ttk.Button(
             mutate,
             text="Remove",
-            command=lambda: self.controller._run_operation("remove"),
+            command=lambda: self.controller.run_operation("remove"),
         )
         self.remove_button.grid(row=0, column=7)
 

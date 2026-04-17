@@ -165,7 +165,7 @@ class _MockView:
         Captures call args so production code matches our test surface; the
         return value is the Treeview iid we hand back for selection assertions.
         """
-        del values, striped  # acknowledged but unused in this stub
+        # values + striped intentionally unused — stub mirrors view protocol
         return "item1"
 
     def update_details_value(self, text: str) -> None:

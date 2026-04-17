@@ -34,7 +34,7 @@ jobs:
           # bare literal as a hardcoded credential — the real value still comes
           # from GitHub Actions secrets at workflow level.
           _api_env_name = "_".join(("CODACY", "API", "TOKEN"))
-          token = os.environ.get(_api_env_name, "").strip()
+          token = os.environ.get(_api_env_name, "").strip()  # skipcq: SCT-A000 - env var name lookup
           if not token:
               raise SystemExit(f"{_api_env_name} missing")
 
