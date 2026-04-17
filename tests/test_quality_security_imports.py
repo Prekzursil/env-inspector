@@ -1,17 +1,19 @@
-from __future__ import absolute_import, division
+"""Test quality security imports module."""
 
 import importlib
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 from scripts.quality import _security_imports as security_imports
 
 
 def _case() -> unittest.TestCase:
+    """Case."""
     return unittest.TestCase()
 
 
 def test_security_imports_reloads_and_exposes_helpers():
+    """Test security imports reloads and exposes helpers."""
     reloaded = importlib.reload(security_imports)
 
     case = _case()
@@ -21,6 +23,7 @@ def test_security_imports_reloads_and_exposes_helpers():
 
 
 def test_security_imports_fallback_loader_inserts_helper_root(monkeypatch):
+    """Test security imports fallback loader inserts helper root."""
     import types
 
     case = _case()
@@ -32,6 +35,7 @@ def test_security_imports_fallback_loader_inserts_helper_root(monkeypatch):
     )
 
     def _fake_import_module(name: str):
+        """Fake import module."""
         if name == "scripts.security_helpers":
             raise ModuleNotFoundError("scripts package unavailable")
         return types.SimpleNamespace(

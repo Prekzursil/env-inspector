@@ -1,5 +1,5 @@
+"""Check sonar zero module."""
 #!/usr/bin/env python3
-from __future__ import absolute_import, division
 
 import argparse
 import base64
@@ -28,6 +28,7 @@ SONAR_API_BASE = f"https://{SONAR_API_HOST}"
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse args."""
     parser = argparse.ArgumentParser(
         description="Assert SonarCloud has zero open issues and zero open security hotspots."
     )
@@ -47,13 +48,15 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _auth_header(token: str) -> str:
-    raw = f"{token}:".encode("utf-8")
+    """Auth header."""
+    raw = f"{token}:".encode()
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
 def _request_json(
-    *, path: str, query: Dict[str, str], auth_header: str
-) -> Dict[str, Any]:
+    *, path: str, query: dict[str, str], auth_header: str
+) -> dict[str, Any]:
+    """Request json."""
     payload, _headers = request_json_https(
         host=SONAR_API_HOST,
         path=path,
@@ -72,7 +75,8 @@ def _request_json(
 
 def _build_issue_query(
     project_key: str, *, branch: str, pull_request: str
-) -> Dict[str, str]:
+) -> dict[str, str]:
+    """Build issue query."""
     query = {
         "componentKeys": project_key,
         "resolved": "false",
@@ -88,6 +92,7 @@ def _build_issue_query(
 def _build_quality_gate_query(
     project_key: str, *, branch: str, pull_request: str
 ) -> dict:
+    """Build quality gate query."""
     query = {"projectKey": project_key}
     if pull_request:
         query["pullRequest"] = pull_request
@@ -98,7 +103,8 @@ def _build_quality_gate_query(
 
 def _build_hotspot_query(
     project_key: str, *, branch: str, pull_request: str
-) -> Dict[str, str]:
+) -> dict[str, str]:
+    """Build hotspot query."""
     query = {
         "projectKey": project_key,
         "status": "TO_REVIEW",
@@ -117,7 +123,8 @@ def _fetch_sonar_status(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> Tuple[int, str, int]:
+) -> tuple[int, str, int]:
+    """Fetch sonar status."""
     issues_payload = _request_json(
         path="/api/issues/search",
         query=_build_issue_query(project_key, branch=branch, pull_request=pull_request),
@@ -155,7 +162,8 @@ def _evaluate_sonar(
     branch: str,
     pull_request: str,
 ) -> tuple:
-    findings: List[str] = []
+    """Evaluate sonar."""
+    findings: list[str] = []
     open_issues: int | None = None
     quality_gate: str | None = None
     open_hotspots: int | None = None
@@ -206,6 +214,7 @@ def _evaluate_sonar(
 
 
 def _render_md(payload: dict) -> str:
+    """Render md."""
     lines = [
         "# Sonar Zero Gate",
         "",
@@ -232,6 +241,7 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
+    """Main."""
     args = _parse_args()
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
 

@@ -1,7 +1,5 @@
 """Coverage tests for env_inspector_gui.dialogs — full coverage via mocked tkinter."""
 
-from __future__ import absolute_import, division
-
 import sys
 from typing import Any
 from unittest.mock import MagicMock, patch

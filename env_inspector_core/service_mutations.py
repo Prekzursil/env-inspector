@@ -1,11 +1,10 @@
 """Mutation helpers bound onto :class:`EnvInspectorService`."""
 
-from __future__ import absolute_import, division
-
 import uuid
 from pathlib import Path
 from typing import Any, List, Tuple
 
+from . import service_privileged as _service_privileged
 from .models import OperationResult
 from .parsing import (
     remove_export,
@@ -20,7 +19,6 @@ from .parsing import (
 from .path_policy import parse_scoped_dotenv_target
 from .rendering import audit_safe_result
 from .secrets import looks_secret
-from . import service_privileged as _service_privileged
 from .service_models import (
     ShellMutationRequest,
     TargetOperationBatch,
@@ -28,15 +26,29 @@ from .service_models import (
 )
 from .service_ops import (
     OperationResultInput,
+)
+from .service_ops import (
     diff_text as _diff_text_helper,
+)
+from .service_ops import (
     masked_value as _masked_value_helper,
+)
+from .service_ops import (
     normalize_target_operation_batch as _normalize_target_operation_batch_helper,
+)
+from .service_ops import (
     normalize_target_operation_request as _normalize_target_operation_request_helper,
+)
+from .service_ops import (
     operation_error_types as _operation_error_types_helper,
+)
+from .service_ops import (
     operation_result as _operation_result_helper,
 )
 from .service_wsl import (
     parse_wsl_dotenv_target as _parse_wsl_dotenv_target_helper,
+)
+from .service_wsl import (
     resolve_wsl_target as _resolve_wsl_target_helper,
 )
 
@@ -49,7 +61,7 @@ TARGET_POWERSHELL_ALL_USERS = "powershell:all_users"
 DOTENV_TARGET_PREFIX = "dotenv:"
 WSL_DOTENV_TARGET_PREFIX = "wsl_dotenv:"
 LINUX_ETC_ENV_PATH = "/etc/environment"
-PlannedMutation = Tuple[str, str, str | None, bool, str | None]
+PlannedMutation = tuple[str, str, str | None, bool, str | None]
 
 
 def _coerce_target_request(*args: Any, **kwargs: Any) -> TargetOperationRequest:
@@ -186,7 +198,7 @@ def write_linux_etc_environment_with_privilege(self, text: str) -> None:
     )
 
 
-def parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
+def parse_wsl_dotenv_target(self, target: str) -> tuple[str, str]:
     """Parse and validate a WSL dotenv target."""
     return _parse_wsl_dotenv_target_helper(
         target,
@@ -196,7 +208,7 @@ def parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
     )
 
 
-def resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
+def resolve_wsl_target(self, target: str) -> tuple[str, str, str, bool]:
     """Resolve a WSL mutation target into concrete file details."""
     return _resolve_wsl_target_helper(
         target,
@@ -297,7 +309,7 @@ def validate_target_for_operation(
     self,
     target: str,
     *,
-    scope_roots: List[Path],
+    scope_roots: list[Path],
 ) -> None:
     """Validate that a target can participate in a mutation."""
     if target in {
@@ -321,7 +333,7 @@ def validate_target_for_operation(
     raise RuntimeError(f"Unsupported target: {target}")
 
 
-def preview_target_diff(self, *args: Any, **kwargs: Any) -> Tuple[str, str]:
+def preview_target_diff(self, *args: Any, **kwargs: Any) -> tuple[str, str]:
     """Return the original text and preview diff for a target mutation."""
     request = _coerce_target_request(*args, **kwargs)
     validate_target_for_operation(
@@ -399,7 +411,7 @@ def apply(
     *args: Any,
     preview_only: bool = False,
     **kwargs: Any,
-) -> List[OperationResult]:
+) -> list[OperationResult]:
     """Apply a normalized batch of mutations across selected targets."""
     request = _coerce_target_batch(*args, **kwargs)
     validate_env_key(request.key)
@@ -408,7 +420,7 @@ def apply(
 
     secret_operation = looks_secret(request.key, request.value or "")
     resolved_scope_roots = self.effective_scope_roots(request.scope_roots)
-    results: List[OperationResult] = []
+    results: list[OperationResult] = []
     for target in request.targets:
         target_request = TargetOperationRequest(
             target=target,

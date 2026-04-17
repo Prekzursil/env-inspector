@@ -1,13 +1,13 @@
 """Command-line entrypoints for Env Inspector."""
 
-from __future__ import absolute_import, division
 import argparse
 import csv
 import io
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List
+from collections.abc import Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 from .service import EnvInspectorService
@@ -89,7 +89,7 @@ def _is_successful_payload(item: dict) -> bool:
     return bool(item.get("success", False))
 
 
-def _list_payload_success(payload: List[object]) -> bool:
+def _list_payload_success(payload: list[object]) -> bool:
     """Return whether every payload item reports success."""
     items = [item for item in payload if isinstance(item, dict)]
     return bool(items) and all(_is_successful_payload(item) for item in items)
@@ -114,9 +114,9 @@ def _reject_raw_secret_stdout(args: argparse.Namespace) -> None:
         )
 
 
-def _sanitize_stdout_row(row: Dict[str, Any]) -> Dict[str, Any]:
+def _sanitize_stdout_row(row: dict[str, Any]) -> dict[str, Any]:
     """Mask secret values before writing rows to stdout."""
-    safe_row: Dict[str, Any] = {}
+    safe_row: dict[str, Any] = {}
     for key in _SAFE_EXPORT_KEYS:
         if key == "value":
             safe_row[key] = (
@@ -129,7 +129,7 @@ def _sanitize_stdout_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
 def _stdout_safe_rows(
     service: SupportsListRecords, args: argparse.Namespace
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Collect rows that are safe to emit directly to stdout."""
     rows = service.list_records(
         include_raw_secrets=False,
@@ -140,13 +140,13 @@ def _stdout_safe_rows(
         distro=args.distro,
         scan_depth=args.scan_depth,
     )
-    safe_rows: List[Dict[str, Any]] = []
+    safe_rows: list[dict[str, Any]] = []
     for row in rows:
         safe_rows.append(_sanitize_stdout_row(row))
     return safe_rows
 
 
-def _emit_stdout_rows(rows: List[Dict[str, Any]], *, output: str) -> None:
+def _emit_stdout_rows(rows: list[dict[str, Any]], *, output: str) -> None:
     """Emit rows in the requested stdout format."""
     if output == "json":
         sys.stdout.write(json.dumps(rows, ensure_ascii=True, indent=2))

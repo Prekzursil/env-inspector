@@ -5,25 +5,16 @@ to keep this file under Lizard's medium NLOC threshold. Both files share fixture
 from tests._gui_controller_fixtures.
 """
 
-from __future__ import absolute_import, division
-
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-from env_inspector_core.models import EnvRecord
-from env_inspector_gui.controller import EnvInspectorApp, EnvInspectorController
-from env_inspector_gui.models import DisplayedRow, PersistedUiState
-
+from env_inspector_gui.controller import EnvInspectorController
+from env_inspector_gui.models import PersistedUiState
 from tests._gui_controller_fixtures import (
-    _BOOTSTRAP_TK_MODULE,
-    _BootstrapRoot,
     _Harness,
-    _MockView,
-    _NEGATIVE_FLAG_TEXT,
-    _Var,
     _make_record,
     _make_row,
+    _Var,
 )
 from tests.assertions import ensure
 

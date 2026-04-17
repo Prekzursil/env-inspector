@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Constants module."""
 
 SOURCE_PROCESS = "process"
 SOURCE_WINDOWS_USER = "windows_user"

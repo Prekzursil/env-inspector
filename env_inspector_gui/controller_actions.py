@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Controller actions module."""
 
 from pathlib import Path
 from typing import Any
@@ -31,18 +31,23 @@ class EnvInspectorControllerActionsMixin:
     root_path: Path
 
     def _selected_row(self) -> Any:
+        """Selected row."""
         raise NotImplementedError
 
     def _set_status(self, text: str) -> None:
+        """Set status."""
         raise NotImplementedError
 
     def _update_effective(self, key: str) -> None:
+        """Update effective."""
         raise NotImplementedError
 
     def refresh_data(self) -> None:
+        """Refresh data."""
         raise NotImplementedError
 
     def load_selected(self) -> None:
+        """Load selected."""
         row = self._selected_row()
         if not row:
             self._show_select_row_required()
@@ -72,10 +77,12 @@ class EnvInspectorControllerActionsMixin:
         self._update_effective(rec.name)
 
     def _selected_record(self) -> EnvRecord | None:
+        """Selected record."""
         row = self._selected_row()
         return row.record if row else None
 
     def copy_selected_name(self) -> None:
+        """Copy selected name."""
         rec = self._selected_record()
         if rec is None:
             self._show_select_row_required()
@@ -86,6 +93,7 @@ class EnvInspectorControllerActionsMixin:
         self._set_status(f"Copied name: {rec.name}")
 
     def copy_selected_value(self) -> None:
+        """Copy selected value."""
         rec = self._selected_record()
         if rec is None:
             self._show_select_row_required()
@@ -109,6 +117,7 @@ class EnvInspectorControllerActionsMixin:
             self._set_status(f"Copied value for: {rec.name}")
 
     def copy_selected_pair(self) -> None:
+        """Copy selected pair."""
         rec = self._selected_record()
         if rec is None:
             self._show_select_row_required()
@@ -132,6 +141,7 @@ class EnvInspectorControllerActionsMixin:
             self._set_status(f"Copied pair: {rec.name}=...")
 
     def copy_selected_source_path(self) -> None:
+        """Copy selected source path."""
         rec = self._selected_record()
         if rec is None:
             self._show_select_row_required()
@@ -142,6 +152,7 @@ class EnvInspectorControllerActionsMixin:
         self._set_status("Copied source path")
 
     def open_selected_source(self) -> None:
+        """Open selected source."""
         rec = self._selected_record()
         if rec is None:
             self._show_select_row_required()
@@ -154,6 +165,7 @@ class EnvInspectorControllerActionsMixin:
             self.messagebox.showinfo(APP_NAME, err or "Cannot open this source path")
 
     def export_records(self, output: str) -> None:
+        """Export records."""
         context = self.context_var.get() or None
         distro = self.wsl_distro_var.get().strip() or None
         wsl_path = self.wsl_path_var.get().strip() or None
@@ -182,6 +194,7 @@ class EnvInspectorControllerActionsMixin:
         self._set_status(f"Exported {output.upper()} to {path}")
 
     def restore_backup(self) -> None:
+        """Restore backup."""
         backups = self.service.list_backups()
         if not backups:
             self.messagebox.showinfo(APP_NAME, "No backups found.")
@@ -204,7 +217,9 @@ class EnvInspectorControllerActionsMixin:
             )
 
     def _show_select_row_required(self) -> None:
+        """Show select row required."""
         self.messagebox.showinfo(APP_NAME, MSG_SELECT_ROW_FIRST)
 
     def _confirm_hidden_secret(self, prompt: str) -> bool:
+        """Confirm hidden secret."""
         return bool(self.messagebox.askyesno(COPY_PROMPT_TITLE, prompt))

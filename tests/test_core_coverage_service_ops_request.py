@@ -1,22 +1,20 @@
 """Coverage tests for service_ops_request.py — request normalization edge cases."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 import types
 
 import pytest
 
 from env_inspector_core.service_ops_request import (
-    _raise_mixed_request_usage,
-    _extract_request_object,
-    _target_operation_batch_payload,
-    _coerce_string,
     _coerce_optional_string,
+    _coerce_string,
+    _extract_request_object,
+    _raise_mixed_request_usage,
     _require_values,
-    normalize_target_operation_request,
+    _target_operation_batch_payload,
     normalize_target_operation_batch,
+    normalize_target_operation_request,
 )
+from tests.assertions import ensure
 
 
 # Line 7: _raise_mixed_request_usage

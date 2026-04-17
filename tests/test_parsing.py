@@ -1,7 +1,5 @@
 """Tests for env-file parsing and mutation helpers."""
 
-from __future__ import absolute_import, division
-
 import unittest
 
 import env_inspector_core.parsing as parsing

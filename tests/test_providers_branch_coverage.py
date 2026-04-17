@@ -1,10 +1,8 @@
 """Branch-coverage tests for provider edge paths and WSL helpers."""
 
-from __future__ import absolute_import, division
-
+import unittest
 from pathlib import Path
 from typing import List, cast
-import unittest
 
 import pytest
 
@@ -121,7 +119,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs() -> None:
             return True
 
         @staticmethod
-        def list_distros() -> List[str]:
+        def list_distros() -> list[str]:
             """Return a single distro for collection."""
             return ["Ubuntu"]
 
@@ -157,7 +155,7 @@ def test_collect_wsl_records_respects_excluded_distros() -> None:
             return True
 
         @staticmethod
-        def list_distros() -> List[str]:
+        def list_distros() -> list[str]:
             """Return two distros so one can be excluded."""
             return ["Ubuntu", "Debian"]
 
@@ -214,7 +212,7 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files() -> N
             _distro: str,
             _root_path: str,
             _max_depth: int,
-        ) -> List[str]:
+        ) -> list[str]:
             """Return the dotenv files that should be scanned."""
             return ["/workspace/.env"]
 

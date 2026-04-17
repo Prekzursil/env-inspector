@@ -1,5 +1,5 @@
+"""Check deepscan zero module."""
 #!/usr/bin/env python3
-from __future__ import absolute_import, division
 
 import argparse
 import importlib
@@ -10,13 +10,14 @@ import urllib.error
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple, cast
+from typing import Any, Dict, List, Tuple, cast
+from collections.abc import Callable
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
-RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
+RequestJsonHttps = Callable[..., tuple[Any, dict[str, str]]]
 SafeOutputPathInWorkspace = Callable[..., Path]
-SplitValidatedHttpsUrl = Callable[..., Tuple[str, str, Dict[str, str]]]
+SplitValidatedHttpsUrl = Callable[..., tuple[str, str, dict[str, str]]]
 
 
 @dataclass(frozen=True)
@@ -27,10 +28,11 @@ class DeepScanRequest:
     path: str
     query: dict
     token: str
-    findings: List[str]
+    findings: list[str]
 
 
 def _load_security_imports() -> Any:
+    """Load security imports."""
     try:
         return importlib.import_module("scripts.quality._security_imports")
     except ModuleNotFoundError:  # pragma: no cover - direct script execution
@@ -54,6 +56,7 @@ split_validated_https_url = cast(
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse args."""
     parser = argparse.ArgumentParser(
         description="Assert DeepScan has zero total open issues."
     )
@@ -72,7 +75,8 @@ def _parse_args() -> argparse.Namespace:
 
 
 def extract_total_open(payload: Any) -> int | None:
-    stack: List[Any] = [payload]
+    """Extract total open."""
+    stack: list[Any] = [payload]
     while stack:
         node = stack.pop()
         if isinstance(node, dict):
@@ -87,8 +91,9 @@ def extract_total_open(payload: Any) -> int | None:
 
 
 def _request_json(
-    *, host: str, path: str, query: Dict[str, str], token: str
-) -> Dict[str, Any]:
+    *, host: str, path: str, query: dict[str, str], token: str
+) -> dict[str, Any]:
+    """Request json."""
     payload, _headers = request_json_https(
         host=host,
         path=path,
@@ -105,7 +110,8 @@ def _request_json(
     return payload
 
 
-def _resolve_deepscan_endpoint(open_issues_url: str) -> Tuple[str, str, Dict[str, str]]:
+def _resolve_deepscan_endpoint(open_issues_url: str) -> tuple[str, str, dict[str, str]]:
+    """Resolve deepscan endpoint."""
     return split_validated_https_url(
         open_issues_url,
         allowed_host_suffixes={"deepscan.io"},
@@ -113,6 +119,7 @@ def _resolve_deepscan_endpoint(open_issues_url: str) -> Tuple[str, str, Dict[str
 
 
 def _coerce_fetch_request(*args: Any, **kwargs: Any) -> DeepScanRequest:
+    """Coerce fetch request."""
     if args:
         if len(args) == 1 and isinstance(args[0], DeepScanRequest):
             if kwargs:
@@ -142,6 +149,7 @@ def _coerce_fetch_request(*args: Any, **kwargs: Any) -> DeepScanRequest:
 
 
 def _fetch_open_issues(*args: Any, **kwargs: Any) -> int | None:
+    """Fetch open issues."""
     request = _coerce_fetch_request(*args, **kwargs)
     try:
         payload = _request_json(
@@ -172,6 +180,7 @@ def _fetch_open_issues(*args: Any, **kwargs: Any) -> int | None:
 
 
 def _render_md(payload: dict) -> str:
+    """Render md."""
     lines = [
         "# DeepScan Zero Gate",
         "",
@@ -191,11 +200,12 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
+    """Main."""
     args = _parse_args()
     token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
     open_issues_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
 
-    findings: List[str] = []
+    findings: list[str] = []
     open_issues: int | None = None
 
     if not token:

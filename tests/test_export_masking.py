@@ -1,12 +1,13 @@
-from __future__ import absolute_import, division
+"""Test export masking module."""
+
 from pathlib import Path
 
 from env_inspector_core.service import EnvInspectorService
-
 from tests.assertions import ensure
 
 
 def test_export_masks_secrets_by_default(tmp_path: Path, monkeypatch):
+    """Test export masks secrets by default."""
     monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("API_TOKEN=supersecretvalue\n", encoding="utf-8")
@@ -22,6 +23,7 @@ def test_export_masks_secrets_by_default(tmp_path: Path, monkeypatch):
 
 
 def test_export_can_include_raw_secrets_when_opted_in(tmp_path: Path, monkeypatch):
+    """Test export can include raw secrets when opted in."""
     monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
     env_file.write_text("API_TOKEN=supersecretvalue\n", encoding="utf-8")

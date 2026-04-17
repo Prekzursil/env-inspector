@@ -1,14 +1,13 @@
-from __future__ import absolute_import, division
+"""Test service path guards module."""
 
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pytest
 
-from env_inspector_core.service import EnvInspectorService
 import env_inspector_core.service as service_module
 import env_inspector_core.service_paths as service_paths_module
-
+from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
 
 
@@ -139,7 +138,7 @@ def test_restore_wsl_dotenv_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: List[Tuple[str, str, str]] = []
+    calls: list[tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
@@ -160,7 +159,7 @@ def test_restore_wsl_bashrc_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: List[Tuple[str, str, str]] = []
+    calls: list[tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
@@ -192,7 +191,7 @@ def test_restore_wsl_dotenv_backup_rejects_path_traversal(tmp_path: Path, monkey
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: List[Tuple[str, str, str]] = []
+    calls: list[tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
@@ -248,7 +247,7 @@ def test_restore_powershell_target_all_users_uses_program_files_root(
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     profile = tmp_path / "program_files" / "PowerShell" / "7" / "profile.ps1"
 
-    writes: Dict[str, object] = {}
+    writes: dict[str, object] = {}
     monkeypatch.setattr(
         EnvInspectorService,
         "_validated_powershell_restore_path",

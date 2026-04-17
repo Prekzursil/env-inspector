@@ -1,8 +1,5 @@
 """Coverage tests for providers_wsl.py — WslProvider edge cases and branches."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 import unittest
 from dataclasses import dataclass, field
 from typing import Any, List
@@ -11,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from env_inspector_core.providers_wsl import WslProvider
+from tests.assertions import ensure
 
 
 @dataclass
@@ -24,10 +22,11 @@ class _CompletedProcessLike:
     returncode: int = 0
     stdout: bytes = b""
     stderr: bytes = b""
-    args: List[Any] = field(default_factory=list)
+    args: list[Any] = field(default_factory=list)
 
 
 def _case() -> unittest.TestCase:
+    """Case."""
     return unittest.TestCase()
 
 
@@ -49,6 +48,7 @@ def test_available_returns_false_on_oserror() -> None:
     """available() returns False when runner raises OSError."""
 
     def _raise_oserror(*args, **kwargs):
+        """Raise oserror."""
         raise OSError("cannot execute")
 
     provider = WslProvider(runner=_raise_oserror, wsl_exe="/fake/wsl.exe")
@@ -61,6 +61,7 @@ def test_available_caches_result() -> None:
     call_count = 0
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         nonlocal call_count
         call_count += 1
         return _CompletedProcessLike(args=[], returncode=0, stdout=b"", stderr=b"")
@@ -85,6 +86,7 @@ def test_run_raises_on_nonzero_return() -> None:
     """_run raises RuntimeError when the command returns non-zero."""
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         return _CompletedProcessLike(
             args=[], returncode=1, stdout=b"", stderr=b"some error"
         )
@@ -100,6 +102,7 @@ def test_list_distros_for_ui_filters_docker_distros() -> None:
     """list_distros_for_ui filters out docker-desktop helper distros."""
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         return _CompletedProcessLike(
             args=[],
             returncode=0,
@@ -121,6 +124,7 @@ def test_read_file_returns_content() -> None:
     """read_file runs cat command and returns the output."""
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         return _CompletedProcessLike(
             args=[], returncode=0, stdout=b"file content", stderr=b""
         )
@@ -137,6 +141,7 @@ def test_write_file_sends_content() -> None:
     calls = []
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         calls.append((args, kwargs))
         return _CompletedProcessLike(args=[], returncode=0, stdout=b"", stderr=b"")
 
@@ -152,6 +157,7 @@ def test_write_file_with_privilege_tries_root_then_sudo() -> None:
     attempt = 0
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         nonlocal attempt
         attempt += 1
         if attempt == 1:
@@ -171,6 +177,7 @@ def test_scan_dotenv_files_returns_paths() -> None:
     """scan_dotenv_files returns discovered dotenv file paths."""
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         return _CompletedProcessLike(
             args=[],
             returncode=0,
@@ -189,6 +196,7 @@ def test_write_file_with_privilege_raises_on_both_failures() -> None:
     """write_file_with_privilege raises when both root and sudo fail."""
 
     def _fake_runner(*args, **kwargs):
+        """Fake runner."""
         return _CompletedProcessLike(
             args=[], returncode=1, stdout=b"", stderr=b"failed"
         )

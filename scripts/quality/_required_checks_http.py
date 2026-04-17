@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """HTTP helpers for polling required GitHub check contexts."""
 
-from __future__ import absolute_import, division
-
-from dataclasses import dataclass
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
 import urllib.error
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from ._security_imports import (
@@ -36,11 +34,11 @@ class GitHubRequest:
     sha: str
     token: str
     endpoint: str
-    query: Optional[Dict[str, str]] = None
+    query: dict[str, str] | None = None
     attempts: int = 5
 
 
-def _parse_repo(raw: str) -> Tuple[str, str]:
+def _parse_repo(raw: str) -> tuple[str, str]:
     """Validate and normalize an owner/repo identifier."""
     text = (raw or "").strip()
     if "/" not in text:
@@ -60,7 +58,7 @@ def _parse_sha(raw: str) -> str:
     return sha.lower()
 
 
-def _github_headers(token: str) -> Dict[str, str]:
+def _github_headers(token: str) -> dict[str, str]:
     """Build the HTTP headers for GitHub commit endpoint requests."""
     return {
         "Accept": "application/vnd.github+json",
@@ -95,10 +93,10 @@ def _next_retry_wait(wait_seconds: int) -> int:
     return min(wait_seconds * 2, 10)
 
 
-def _request_payload_with_retry(request: GitHubRequest) -> Dict[str, Any]:
+def _request_payload_with_retry(request: GitHubRequest) -> dict[str, Any]:
     """Fetch one GitHub payload, retrying transient endpoint failures."""
     wait_seconds = 1
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
     total_attempts = max(request.attempts, 1)
 
     for attempt in range(1, total_attempts + 1):
@@ -147,7 +145,7 @@ def _api_get_check_runs(
     repo: str,
     sha: str,
     token: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Fetch the check-runs payload for the target commit SHA."""
     return _request_payload_with_retry(
         GitHubRequest(
@@ -161,7 +159,7 @@ def _api_get_check_runs(
     )
 
 
-def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str, Any]:
+def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> dict[str, Any]:
     """Fetch the combined commit-status payload for the target SHA."""
     return _request_payload_with_retry(
         GitHubRequest(
@@ -174,7 +172,7 @@ def _api_get_status(*, owner: str, repo: str, sha: str, token: str) -> Dict[str,
     )
 
 
-def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
+def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
     """Normalize a GitHub check run into the shared context payload."""
     name = str(run.get("name") or "").strip()
     if not name:
@@ -186,7 +184,7 @@ def _check_run_context(run: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str
     }
 
 
-def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
+def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
     """Normalize a GitHub commit status into the shared context payload."""
     name = str(status.get("context") or "").strip()
     if not name:
@@ -200,11 +198,11 @@ def _status_context(status: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str
 
 
 def _collect_contexts(
-    check_runs_payload: Dict[str, Any],
-    status_payload: Dict[str, Any],
-) -> Dict[str, Dict[str, str]]:
+    check_runs_payload: dict[str, Any],
+    status_payload: dict[str, Any],
+) -> dict[str, dict[str, str]]:
     """Merge check-run and status payloads into one context map."""
-    contexts: Dict[str, Dict[str, str]] = {}
+    contexts: dict[str, dict[str, str]] = {}
 
     for run in check_runs_payload.get("check_runs", []) or []:
         entry = _check_run_context(run)
@@ -221,7 +219,7 @@ def _collect_contexts(
     return contexts
 
 
-def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
+def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
     """Return a failure message for a check-run context, if any."""
     state = observed.get("state")
     if state != "completed":
@@ -233,7 +231,7 @@ def _check_run_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
     return None
 
 
-def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
+def _status_failure(context: str, observed: dict[str, str]) -> str | None:
     """Return a failure message for a commit-status context, if any."""
     conclusion = observed.get("conclusion")
     if conclusion != "success":
@@ -242,12 +240,12 @@ def _status_failure(context: str, observed: Dict[str, str]) -> Optional[str]:
 
 
 def _evaluate(
-    required: List[str],
-    contexts: Dict[str, Dict[str, str]],
-) -> Tuple[str, List[str], List[str]]:
+    required: list[str],
+    contexts: dict[str, dict[str, str]],
+) -> tuple[str, list[str], list[str]]:
     """Return the aggregate required-check status plus missing and failed items."""
-    missing: List[str] = []
-    failed: List[str] = []
+    missing: list[str] = []
+    failed: list[str] = []
 
     for context in required:
         observed = contexts.get(context)

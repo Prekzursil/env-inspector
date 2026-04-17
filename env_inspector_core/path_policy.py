@@ -1,9 +1,10 @@
-from __future__ import absolute_import, division
+"""Path policy module."""
 
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Set, Tuple
+from typing import List, Set, Tuple
+from collections.abc import Iterable
 
 
 class PathPolicyError(ValueError):
@@ -15,14 +16,16 @@ class ScopedPath:
     """A filesystem path constrained to approved scope roots."""
 
     path: Path
-    roots: Tuple[Path, ...]
+    roots: tuple[Path, ...]
 
 
 def _contains_null(raw: str) -> bool:
+    """Contains null."""
     return "\x00" in raw
 
 
 def _as_raw_text(value: str | Path, *, field_name: str) -> str:
+    """As raw text."""
     raw = str(value)
     if not raw:
         raise PathPolicyError(f"{field_name} must not be empty.")
@@ -32,13 +35,15 @@ def _as_raw_text(value: str | Path, *, field_name: str) -> str:
 
 
 def _normalize_path_text(value: str | Path, *, field_name: str) -> str:
+    """Normalize path text."""
     raw = _as_raw_text(value, field_name=field_name)
     return os.path.normpath(os.path.abspath(os.path.expanduser(raw)))
 
 
-def normalize_scope_roots(roots: Iterable[str | Path]) -> List[Path]:
-    normalized: List[Path] = []
-    seen: Set[str] = set()
+def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
+    """Normalize scope roots."""
+    normalized: list[Path] = []
+    seen: set[str] = set()
     workspace_root = Path.cwd()
     workspace_text = str(workspace_root)
     for root in roots:
@@ -65,6 +70,7 @@ def normalize_scope_roots(roots: Iterable[str | Path]) -> List[Path]:
 
 
 def resolve_scan_root(root: str | Path) -> Path:
+    """Resolve scan root."""
     path = Path(_normalize_path_text(root, field_name="scan root"))
     workspace_root = Path.cwd()
     workspace_text = str(workspace_root)
@@ -83,6 +89,7 @@ def resolve_scan_root(root: str | Path) -> Path:
 
 
 def _validate_dotenv_name(path: Path) -> None:
+    """Validate dotenv name."""
     name = path.name
     if name == ".env" or name.startswith(".env."):
         return
@@ -91,7 +98,8 @@ def _validate_dotenv_name(path: Path) -> None:
     )
 
 
-def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
+def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
+    """Parse scoped dotenv target."""
     if not target.startswith("dotenv:"):
         raise PathPolicyError("Expected target with 'dotenv:' prefix.")
     raw = target[len("dotenv:") :]
@@ -114,6 +122,7 @@ def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
 
 
 def validate_backup_path(backup: str | Path, *, backups_dir: Path) -> Path:
+    """Validate backup path."""
     backup_path = Path(_normalize_path_text(backup, field_name="backup path"))
     backups_root = resolve_scan_root(backups_dir)
     backup_text = str(backup_path)

@@ -1,18 +1,19 @@
+"""Codacy zero support module."""
 #!/usr/bin/env python3
-from __future__ import absolute_import, division
 
-from dataclasses import dataclass, replace
 import importlib
-from pathlib import Path
 import sys
 import urllib.error
-from typing import Any, Callable, Dict, List, Tuple, cast
+from dataclasses import dataclass, replace
+from pathlib import Path
+from typing import Any, Dict, List, Tuple, cast
+from collections.abc import Callable
 
 TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issues")
 CODACY_API_HOST = "api.codacy.com"
 CODACY_REQUEST_EXCEPTIONS = (urllib.error.URLError, ValueError, TypeError, RuntimeError)
 
-RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
+RequestJsonHttps = Callable[..., tuple[Any, dict[str, str]]]
 EncodeIdentifier = Callable[..., str]
 SafeOutputPathInWorkspace = Callable[..., Path]
 
@@ -28,10 +29,11 @@ class CodacyRequest:
     branch: str = ""
     limit: int = 1
     method: str = "GET"
-    data: Dict[str, Any] | None = None
+    data: dict[str, Any] | None = None
 
 
 def _load_security_imports() -> Any:
+    """Load security imports."""
     try:
         return importlib.import_module("scripts.quality._security_imports")
     except ModuleNotFoundError:  # pragma: no cover - direct script execution
@@ -52,6 +54,7 @@ safe_output_path_in_workspace = cast(
 
 
 def _public_codacy_module() -> Any | None:
+    """Public codacy module."""
     return sys.modules.get("scripts.quality.check_codacy_zero")
 
 
@@ -74,7 +77,8 @@ __all__ = [
 
 def _request_json(
     request: CodacyRequest | None = None, **kwargs: Any
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
+    """Request json."""
     if request is None:
         request = CodacyRequest(**kwargs)
     elif kwargs:
@@ -100,7 +104,7 @@ def _request_json(
     owner_slug = encode_identifier_fn(request.owner, field_name="Codacy owner")
     repo_slug = encode_identifier_fn(request.repo, field_name="Codacy repository")
 
-    payload_data: Dict[str, Any] = dict(request.data or {})
+    payload_data: dict[str, Any] = dict(request.data or {})
     branch_name = str(request.branch or "").strip()
     if branch_name:
         payload_data = {**payload_data, "branchName": branch_name}
@@ -118,12 +122,14 @@ def _request_json(
     return payload
 
 
-def _provider_candidates(preferred: str) -> List[str]:
+def _provider_candidates(preferred: str) -> list[str]:
+    """Provider candidates."""
     values = [preferred, "gh", "github"]
     return list(dict.fromkeys(item for item in values if item))
 
 
-def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
+def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
+    """First text."""
     for key in keys:
         value = str(issue.get(key) or "").strip()
         if value:
@@ -132,6 +138,7 @@ def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
 
 
 def _format_issue_sample(issue: dict) -> str | None:
+    """Format issue sample."""
     pattern = _first_text(issue, ("patternId", "pattern"))
     path = _first_text(issue, ("filename", "filePath", "path"))
     message = _first_text(issue, ("message", "title"))
@@ -144,12 +151,13 @@ def _format_issue_sample(issue: dict) -> str | None:
     return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
-def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
+def _sample_issue_findings(payload: dict, limit: int = 5) -> list[str]:
+    """Sample issue findings."""
     data = payload.get("data")
     if not isinstance(data, list):
         return []
 
-    findings: List[str] = []
+    findings: list[str] = []
     for item in data:
         if not isinstance(item, dict):
             continue
@@ -163,4 +171,5 @@ def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
 
 
 def _fetch_sample_payload(request: CodacyRequest) -> dict:
+    """Fetch sample payload."""
     return _request_json(request=replace(request, limit=20, method="POST", data={}))

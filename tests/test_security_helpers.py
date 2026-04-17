@@ -1,16 +1,13 @@
 """Tests for HTTPS security helpers."""
 
-from __future__ import absolute_import, division
-
 import io
+import urllib.error
 from email.message import Message
 from typing import Any, Dict
-import urllib.error
 
 import pytest
 
 from scripts import security_helpers as sec
-
 from tests.assertions import ensure
 
 
@@ -33,8 +30,8 @@ def test_identifier_and_url_helpers():
 
 def test_request_json_https_success(monkeypatch):
     """Return JSON and headers from a successful HTTPS request."""
-    recorded: Dict[str, Any] = {}
-    captured_context: Dict[str, sec.ssl.SSLContext] = {}
+    recorded: dict[str, Any] = {}
+    captured_context: dict[str, sec.ssl.SSLContext] = {}
 
     class _Response:
         """Minimal HTTP response stub used by the HTTPS helper tests."""

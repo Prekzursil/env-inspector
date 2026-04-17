@@ -1,21 +1,22 @@
-from __future__ import absolute_import, division
+"""Test quality script outputs module."""
 
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 from scripts.quality import assert_coverage_100 as coverage_mod
 from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
-
 from tests.assertions import ensure
 
 
 def _empty_token() -> str:
-    return str()
+    """Empty token."""
+    return ""
 
 
 def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
+    """Test parse coverage xml reads standard attributes."""
     xml_path = tmp_path / "coverage.xml"
     xml_path.write_text(
         '<coverage lines-valid="2" lines-covered="1"/>\n', encoding="utf-8"
@@ -28,6 +29,7 @@ def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
 
 
 def test_parse_lcov_reads_totals(tmp_path: Path):
+    """Test parse lcov reads totals."""
     lcov_path = tmp_path / "coverage.lcov"
     lcov_path.write_text("LF:2\nLH:1\n", encoding="utf-8")
 
@@ -38,6 +40,7 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 
 
 def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
+    """Test assert coverage main writes outputs."""
     monkeypatch.chdir(tmp_path)
     xml_path = tmp_path / "coverage.xml"
     xml_path.write_text(
@@ -69,6 +72,7 @@ def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
 
 
 def test_assert_coverage_main_rejects_tests_only_report(tmp_path: Path, monkeypatch):
+    """Test assert coverage main rejects tests only report."""
     monkeypatch.chdir(tmp_path)
     xml_path = tmp_path / "coverage.xml"
     xml_path.write_text(
@@ -101,6 +105,7 @@ def test_assert_coverage_main_rejects_tests_only_report(tmp_path: Path, monkeypa
 
 
 def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
+    """Test codacy main writes outputs without token."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("CODACY_API_TOKEN", raising=False)
     args = SimpleNamespace(
@@ -121,6 +126,7 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
 
 
 def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch):
+    """Test deepscan main writes outputs without inputs."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DEEPSCAN_API_TOKEN", raising=False)
     monkeypatch.delenv("DEEPSCAN_OPEN_ISSUES_URL", raising=False)
@@ -139,6 +145,7 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
 
 
 def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch):
+    """Test sentry main writes outputs in skipped mode."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("SENTRY_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("SENTRY_ORG", raising=False)

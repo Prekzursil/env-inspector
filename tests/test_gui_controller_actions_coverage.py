@@ -1,7 +1,5 @@
 """Coverage tests for env_inspector_gui.controller_actions."""
 
-from __future__ import absolute_import, division
-
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 from unittest.mock import MagicMock, patch
@@ -13,14 +11,14 @@ from env_inspector_gui.controller_actions import (
     EnvInspectorControllerActionsMixin,
 )
 from env_inspector_gui.models import DisplayedRow
-
 from tests.assertions import ensure
 
 _NEGATIVE_FLAG_TEXT = "no"  # avoid Bandit B106 false-positive on _text="no" literals
 
 
 def _make_record(**overrides: object) -> EnvRecord:
-    defaults: Dict[str, Any] = {
+    """Make record."""
+    defaults: dict[str, Any] = {
         "source_type": "dotenv",
         "source_id": "dotenv:/workspace/.env",
         "source_path": "/workspace/.env",
@@ -39,6 +37,7 @@ def _make_record(**overrides: object) -> EnvRecord:
 
 
 def _make_row(rec: EnvRecord) -> DisplayedRow:
+    """Make row."""
     return DisplayedRow(
         record=rec,
         visible_value=rec.value,
@@ -60,9 +59,11 @@ class _Var:
         self._value = value
 
     def get(self) -> Any:
+        """Get."""
         return self._value
 
     def set(self, value: Any) -> None:
+        """Set."""
         self._value = value
 
 
@@ -83,21 +84,25 @@ class _ActionTestMixin(EnvInspectorControllerActionsMixin):
         self.scan_depth_var = _Var(5)
         self.root_path = Path("/workspace")
 
-        self._selected: Optional[DisplayedRow] = None
-        self._status_calls: List[str] = []
-        self._effective_calls: List[str] = []
+        self._selected: DisplayedRow | None = None
+        self._status_calls: list[str] = []
+        self._effective_calls: list[str] = []
         self._refresh_calls: int = 0
 
     def _selected_row(self) -> Any:
+        """Selected row."""
         return self._selected
 
     def _set_status(self, text: str) -> None:
+        """Set status."""
         self._status_calls.append(text)
 
     def _update_effective(self, key: str) -> None:
+        """Update effective."""
         self._effective_calls.append(key)
 
     def refresh_data(self) -> None:
+        """Refresh data."""
         self._refresh_calls += 1
 
 
@@ -105,6 +110,7 @@ class _ActionTestMixin(EnvInspectorControllerActionsMixin):
 
 
 def test_abstract_selected_row():
+    """Test abstract selected row."""
     import pytest
 
     mixin = EnvInspectorControllerActionsMixin()
@@ -113,6 +119,7 @@ def test_abstract_selected_row():
 
 
 def test_abstract_set_status():
+    """Test abstract set status."""
     import pytest
 
     mixin = EnvInspectorControllerActionsMixin()
@@ -121,6 +128,7 @@ def test_abstract_set_status():
 
 
 def test_abstract_update_effective():
+    """Test abstract update effective."""
     import pytest
 
     mixin = EnvInspectorControllerActionsMixin()
@@ -129,6 +137,7 @@ def test_abstract_update_effective():
 
 
 def test_abstract_refresh_data():
+    """Test abstract refresh data."""
     import pytest
 
     mixin = EnvInspectorControllerActionsMixin()
@@ -140,12 +149,14 @@ def test_abstract_refresh_data():
 
 
 def test_load_selected_no_row():
+    """Test load selected no row."""
     ctrl = _ActionTestMixin()
     ctrl.load_selected()
     ctrl.messagebox.showinfo.assert_called_once_with(APP_NAME, MSG_SELECT_ROW_FIRST)
 
 
 def test_load_selected_non_secret():
+    """Test load selected non secret."""
     ctrl = _ActionTestMixin()
     rec = _make_record(name="PUBLIC", value="hello")
     ctrl._selected = _make_row(rec)
@@ -157,6 +168,7 @@ def test_load_selected_non_secret():
 
 
 def test_load_selected_secret_show_secrets_true():
+    """Test load selected secret show secrets true."""
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(True)
     rec = _make_record(name="TOKEN", value="secret123", is_secret=True)
@@ -166,6 +178,7 @@ def test_load_selected_secret_show_secrets_true():
 
 
 def test_load_selected_secret_hidden_confirm_yes():
+    """Test load selected secret hidden confirm yes."""
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(False)
     ctrl.messagebox.askyesno = MagicMock(return_value=True)
@@ -176,6 +189,7 @@ def test_load_selected_secret_hidden_confirm_yes():
 
 
 def test_load_selected_secret_hidden_confirm_no():
+    """Test load selected secret hidden confirm no."""
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(False)
     ctrl.messagebox.askyesno = MagicMock(return_value=False)
@@ -189,12 +203,14 @@ def test_load_selected_secret_hidden_confirm_no():
 
 
 def test_copy_selected_name_no_row():
+    """Test copy selected name no row."""
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_name()
     ctrl.messagebox.showinfo.assert_called_once()
 
 
 def test_copy_selected_name():
+    """Test copy selected name."""
     ctrl = _ActionTestMixin()
     rec = _make_record(name="MY_VAR")
     ctrl._selected = _make_row(rec)
@@ -208,12 +224,14 @@ def test_copy_selected_name():
 
 
 def test_copy_selected_value_no_row():
+    """Test copy selected value no row."""
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_value()
     ctrl.messagebox.showinfo.assert_called_once()
 
 
 def test_copy_selected_value_non_secret():
+    """Test copy selected value non secret."""
     ctrl = _ActionTestMixin()
     rec = _make_record(name="KEY", value="plainvalue")
     ctrl._selected = _make_row(rec)
@@ -222,6 +240,7 @@ def test_copy_selected_value_non_secret():
 
 
 def test_copy_selected_value_secret_hidden_masked():
+    """Test copy selected value secret hidden masked."""
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(False)
     ctrl.messagebox.askyesno = MagicMock(return_value=False)
@@ -233,6 +252,7 @@ def test_copy_selected_value_secret_hidden_masked():
 
 
 def test_copy_selected_value_secret_shown():
+    """Test copy selected value secret shown."""
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(True)
     rec = _make_record(name="TOKEN", value="secret123", is_secret=True)
@@ -245,12 +265,14 @@ def test_copy_selected_value_secret_shown():
 
 
 def test_copy_selected_pair_no_row():
+    """Test copy selected pair no row."""
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_pair()
     ctrl.messagebox.showinfo.assert_called_once()
 
 
 def test_copy_selected_pair_non_secret():
+    """Test copy selected pair non secret."""
     ctrl = _ActionTestMixin()
     rec = _make_record(name="KEY", value="val")
     ctrl._selected = _make_row(rec)
@@ -259,6 +281,7 @@ def test_copy_selected_pair_non_secret():
 
 
 def test_copy_selected_pair_secret_masked():
+    """Test copy selected pair secret masked."""
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(False)
     ctrl.messagebox.askyesno = MagicMock(return_value=False)
@@ -272,12 +295,14 @@ def test_copy_selected_pair_secret_masked():
 
 
 def test_copy_selected_source_path_no_row():
+    """Test copy selected source path no row."""
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_source_path()
     ctrl.messagebox.showinfo.assert_called_once()
 
 
 def test_copy_selected_source_path():
+    """Test copy selected source path."""
     ctrl = _ActionTestMixin()
     rec = _make_record(source_path="/workspace/.env")
     ctrl._selected = _make_row(rec)
@@ -289,12 +314,14 @@ def test_copy_selected_source_path():
 
 
 def test_open_selected_source_no_row():
+    """Test open selected source no row."""
     ctrl = _ActionTestMixin()
     ctrl.open_selected_source()
     ctrl.messagebox.showinfo.assert_called_once()
 
 
 def test_open_selected_source_non_local():
+    """Test open selected source non local."""
     ctrl = _ActionTestMixin()
     rec = _make_record(source_path="registry:HKCU\\Environment")
     ctrl._selected = _make_row(rec)
@@ -303,6 +330,7 @@ def test_open_selected_source_non_local():
 
 
 def test_open_selected_source_success(tmp_path: Path):
+    """Test open selected source success."""
     ctrl = _ActionTestMixin()
     f = tmp_path / "test.env"
     f.write_text("A=1\n", encoding="utf-8")
@@ -321,6 +349,7 @@ def test_open_selected_source_success(tmp_path: Path):
 
 
 def test_export_records_json():
+    """Test export records json."""
     ctrl = _ActionTestMixin()
     ctrl.service.export_records = MagicMock(return_value='{"data": []}')
     ctrl.filedialog.asksaveasfilename = MagicMock(return_value="")
@@ -330,6 +359,7 @@ def test_export_records_json():
 
 
 def test_export_records_saves_file(tmp_path: Path):
+    """Test export records saves file."""
     ctrl = _ActionTestMixin()
     ctrl.service.export_records = MagicMock(return_value='{"data": []}')
     out = tmp_path / "export.json"
@@ -340,6 +370,7 @@ def test_export_records_saves_file(tmp_path: Path):
 
 
 def test_export_records_csv(tmp_path: Path):
+    """Test export records csv."""
     ctrl = _ActionTestMixin()
     ctrl.service.export_records = MagicMock(return_value="name,value\nA,1")
     out = tmp_path / "export.csv"
@@ -349,6 +380,7 @@ def test_export_records_csv(tmp_path: Path):
 
 
 def test_export_records_unknown_format(tmp_path: Path):
+    """Test export records unknown format."""
     ctrl = _ActionTestMixin()
     ctrl.service.export_records = MagicMock(return_value="data")
     out = tmp_path / "export.txt"
@@ -358,6 +390,7 @@ def test_export_records_unknown_format(tmp_path: Path):
 
 
 def test_export_records_with_wsl_params(tmp_path: Path):
+    """Test export records with wsl params."""
     ctrl = _ActionTestMixin()
     ctrl.wsl_distro_var = _Var("Ubuntu")
     ctrl.wsl_path_var = _Var("/home/user")
@@ -372,6 +405,7 @@ def test_export_records_with_wsl_params(tmp_path: Path):
 
 
 def test_restore_backup_no_backups():
+    """Test restore backup no backups."""
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=[])
     ctrl.restore_backup()
@@ -379,6 +413,7 @@ def test_restore_backup_no_backups():
 
 
 def test_restore_backup_cancelled():
+    """Test restore backup cancelled."""
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=["backup1.zip"])
 
@@ -394,6 +429,7 @@ def test_restore_backup_cancelled():
 
 
 def test_restore_backup_success():
+    """Test restore backup success."""
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=["backup1.zip"])
     ctrl.service.restore_backup = MagicMock(
@@ -413,6 +449,7 @@ def test_restore_backup_success():
 
 
 def test_restore_backup_failure():
+    """Test restore backup failure."""
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=["backup1.zip"])
     ctrl.service.restore_backup = MagicMock(
@@ -453,6 +490,7 @@ def test_load_selected_secret_loaded_but_masked():
 
 
 def test_confirm_hidden_secret():
+    """Test confirm hidden secret."""
     ctrl = _ActionTestMixin()
     ctrl.messagebox.askyesno = MagicMock(return_value=True)
     ensure(ctrl._confirm_hidden_secret("Test prompt?") is True)
@@ -463,11 +501,13 @@ def test_confirm_hidden_secret():
 
 
 def test_selected_record_none():
+    """Test selected record none."""
     ctrl = _ActionTestMixin()
     ensure(ctrl._selected_record() is None)
 
 
 def test_selected_record_returns_record():
+    """Test selected record returns record."""
     ctrl = _ActionTestMixin()
     rec = _make_record(name="X")
     ctrl._selected = _make_row(rec)

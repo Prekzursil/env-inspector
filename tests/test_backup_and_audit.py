@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division
+"""Test backup and audit module."""
+
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -6,14 +7,14 @@ from pathlib import Path
 import pytest
 
 import env_inspector_core.storage as storage_mod
-from env_inspector_core.storage import BackupManager, AuditLogger
 from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
-
+from env_inspector_core.storage import AuditLogger, BackupManager
 from tests.assertions import ensure
 
 
 def test_backup_manager_retention_and_restore(tmp_path: Path):
+    """Test backup manager retention and restore."""
     mgr = BackupManager(tmp_path, retention=2)
     target = "dotenv:/tmp/.env"
 
@@ -34,6 +35,7 @@ def test_backup_manager_retention_and_restore(tmp_path: Path):
 def test_backup_manager_uses_unique_path_when_timestamp_collides(
     tmp_path: Path, monkeypatch
 ):
+    """Test backup manager uses unique path when timestamp collides."""
     fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     class _FixedDateTime(datetime):
@@ -41,6 +43,7 @@ def test_backup_manager_uses_unique_path_when_timestamp_collides(
 
         @classmethod
         def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
+            """Now."""
             return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
 
     monkeypatch.setattr(storage_mod, "datetime", _FixedDateTime)
@@ -61,6 +64,7 @@ def test_backup_manager_uses_unique_path_when_timestamp_collides(
 def test_next_backup_path_raises_when_timestamp_sequence_exhausted(
     tmp_path: Path, monkeypatch
 ):
+    """Test next backup path raises when timestamp sequence exhausted."""
     fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     class _FixedDateTime(datetime):
@@ -68,6 +72,7 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(
 
         @classmethod
         def now(cls, tz=None):  # noqa: D401 - signature matches datetime.now
+            """Now."""
             return fixed_time if tz is not None else fixed_time.replace(tzinfo=None)
 
     monkeypatch.setattr(storage_mod, "datetime", _FixedDateTime)
@@ -76,6 +81,7 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(
     original_exists = storage_mod._path_exists
 
     def _always_exists(path: Path) -> bool:
+        """Always exists."""
         if str(path).endswith(".backup.json"):
             return True
         return original_exists(path)
@@ -90,6 +96,7 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(
 
 
 def test_normalize_backup_path_rejects_escape(tmp_path: Path):
+    """Test normalize backup path rejects escape."""
     mgr = BackupManager(tmp_path / "backups", retention=5)
     outside = tmp_path.parent / "outside.backup.json"
 
@@ -98,6 +105,7 @@ def test_normalize_backup_path_rejects_escape(tmp_path: Path):
 
 
 def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
+    """Test load backup payload returns none for invalid json."""
     mgr = BackupManager(tmp_path, retention=5)
     bad = tmp_path / "bad.backup.json"
     bad.write_text("{not valid json", encoding="utf-8")
@@ -106,6 +114,7 @@ def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
 
 
 def test_audit_logger_writes_masked_values(tmp_path: Path):
+    """Test audit logger writes masked values."""
     logger = AuditLogger(tmp_path)
     backup_path = tmp_path / "audit-backup.json"
     result = OperationResult(
@@ -128,6 +137,7 @@ def test_audit_logger_writes_masked_values(tmp_path: Path):
 def test_restore_rejects_backup_file_outside_state_directory(
     tmp_path: Path, monkeypatch
 ):
+    """Test restore rejects backup file outside state directory."""
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     external_backup = tmp_path / "external.backup.json"
@@ -143,6 +153,7 @@ def test_restore_rejects_backup_file_outside_state_directory(
 
 
 def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch):
+    """Test restore dotenv backup in scope writes file."""
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
@@ -158,6 +169,7 @@ def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch)
 
 
 def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch):
+    """Test restore dotenv backup rejects outside scope."""
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 

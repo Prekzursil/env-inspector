@@ -5,13 +5,11 @@
 - GUI mode: launched when no subcommand is provided
 """
 
-from __future__ import absolute_import, division
-
-from typing import List
 import argparse
 import os
 import sys
 from pathlib import Path
+from typing import List
 
 from env_inspector_core.cli import run_cli
 from env_inspector_core.path_policy import PathPolicyError, resolve_scan_root
@@ -22,6 +20,7 @@ CLI_COMMANDS = {"list", "set", "remove", "export", "backup", "restore"}
 
 
 def _resolve_legacy_print_secrets_root(root: str | Path) -> Path:
+    """Resolve legacy print secrets root."""
     workspace_root = resolve_scan_root(Path.cwd())
     requested = resolve_scan_root(root)
     if requested != workspace_root:
@@ -32,6 +31,7 @@ def _resolve_legacy_print_secrets_root(root: str | Path) -> Path:
 
 
 def _legacy_print_secrets(root: str | Path) -> int:
+    """Legacy print secrets."""
     try:
         safe_root = _resolve_legacy_print_secrets_root(root)
     except PathPolicyError as exc:
@@ -46,7 +46,8 @@ def _legacy_print_secrets(root: str | Path) -> int:
     return 0
 
 
-def _parse_gui_args(argv: List[str]) -> argparse.Namespace:
+def _parse_gui_args(argv: list[str]) -> argparse.Namespace:
+    """Parse gui args."""
     parser = argparse.ArgumentParser(description="Env Inspector GUI")
     parser.add_argument(
         "--root", default=os.getcwd(), help="Root path to scan for .env files"
@@ -60,6 +61,7 @@ def _parse_gui_args(argv: List[str]) -> argparse.Namespace:
 
 
 def main() -> int:
+    """Main."""
     argv = sys.argv[1:]
 
     if argv and (argv[0] in CLI_COMMANDS or argv[0] in {"-h", "--help"}):

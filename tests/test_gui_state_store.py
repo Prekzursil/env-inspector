@@ -1,18 +1,18 @@
-from __future__ import absolute_import, division
+"""Test gui state store module."""
 
 from pathlib import Path
 
 from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import (
     load_ui_state,
-    save_ui_state,
     sanitize_loaded_state,
+    save_ui_state,
 )
-
 from tests.assertions import ensure
 
 
 def test_state_store_roundtrip(tmp_path: Path):
+    """Test state store roundtrip."""
     state_dir = tmp_path / ".env-inspector-state"
     state = PersistedUiState(
         window_geometry="1300x900",
@@ -38,6 +38,7 @@ def test_state_store_roundtrip(tmp_path: Path):
 
 
 def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
+    """Test invalid json falls back to defaults."""
     state_dir = tmp_path / ".env-inspector-state"
     state_dir.mkdir(parents=True, exist_ok=True)
     (state_dir / "config.json").write_text("{invalid json", encoding="utf-8")
@@ -50,6 +51,7 @@ def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
 
 
 def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):
+    """Test sanitize loaded state prunes context and targets."""
     state = PersistedUiState(
         root_path=str(tmp_path / "missing-root"),
         context="wsl:NotInstalled",

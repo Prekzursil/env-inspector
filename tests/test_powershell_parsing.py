@@ -1,10 +1,11 @@
-from __future__ import absolute_import, division
-from env_inspector_core.providers import parse_powershell_profile_text
+"""Test powershell parsing module."""
 
+from env_inspector_core.providers import parse_powershell_profile_text
 from tests.assertions import ensure
 
 
 def test_parse_powershell_profile_env_assignments():
+    """Test parse powershell profile env assignments."""
     text = """
 # comment
 $env:API_TOKEN = "fixture-value"

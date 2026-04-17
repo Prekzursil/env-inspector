@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Secrets module."""
 
 import re
 
@@ -19,6 +19,7 @@ BASE64ISH_RE = re.compile(r"^[\w+/=.-]{32,}$")
 
 
 def _name_suggests_secret(name: str) -> bool:
+    """Name suggests secret."""
     normalized = (name or "").strip().lower().replace("-", "_")
     if not normalized:
         return False
@@ -27,6 +28,7 @@ def _name_suggests_secret(name: str) -> bool:
 
 
 def _is_path_like(candidate: str) -> bool:
+    """Is path like."""
     return (
         candidate.startswith(("/", "./", "../"))
         or "://" in candidate
@@ -36,12 +38,14 @@ def _is_path_like(candidate: str) -> bool:
 
 
 def _is_base64_secret(candidate: str) -> bool:
+    """Is base64 secret."""
     if len(candidate) < 48 or not BASE64ISH_RE.match(candidate):
         return False
     return not _is_path_like(candidate)
 
 
 def looks_secret(name: str, value: str) -> bool:
+    """Looks secret."""
     if _name_suggests_secret(name):
         return True
 
@@ -53,6 +57,7 @@ def looks_secret(name: str, value: str) -> bool:
 
 
 def mask_value(value: str, reveal: bool = False) -> str:
+    """Mask value."""
     if reveal:
         return value
     if not value:

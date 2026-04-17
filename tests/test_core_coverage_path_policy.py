@@ -1,7 +1,5 @@
 """Coverage tests for path_policy.py — edge cases for path validation."""
 
-from __future__ import absolute_import, division
-
 from pathlib import Path
 
 import pytest
@@ -10,8 +8,8 @@ from env_inspector_core.path_policy import (
     PathPolicyError,
     _as_raw_text,
     normalize_scope_roots,
-    validate_backup_path,
     parse_scoped_dotenv_target,
+    validate_backup_path,
 )
 
 

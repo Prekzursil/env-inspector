@@ -1,7 +1,5 @@
 """Coverage tests for env_inspector_gui.view — full coverage via mocked tkinter."""
 
-from __future__ import absolute_import, division
-
 from typing import Any, List
 from unittest.mock import MagicMock
 
@@ -30,7 +28,7 @@ class _MockTkModule:
 
     def __init__(self) -> None:
         """Handle   init  ."""
-        self._vars: List[MagicMock] = []
+        self._vars: list[MagicMock] = []
 
     def __getattr__(self, name: str) -> Any:
         """Delegate PascalCase tkinter names to snake_case methods."""

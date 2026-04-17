@@ -1,18 +1,16 @@
 """Coverage tests for env_inspector_gui.secret_policy — missing line 58."""
 
-from __future__ import absolute_import, division
-
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.secret_policy import (
     build_visible_value,
     is_record_secret,
     resolve_load_value,
 )
-
 from tests.assertions import ensure
 
 
 def _non_secret_record() -> EnvRecord:
+    """Non secret record."""
     return EnvRecord(
         source_type="dotenv",
         source_id="dotenv:/workspace/.env",
@@ -30,11 +28,13 @@ def _non_secret_record() -> EnvRecord:
 
 
 def test_is_record_secret_false_for_non_secret():
+    """Test is record secret false for non secret."""
     rec = _non_secret_record()
     ensure(is_record_secret(rec) is False)
 
 
 def test_build_visible_value_non_secret_returns_value():
+    """Test build visible value non secret returns value."""
     rec = _non_secret_record()
     ensure(build_visible_value(rec, show_secrets=False) == "hello")
 

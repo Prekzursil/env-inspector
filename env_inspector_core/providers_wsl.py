@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Providers wsl module."""
 
 import os
 import re
@@ -7,7 +7,8 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
-from typing import Callable, Dict, List, Set
+from typing import Dict, List, Set
+from collections.abc import Callable
 
 from .constants import SOURCE_WSL_BASHRC, SOURCE_WSL_DOTENV, SOURCE_WSL_ETC_ENV
 from .models import EnvRecord
@@ -31,6 +32,7 @@ class WslProvider:
 
     @staticmethod
     def _discover_wsl_exe() -> str | None:
+        """Discover wsl exe."""
         candidate_paths = (
             Path(system_root) / "System32" / "wsl.exe"
             if (system_root := os.environ.get("SystemRoot"))
@@ -52,6 +54,7 @@ class WslProvider:
         )
 
     def available(self) -> bool:
+        """Available."""
         if self._available_cache is not None:
             return self._available_cache
 
@@ -73,6 +76,7 @@ class WslProvider:
 
     @staticmethod
     def _decode(data: bytes) -> str:
+        """Decode."""
         if not data:
             return ""
         if b"\x00" in data:
@@ -82,7 +86,8 @@ class WslProvider:
                 return data.decode(errors="ignore")
         return data.decode(errors="ignore")
 
-    def _run(self, args: List[str], input_text: str | None = None) -> str:
+    def _run(self, args: list[str], input_text: str | None = None) -> str:
+        """Run."""
         if not self.available():
             raise RuntimeError("wsl.exe not available")
         if self.wsl_exe is None:  # pragma: no cover - guarded by available()
@@ -102,7 +107,8 @@ class WslProvider:
             )
         return out
 
-    def list_distros(self) -> List[str]:
+    def list_distros(self) -> list[str]:
+        """List distros."""
         text = self._run(["-l", "-q"])
         return list(
             dict.fromkeys(
@@ -115,10 +121,12 @@ class WslProvider:
             )
         )
 
-    def list_distros_for_ui(self) -> List[str]:
+    def list_distros_for_ui(self) -> list[str]:
+        """List distros for ui."""
         return [d for d in self.list_distros() if not _HELPER_DISTRO_RE.match(d)]
 
     def read_file(self, distro: str, path: str) -> str:
+        """Read file."""
         quoted_path = shlex.quote(path)
         return self._run(
             [
@@ -132,6 +140,7 @@ class WslProvider:
         )
 
     def write_file(self, distro: str, path: str, content: str) -> None:
+        """Write file."""
         quoted_path = shlex.quote(path)
         self._run(
             ["-d", distro, "-e", "bash", "-lc", f"cat > {quoted_path}"],
@@ -139,6 +148,7 @@ class WslProvider:
         )
 
     def write_file_with_privilege(self, distro: str, path: str, content: str) -> None:
+        """Write file with privilege."""
         quoted_path = shlex.quote(path)
         attempts = (
             ["-d", distro, "-u", "root", "-e", "bash", "-lc", f"cat > {quoted_path}"],
@@ -157,7 +167,8 @@ class WslProvider:
 
     def scan_dotenv_files(
         self, distro: str, root_path: str, max_depth: int
-    ) -> List[str]:
+    ) -> list[str]:
+        """Scan dotenv files."""
         quoted_root = shlex.quote(root_path)
         command = (
             f"find {quoted_root} -maxdepth {max_depth} -type f "
@@ -175,12 +186,13 @@ class _WslRecordBatch:
     context: str
     source_type: str
     source_path: str
-    pairs: Dict[str, str]
+    pairs: dict[str, str]
     precedence_rank: int
     requires_privilege: bool
 
 
-def _append_wsl_records(rows: List[EnvRecord], batch: _WslRecordBatch) -> None:
+def _append_wsl_records(rows: list[EnvRecord], batch: _WslRecordBatch) -> None:
+    """Append wsl records."""
     for key, value in batch.pairs.items():
         rows.append(
             EnvRecord(
@@ -204,9 +216,10 @@ def _append_wsl_records(rows: List[EnvRecord], batch: _WslRecordBatch) -> None:
 def collect_wsl_records(
     wsl: WslProvider,
     include_etc: bool = True,
-    exclude_distros: Set[str] | None = None,
-) -> List[EnvRecord]:
-    rows: List[EnvRecord] = []
+    exclude_distros: set[str] | None = None,
+) -> list[EnvRecord]:
+    """Collect wsl records."""
+    rows: list[EnvRecord] = []
     if not wsl.available():
         return rows
 
@@ -242,8 +255,9 @@ def collect_wsl_records(
 
 def collect_wsl_dotenv_records(
     wsl: WslProvider, distro: str, root_path: str, max_depth: int
-) -> List[EnvRecord]:
-    rows: List[EnvRecord] = []
+) -> list[EnvRecord]:
+    """Collect wsl dotenv records."""
+    rows: list[EnvRecord] = []
     if not wsl.available():
         return rows
     for path in wsl.scan_dotenv_files(distro, root_path, max_depth):

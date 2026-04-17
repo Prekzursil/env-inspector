@@ -1,8 +1,8 @@
-from __future__ import division, absolute_import
+"""Test entrypoint module."""
 
+import unittest
 from pathlib import Path
 from typing import List
-import unittest
 
 import env_inspector
 from env_inspector_core.path_policy import PathPolicyError
@@ -159,7 +159,7 @@ def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(
     workspace.mkdir()
     monkeypatch.chdir(workspace)
 
-    calls: List[str] = []
+    calls: list[str] = []
 
     def _validated_root(_value):
         """Return the already validated workspace root for the legacy resolver."""

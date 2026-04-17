@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Models module."""
 
 from dataclasses import asdict, dataclass
 from typing import Any, Dict
@@ -22,7 +22,8 @@ class EnvRecord:
     requires_privilege: bool
     last_error: str | None = None
 
-    def to_dict(self, include_value: bool = True) -> Dict[str, Any]:
+    def to_dict(self, include_value: bool = True) -> dict[str, Any]:
+        """To dict."""
         payload = asdict(self)
         if not include_value:
             payload["value"] = ""
@@ -42,5 +43,6 @@ class OperationResult:
     error_message: str | None
     value_masked: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
+        """To dict."""
         return asdict(self)
