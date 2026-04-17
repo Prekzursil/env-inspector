@@ -28,7 +28,7 @@ class _MockTkModule:
 
     def __init__(self) -> None:
         """Handle   init  ."""
-        self._vars: list[MagicMock] = []
+        self._vars: List[MagicMock] = []
 
     def __getattr__(self, name: str) -> Any:
         """Delegate PascalCase tkinter names to snake_case methods."""

@@ -10,12 +10,12 @@ from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
 
-def _record_payload(rec: EnvRecord) -> dict[str, object]:
+def _record_payload(rec: EnvRecord) -> Dict[str, object]:
     """Return a normalized payload for analyzer-friendly flag access."""
     return rec.to_dict()
 
 
-def _record_flag(rec_payload: dict[str, object], key: str) -> bool:
+def _record_flag(rec_payload: Dict[str, object], key: str) -> bool:
     """Return a boolean flag from a serialized record payload."""
     return bool(rec_payload.get(key, False))
 
@@ -74,9 +74,9 @@ class DisplayRowsRequest:
     show_secrets: bool
 
 
-def build_display_rows(request: DisplayRowsRequest) -> list[DisplayedRow]:
+def build_display_rows(request: DisplayRowsRequest) -> List[DisplayedRow]:
     """Build the filtered GUI rows for the current table request."""
-    rows: list[DisplayedRow] = []
+    rows: List[DisplayedRow] = []
     query_text = request.query.strip().lower()
 
     for idx, rec in enumerate(request.records):
@@ -140,9 +140,9 @@ def _sort_key(row: DisplayedRow, column: str):
 
 
 def sort_display_rows(
-    rows: list[DisplayedRow],
+    rows: List[DisplayedRow],
     sort_state: SortState,
-) -> list[DisplayedRow]:
+) -> List[DisplayedRow]:
     """Return rows sorted by the active GUI sort state."""
     column = sort_state.column or "name"
     return sorted(

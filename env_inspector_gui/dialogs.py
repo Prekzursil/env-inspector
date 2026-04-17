@@ -17,15 +17,15 @@ class TargetPickerDialog:
     """Modal dialog for selecting mutation targets."""
 
     def __init__(
-        self, parent: Any, targets: list[str], selected: list[str] | None = None
+        self, parent: Any, targets: List[str], selected: List[str] | None = None
     ) -> None:
         import tkinter as tk
         from tkinter import ttk
 
-        self.result: list[str] | None = None
+        self.result: List[str] | None = None
         self._targets = list(targets)
-        self._vars: dict[str, tk.BooleanVar] = {}
-        self._checks: dict[str, Any] = {}
+        self._vars: Dict[str, tk.BooleanVar] = {}
+        self._checks: Dict[str, Any] = {}
         self.search_var: Any = None
         self.search_entry: Any = None
         self.selected_count_label: Any = None
@@ -105,7 +105,7 @@ class TargetPickerDialog:
         )
 
     def _build_target_checks(
-        self, body: Any, selected_set: set[str], has_selected: bool, tk: Any, ttk: Any
+        self, body: Any, selected_set: Set[str], has_selected: bool, tk: Any, ttk: Any
     ) -> None:
         """Build target checks."""
         for target in self._targets:
@@ -205,12 +205,12 @@ class TargetPickerDialog:
 class DotenvTargetDialog:
     """Modal dialog for choosing among multiple dotenv file targets."""
 
-    def __init__(self, parent: Any, key: str, targets: list[str]) -> None:
+    def __init__(self, parent: Any, key: str, targets: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
 
-        self.result: list[str] | None = None
-        self._vars: list[tuple[str, tk.BooleanVar]] = []
+        self.result: List[str] | None = None
+        self._vars: List[Tuple[str, tk.BooleanVar]] = []
 
         self.win = tk.Toplevel(parent)
         self.win.title("Select .env Targets")
@@ -257,7 +257,7 @@ class DiffPreviewDialog:
         parent: Any,
         *,
         action: str,
-        previews: list[dict[str, Any]],
+        previews: List[Dict[str, Any]],
         preview_only: bool = False,
     ) -> None:
         import tkinter as tk
@@ -292,7 +292,7 @@ class DiffPreviewDialog:
     def _build_preview_tabs(
         self,
         notebook: Any,
-        previews: list[dict[str, Any]],
+        previews: List[Dict[str, Any]],
         deps: _PreviewTabDeps,
     ) -> None:
         """Build preview tabs."""
@@ -303,7 +303,7 @@ class DiffPreviewDialog:
         self,
         notebook: Any,
         idx: int,
-        preview: dict[str, Any],
+        preview: Dict[str, Any],
         deps: _PreviewTabDeps,
     ) -> None:
         """Build preview tab."""
@@ -324,7 +324,7 @@ class DiffPreviewDialog:
 
     @staticmethod
     def _build_summary(
-        tab: Any, preview: dict[str, Any], target: str, ttk: Any
+        tab: Any, preview: Dict[str, Any], target: str, ttk: Any
     ) -> None:
         """Build summary."""
         summary = ttk.Frame(tab)
@@ -383,7 +383,7 @@ class DiffPreviewDialog:
 class BackupPickerDialog:
     """Modal dialog for selecting a backup file to restore."""
 
-    def __init__(self, parent: Any, backups: list[str]) -> None:
+    def __init__(self, parent: Any, backups: List[str]) -> None:
         import tkinter as tk
         from tkinter import ttk
 

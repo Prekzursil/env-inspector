@@ -46,7 +46,7 @@ def _legacy_print_secrets(root: str | Path) -> int:
     return 0
 
 
-def _parse_gui_args(argv: list[str]) -> argparse.Namespace:
+def _parse_gui_args(argv: List[str]) -> argparse.Namespace:
     """Parse gui args."""
     parser = argparse.ArgumentParser(description="Env Inspector GUI")
     parser.add_argument(

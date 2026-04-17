@@ -22,7 +22,7 @@ def test_open_source_path_uses_resolved_file_uri(tmp_path: Path):
     local_file = tmp_path / "a.env"
     local_file.write_text("A=1\n", encoding="utf-8")
 
-    calls: list[str] = []
+    calls: List[str] = []
 
     def fake_opener(uri: str) -> bool:
         """Fake opener."""

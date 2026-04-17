@@ -10,9 +10,9 @@ def _raise_mixed_request_usage() -> None:
 
 def _extract_request_object(
     *,
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
-    required_attributes: tuple[str, ...],
+    args: Tuple[Any, ...],
+    kwargs: Dict[str, Any],
+    required_attributes: Tuple[str, ...],
 ) -> Any | None:
     """Extract request object."""
     if "request" in kwargs:
@@ -30,7 +30,7 @@ def _extract_request_object(
     return None
 
 
-def _target_operation_payload(request: Any) -> dict[str, Any]:
+def _target_operation_payload(request: Any) -> Dict[str, Any]:
     """Target operation payload."""
     return {
         "target": request.target,
@@ -41,7 +41,7 @@ def _target_operation_payload(request: Any) -> dict[str, Any]:
     }
 
 
-def _target_operation_batch_payload(request: Any) -> dict[str, Any]:
+def _target_operation_batch_payload(request: Any) -> Dict[str, Any]:
     """Target operation batch payload."""
     return {
         "action": request.action,
@@ -71,10 +71,10 @@ def _require_values(message: str, **values: Any) -> None:
 
 
 def _resolve_operation_inputs(
-    args: tuple[Any, ...],
-    kwargs: dict[str, Any],
-    field_names: tuple[str, ...],
-) -> tuple[Any, ...]:
+    args: Tuple[Any, ...],
+    kwargs: Dict[str, Any],
+    field_names: Tuple[str, ...],
+) -> Tuple[Any, ...]:
     """Resolve operation inputs."""
     if args and isinstance(args[0], str):
         return tuple(
@@ -84,7 +84,7 @@ def _resolve_operation_inputs(
     return tuple(kwargs.pop(name, None) for name in field_names)
 
 
-def normalize_target_operation_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Normalize target operation request."""
     request = _extract_request_object(
         args=args,
@@ -114,7 +114,7 @@ def normalize_target_operation_request(*args: Any, **kwargs: Any) -> dict[str, A
     }
 
 
-def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> dict[str, Any]:
+def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> Dict[str, Any]:
     """Normalize target operation batch."""
     request = _extract_request_object(
         args=args,

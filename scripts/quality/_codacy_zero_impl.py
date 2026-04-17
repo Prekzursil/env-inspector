@@ -5,7 +5,7 @@ import argparse
 import sys
 import urllib.error
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any, List, Tuple
+from typing import Any, List, TYPE_CHECKING, Tuple
 
 try:
     from . import _codacy_zero_support as _support
@@ -83,7 +83,7 @@ def extract_total_open(payload: Any) -> int | None:
         if total is not None:
             return total
 
-    stack: list[Any] = [payload]
+    stack: List[Any] = [payload]
     while stack:
         node = stack.pop()
         if isinstance(node, dict):
@@ -101,7 +101,7 @@ def extract_total_open(payload: Any) -> int | None:
 def _fetch_open_issues_for_provider(
     request: CodacyRequest | None = None,
     **kwargs: Any,
-) -> tuple[bool, int | None, list[str], Exception | None]:
+) -> Tuple[bool, int | None, List[str], Exception | None]:
     """Fetch open issues for provider."""
     request = _resolve_codacy_request(request, kwargs)
 
@@ -124,9 +124,9 @@ def _fetch_open_issues_for_provider(
 def _attempt_issue_total(
     request: CodacyRequest,
     request_json_fn: Any,
-) -> tuple[bool, int | None, list[str], Exception | None]:
+) -> Tuple[bool, int | None, List[str], Exception | None]:
     """Attempt issue total."""
-    findings: list[str] = []
+    findings: List[str] = []
 
     try:
         return True, _request_issue_total(request, request_json_fn), findings, None
@@ -158,8 +158,8 @@ def _request_issue_total(request: CodacyRequest, request_json_fn: Any) -> int | 
 
 
 def _handle_http_error(
-    exc: urllib.error.HTTPError, findings: list[str]
-) -> tuple[bool, Exception]:
+    exc: urllib.error.HTTPError, findings: List[str]
+) -> Tuple[bool, Exception]:
     """Handle http error."""
     if exc.code == 404:
         return False, exc
@@ -172,7 +172,7 @@ def _non_zero_issue_findings(
     open_issues: int,
     request_json_fn: Any,
     sample_findings_fn: Any,
-) -> list[str]:
+) -> List[str]:
     """Non zero issue findings."""
     findings = [f"Codacy reports {open_issues} open issues (expected 0)."]
     sample_payload = request_json_fn(
@@ -188,7 +188,7 @@ def _issue_total_findings(
     handled: bool,
     request_json_fn: Any,
     sample_findings_fn: Any,
-) -> list[str]:
+) -> List[str]:
     """Issue total findings."""
     if not handled:
         return []
@@ -203,7 +203,7 @@ def _issue_total_findings(
 
 def _query_open_issues(
     request: CodacyRequest | None = None, **kwargs: Any
-) -> tuple[int | None, list[str]]:
+) -> Tuple[int | None, List[str]]:
     """Query open issues."""
     if request is None:
         request = CodacyRequest(**kwargs)

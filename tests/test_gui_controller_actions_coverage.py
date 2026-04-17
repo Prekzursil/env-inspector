@@ -18,7 +18,7 @@ _NEGATIVE_FLAG_TEXT = "no"  # avoid Bandit B106 false-positive on _text="no" lit
 
 def _make_record(**overrides: object) -> EnvRecord:
     """Make record."""
-    defaults: dict[str, Any] = {
+    defaults: Dict[str, Any] = {
         "source_type": "dotenv",
         "source_id": "dotenv:/workspace/.env",
         "source_path": "/workspace/.env",
@@ -85,8 +85,8 @@ class _ActionTestMixin(EnvInspectorControllerActionsMixin):
         self.root_path = Path("/workspace")
 
         self._selected: DisplayedRow | None = None
-        self._status_calls: list[str] = []
-        self._effective_calls: list[str] = []
+        self._status_calls: List[str] = []
+        self._effective_calls: List[str] = []
         self._refresh_calls: int = 0
 
     def _selected_row(self) -> Any:

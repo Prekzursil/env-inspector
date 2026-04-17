@@ -17,11 +17,11 @@ def _fixture_token() -> str:
 
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
     """Test codacy request json uses fixed host and validated segments."""
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
     def _fake_request_json_https(
         **kwargs: object,
-    ) -> tuple[dict[str, int], dict[str, str]]:
+    ) -> Tuple[Dict[str, int], Dict[str, str]]:
         """Fake request json https."""
         captured.update(kwargs)
         return {"total": 0}, {}
@@ -60,11 +60,11 @@ def test_codacy_request_json_rejects_unsafe_identifier():
 
 def test_deepscan_request_json_uses_fixed_host(monkeypatch):
     """Test deepscan request json uses fixed host."""
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
     def _fake_request_json_https(
         **kwargs: object,
-    ) -> tuple[dict[str, int], dict[str, str]]:
+    ) -> Tuple[Dict[str, int], Dict[str, str]]:
         """Fake request json https."""
         captured.update(kwargs)
         return {"open_issues": 0}, {}
@@ -85,11 +85,11 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
 
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     """Test sentry request project issues uses fixed host."""
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
     def _fake_request_json_https(
         **kwargs: object,
-    ) -> tuple[list[object], dict[str, str]]:
+    ) -> Tuple[List[object], Dict[str, str]]:
         """Fake request json https."""
         captured.update(kwargs)
         return [], {"x-hits": "0"}

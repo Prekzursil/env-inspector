@@ -29,10 +29,10 @@ class _HttpsRequestInput:
 
     host: str
     path: str
-    headers: dict[str, str]
+    headers: Dict[str, str]
     method: str = "GET"
-    query: dict[str, str] | None = None
-    data: dict[str, Any] | None = None
+    query: Dict[str, str] | None = None
+    data: Dict[str, Any] | None = None
     timeout: int = 30
 
 
@@ -43,7 +43,7 @@ class _HttpsExecutionRequest:
     host: str
     method: str
     request_target: str
-    headers: dict[str, str]
+    headers: Dict[str, str]
     body: str | None
     timeout: int
 
@@ -60,14 +60,14 @@ def _parse_https_url(raw_url: str):
     return parsed
 
 
-def _normalized_hosts(values: set[str] | None) -> set[str]:
+def _normalized_hosts(values: Set[str] | None) -> Set[str]:
     """Normalize hostname allowlist values for exact or suffix matching."""
     if not values:
         return set()
     return {value.lower().strip(".") for value in values if value.strip(".")}
 
 
-def _hostname_matches_suffix(hostname: str, suffixes: set[str]) -> bool:
+def _hostname_matches_suffix(hostname: str, suffixes: Set[str]) -> bool:
     """Return whether the hostname matches any allowed suffix entry."""
     return any(
         hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes
@@ -77,8 +77,8 @@ def _hostname_matches_suffix(hostname: str, suffixes: set[str]) -> bool:
 def _validate_hostname_allowlists(
     hostname: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
+    allowed_hosts: Set[str] | None = None,
+    allowed_host_suffixes: Set[str] | None = None,
 ) -> None:
     """Validate a hostname against optional exact and suffix allowlists."""
     exact_hosts = _normalized_hosts(allowed_hosts)
@@ -112,8 +112,8 @@ def _reject_local_targets(hostname: str) -> None:
 def normalize_https_url(
     raw_url: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
+    allowed_hosts: Set[str] | None = None,
+    allowed_host_suffixes: Set[str] | None = None,
     strip_query: bool = False,
 ) -> str:
     """Validate user-provided URLs for CLI scripts.
@@ -162,9 +162,9 @@ def encode_identifier(raw: str, *, field_name: str) -> str:
 def split_validated_https_url(
     raw_url: str,
     *,
-    allowed_hosts: set[str] | None = None,
-    allowed_host_suffixes: set[str] | None = None,
-) -> tuple[str, str, dict[str, str]]:
+    allowed_hosts: Set[str] | None = None,
+    allowed_host_suffixes: Set[str] | None = None,
+) -> Tuple[str, str, Dict[str, str]]:
     """Validate an HTTPS URL and split it into host, path, and query pairs."""
     safe_url = normalize_https_url(
         raw_url,
@@ -196,7 +196,7 @@ def _normalize_https_path(path: str) -> str:
     return safe_path
 
 
-def _build_request_target(path: str, query: dict[str, str] | None) -> str:
+def _build_request_target(path: str, query: Dict[str, str] | None) -> str:
     """Build a request target from a normalized path and query mapping."""
     query_text = urllib.parse.urlencode(query or {}, doseq=False)
     return path + (f"?{query_text}" if query_text else "")
@@ -210,7 +210,7 @@ def _build_https_url(host: str, request_target: str) -> str:
     )
 
 
-def _json_body_or_none(data: dict[str, Any] | None) -> str | None:
+def _json_body_or_none(data: Dict[str, Any] | None) -> str | None:
     """Serialize a JSON request body when one is present."""
     return json.dumps(data) if data is not None else None
 
@@ -224,7 +224,7 @@ def _secure_ssl_context() -> ssl.SSLContext:
     return context
 
 
-def _read_https_success(response) -> tuple[int, str, str, dict[str, str]]:
+def _read_https_success(response) -> Tuple[int, str, str, Dict[str, str]]:
     """Read a successful HTTPS response into normalized primitives."""
     raw_body = response.read().decode("utf-8")
     response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
@@ -235,7 +235,7 @@ def _read_https_success(response) -> tuple[int, str, str, dict[str, str]]:
 
 def _read_https_error(
     exc: urllib.error.HTTPError,
-) -> tuple[int, str, str, dict[str, str]]:
+) -> Tuple[int, str, str, Dict[str, str]]:
     """Read an HTTPS error response into normalized primitives."""
     raw_body = (
         exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
@@ -249,7 +249,7 @@ def _read_https_error(
 
 def _execute_https_request(
     request: _HttpsExecutionRequest,
-) -> tuple[int, str, str, dict[str, str]]:
+) -> Tuple[int, str, str, Dict[str, str]]:
     """Execute an HTTPS request and return status, reason, body, and headers."""
     http_request = urllib.request.Request(
         url=_build_https_url(request.host, request.request_target),
@@ -294,7 +294,7 @@ def _coerce_https_request(*args: Any, **kwargs: Any) -> _HttpsRequestInput:
     return request
 
 
-def request_json_https(*args: Any, **kwargs: Any) -> tuple[Any, dict[str, str]]:
+def request_json_https(*args: Any, **kwargs: Any) -> Tuple[Any, Dict[str, str]]:
     """Execute an HTTPS request and decode its JSON response payload."""
     request = _coerce_https_request(*args, **kwargs)
     validated_host = _normalize_https_host(request.host)

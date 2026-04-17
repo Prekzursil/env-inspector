@@ -36,7 +36,7 @@ class CoverageStats:
         return (self.covered / self.total) * 100.0
 
 
-def parse_named_path(value: str, safe_input_file_path_in_workspace) -> tuple[str, Path]:
+def parse_named_path(value: str, safe_input_file_path_in_workspace) -> Tuple[str, Path]:
     """Parse named path."""
     match = _PAIR_RE.match(value.strip())
     if not match:
@@ -89,10 +89,10 @@ def normalize_source_path(raw_path: str) -> str:
     return _normalize_source_path(raw_path)
 
 
-def coverage_sources_from_xml(path: Path) -> set[str]:
+def coverage_sources_from_xml(path: Path) -> Set[str]:
     """Coverage sources from xml."""
     text = path.read_text(encoding="utf-8")  # lgtm [py/path-injection]
-    covered_sources: set[str] = set()
+    covered_sources: Set[str] = set()
     for match in _XML_FILENAME_RE.finditer(text):
         filename = _normalize_source_path(match.group("value"))
         if filename:
@@ -117,9 +117,9 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     return CoverageStats(name=name, path=str(path), covered=covered, total=total)
 
 
-def coverage_sources_from_lcov(path: Path) -> set[str]:
+def coverage_sources_from_lcov(path: Path) -> Set[str]:
     """Coverage sources from lcov."""
-    covered_sources: set[str] = set()
+    covered_sources: Set[str] = set()
     for raw in path.read_text(
         encoding="utf-8"
     ).splitlines():  # lgtm [py/path-injection]
@@ -143,10 +143,10 @@ def _matches_required_source(source_path: str, required_source: str) -> bool:
 
 
 def _find_missing_required_sources(
-    reported_sources: set[str], required_sources: list[str]
-) -> list[str]:
+    reported_sources: Set[str], required_sources: List[str]
+) -> List[str]:
     """Find missing required sources."""
-    missing: list[str] = []
+    missing: List[str] = []
     for required_source in required_sources:
         normalized_required = _normalize_source_path(required_source).rstrip("/")
         if not normalized_required:
@@ -160,7 +160,7 @@ def _find_missing_required_sources(
     return missing
 
 
-def _is_tests_only_report(reported_sources: set[str]) -> bool:
+def _is_tests_only_report(reported_sources: Set[str]) -> bool:
     """Is tests only report."""
     return bool(reported_sources) and all(
         source_path == "tests" or source_path.startswith("tests/")
@@ -168,9 +168,9 @@ def _is_tests_only_report(reported_sources: set[str]) -> bool:
     )
 
 
-def _coverage_findings(stats: list[CoverageStats], min_percent: float) -> list[str]:
+def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[str]:
     """Coverage findings."""
-    findings: list[str] = []
+    findings: List[str] = []
     for item in stats:
         if item.percent < min_percent:
             findings.append(
@@ -190,10 +190,10 @@ def _coverage_findings(stats: list[CoverageStats], min_percent: float) -> list[s
 
 
 def _source_findings(
-    reported_sources: set[str], required_sources: list[str]
-) -> list[str]:
+    reported_sources: Set[str], required_sources: List[str]
+) -> List[str]:
     """Source findings."""
-    findings: list[str] = []
+    findings: List[str] = []
     if _is_tests_only_report(reported_sources):
         findings.append(
             "coverage inputs only reference tests/ paths; first-party sources are missing."
@@ -207,12 +207,12 @@ def _source_findings(
 
 
 def evaluate(
-    stats: list[CoverageStats],
+    stats: List[CoverageStats],
     min_percent: float,
     *,
-    required_sources: list[str] | None = None,
-    reported_sources: set[str] | None = None,
-) -> tuple[str, list[str]]:
+    required_sources: List[str] | None = None,
+    reported_sources: Set[str] | None = None,
+) -> Tuple[str, List[str]]:
     """Evaluate."""
     normalized_sources = reported_sources or set()
     findings = _coverage_findings(stats, min_percent)
@@ -221,7 +221,7 @@ def evaluate(
     return status, findings
 
 
-def _append_component_lines(lines: list[str], payload: dict[str, Any]) -> None:
+def _append_component_lines(lines: List[str], payload: Dict[str, Any]) -> None:
     """Append component lines."""
     components = payload.get("components") or []
     if components:
@@ -233,7 +233,7 @@ def _append_component_lines(lines: list[str], payload: dict[str, Any]) -> None:
     lines.append(_NONE_LIST_ITEM)
 
 
-def _append_covered_source_lines(lines: list[str], payload: dict[str, Any]) -> None:
+def _append_covered_source_lines(lines: List[str], payload: Dict[str, Any]) -> None:
     """Append covered source lines."""
     sources = payload.get("covered_sources") or []
     if sources:
@@ -242,7 +242,7 @@ def _append_covered_source_lines(lines: list[str], payload: dict[str, Any]) -> N
     lines.append(_NONE_LIST_ITEM)
 
 
-def _append_finding_lines(lines: list[str], payload: dict[str, Any]) -> None:
+def _append_finding_lines(lines: List[str], payload: Dict[str, Any]) -> None:
     """Append finding lines."""
     findings = payload.get("findings") or []
     if findings:
@@ -251,7 +251,7 @@ def _append_finding_lines(lines: list[str], payload: dict[str, Any]) -> None:
     lines.append(_NONE_LIST_ITEM)
 
 
-def _render_md(payload: dict[str, Any]) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# Coverage 100 Gate",
@@ -271,12 +271,12 @@ def _render_md(payload: dict[str, Any]) -> str:
 
 
 def _build_payload(
-    stats: list[CoverageStats],
-    covered_sources: set[str],
+    stats: List[CoverageStats],
+    covered_sources: Set[str],
     min_percent: float,
-    findings: list[str],
+    findings: List[str],
     status: str,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Build payload."""
     return {
         "status": status,
@@ -297,7 +297,7 @@ def _build_payload(
     }
 
 
-def _write_outputs(payload: dict[str, Any], *, out_json: Path, out_md: Path) -> str:
+def _write_outputs(payload: Dict[str, Any], *, out_json: Path, out_md: Path) -> str:
     """Write outputs."""
     os.makedirs(out_json.parent, exist_ok=True)
     os.makedirs(out_md.parent, exist_ok=True)

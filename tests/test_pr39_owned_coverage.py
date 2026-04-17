@@ -87,7 +87,7 @@ def test_main_gui_mode_runs_app_with_resolved_root(
     )
     monkeypatch.setattr(env_inspector, "resolve_scan_root", lambda _root: workspace)
 
-    captured: dict[str, object] = {}
+    captured: Dict[str, object] = {}
 
     class _FakeApp:
         """Capture GUI application construction and execution."""
@@ -364,7 +364,7 @@ def test_service_listing_filters_cover_registry_fallback(
 def test_privileged_writer_returns_after_direct_write(tmp_path: Path) -> None:
     """Direct writes should bypass sudo when they already succeed."""
     target = tmp_path / "environment"
-    writes: dict[str, object] = {}
+    writes: Dict[str, object] = {}
 
     def _write_text_file(path: Path, text: str) -> None:
         """Capture and perform the direct file write."""

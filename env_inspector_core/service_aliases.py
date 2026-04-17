@@ -55,7 +55,7 @@ def registry_write(self, *args: Any, apply_changes: bool, **kwargs: Any):
     return before, after, None, requires_priv, None
 
 
-def bridge_distros(self) -> list[str]:
+def bridge_distros(self) -> List[str]:
     """Return bridge distros, excluding the active Linux-host distro."""
     if not self.wsl.available():
         return []
@@ -66,7 +66,7 @@ def bridge_distros(self) -> list[str]:
     return distros
 
 
-def list_contexts(self) -> list[str]:
+def list_contexts(self) -> List[str]:
     """Return the runtime context plus any available WSL bridge contexts."""
     contexts = [self.runtime_context]
     if self.wsl.available():
@@ -75,7 +75,7 @@ def list_contexts(self) -> list[str]:
     return contexts
 
 
-def get_powershell_profile_paths() -> list[Path]:
+def get_powershell_profile_paths() -> List[Path]:
     """Return the PowerShell profile paths exposed by the path helper."""
     return _get_powershell_profile_paths()
 
@@ -107,9 +107,9 @@ def linux_etc_environment_path(cls) -> Path:
 
 def available_targets(
     self,
-    records: list[EnvRecord],
+    records: List[EnvRecord],
     context: str | None = None,
-) -> list[str]:
+) -> List[str]:
     """Return the set of editable targets visible for the provided records."""
     return _available_targets_helper(
         records,
@@ -118,7 +118,7 @@ def available_targets(
     )
 
 
-def list_records_raw(self, **kwargs: Any) -> list[EnvRecord]:
+def list_records_raw(self, **kwargs: Any) -> List[EnvRecord]:
     """Return raw `EnvRecord` instances instead of serialized payload rows."""
     payload = self.list_records(include_raw_secrets=True, **kwargs)
     return [EnvRecord(**item) for item in payload]
@@ -129,9 +129,9 @@ def preview_set(
     *,
     key: str,
     value: str,
-    targets: list[str],
+    targets: List[str],
     scope_roots=None,
-) -> list[dict]:
+) -> List[dict]:
     """Preview a set operation and serialize the results."""
     return [
         r.to_dict()
@@ -150,9 +150,9 @@ def preview_remove(
     self,
     *,
     key: str,
-    targets: list[str],
+    targets: List[str],
     scope_roots=None,
-) -> list[dict]:
+) -> List[dict]:
     """Preview a remove operation and serialize the results."""
     return [
         r.to_dict()
@@ -177,7 +177,7 @@ def _results_payload(results):
     }
 
 
-def set_key(self, *, key: str, value: str, targets: list[str], scope_roots=None):
+def set_key(self, *, key: str, value: str, targets: List[str], scope_roots=None):
     """Apply a set operation and return the legacy payload shape."""
     results = self.apply(
         action="set",
@@ -190,7 +190,7 @@ def set_key(self, *, key: str, value: str, targets: list[str], scope_roots=None)
     return _results_payload(results)
 
 
-def remove_key(self, *, key: str, targets: list[str], scope_roots=None):
+def remove_key(self, *, key: str, targets: List[str], scope_roots=None):
     """Apply a remove operation and return the legacy payload shape."""
     results = self.apply(
         action="remove",
@@ -215,7 +215,7 @@ def export_records(
     return export_rows(rows, output=output)
 
 
-def list_backups(self, *, target: str | None = None) -> list[str]:
+def list_backups(self, *, target: str | None = None) -> List[str]:
     """Return backup paths, optionally scoped to a single target."""
     if target:
         return [str(p) for p in self.backup_mgr.list_backups(target)]

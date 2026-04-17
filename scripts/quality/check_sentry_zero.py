@@ -35,7 +35,7 @@ class SentryScanRequest:
     """Parameters for scanning Sentry projects for unresolved issues."""
 
     org: str
-    projects: list[str]
+    projects: List[str]
     token: str
 
 
@@ -69,7 +69,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _request_project_issues(
     org: str, project: str, token: str
-) -> tuple[list[Any], dict[str, str]]:
+) -> Tuple[List[Any], Dict[str, str]]:
     """Request project issues."""
     org_slug = encode_identifier(org, field_name="Sentry org")
     project_slug = encode_identifier(project, field_name="Sentry project")
@@ -89,7 +89,7 @@ def _request_project_issues(
     return payload, headers
 
 
-def _hits_from_headers(headers: dict[str, str]) -> int | None:
+def _hits_from_headers(headers: Dict[str, str]) -> int | None:
     """Hits from headers."""
     raw = headers.get("x-hits")
     if not raw:
@@ -100,13 +100,13 @@ def _hits_from_headers(headers: dict[str, str]) -> int | None:
         return None
 
 
-def _collect_projects(args: argparse.Namespace, env: Mapping[str, str]) -> list[str]:
+def _collect_projects(args: argparse.Namespace, env: Mapping[str, str]) -> List[str]:
     """Collect projects."""
     projects = [p for p in args.project if p]
     if projects:
         return projects
 
-    resolved: list[str] = []
+    resolved: List[str] = []
     for env_name in ("SENTRY_PROJECT_BACKEND", "SENTRY_PROJECT_WEB"):
         value = str(env.get(env_name, "")).strip()
         if value:
@@ -114,9 +114,9 @@ def _collect_projects(args: argparse.Namespace, env: Mapping[str, str]) -> list[
     return resolved
 
 
-def _missing_config_findings(token: str, org: str, projects: list[str]) -> list[str]:
+def _missing_config_findings(token: str, org: str, projects: List[str]) -> List[str]:
     """Missing config findings."""
-    findings: list[str] = []
+    findings: List[str] = []
     if not token:
         findings.append("SENTRY_AUTH_TOKEN is missing.")
     if not org:
@@ -129,10 +129,10 @@ def _missing_config_findings(token: str, org: str, projects: list[str]) -> list[
 
 
 def _resolve_unresolved_count(
-    issues: list[Any],
-    headers: dict[str, str],
+    issues: List[Any],
+    headers: Dict[str, str],
     project: str,
-    failures: list[str],
+    failures: List[str],
 ) -> int:
     """Resolve unresolved count."""
     unresolved = _hits_from_headers(headers)
@@ -171,13 +171,13 @@ def _coerce_scan_request(*args: Any, **kwargs: Any) -> SentryScanRequest:
 
 def _scan_projects(
     *args: Any, **kwargs: Any
-) -> tuple[str, list[dict[str, Any]], list[str], list[str]]:
+) -> Tuple[str, List[Dict[str, Any]], List[str], List[str]]:
     """Scan projects."""
     request = _coerce_scan_request(*args, **kwargs)
     mode = "strict"
-    project_results: list[dict[str, Any]] = []
-    findings: list[str] = []
-    failures: list[str] = []
+    project_results: List[Dict[str, Any]] = []
+    findings: List[str] = []
+    failures: List[str] = []
 
     for project in request.projects:
         try:
@@ -251,7 +251,7 @@ def main() -> int:
     projects = _collect_projects(args, os.environ)
 
     findings = _missing_config_findings(token, org, projects)
-    project_results: list[dict[str, Any]] = []
+    project_results: List[Dict[str, Any]] = []
     mode = "strict"
 
     if findings:

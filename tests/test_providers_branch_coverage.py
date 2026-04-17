@@ -119,7 +119,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs() -> None:
             return True
 
         @staticmethod
-        def list_distros() -> list[str]:
+        def list_distros() -> List[str]:
             """Return a single distro for collection."""
             return ["Ubuntu"]
 
@@ -155,7 +155,7 @@ def test_collect_wsl_records_respects_excluded_distros() -> None:
             return True
 
         @staticmethod
-        def list_distros() -> list[str]:
+        def list_distros() -> List[str]:
             """Return two distros so one can be excluded."""
             return ["Ubuntu", "Debian"]
 
@@ -212,7 +212,7 @@ def test_collect_wsl_dotenv_records_builds_records_from_scanned_env_files() -> N
             _distro: str,
             _root_path: str,
             _max_depth: int,
-        ) -> list[str]:
+        ) -> List[str]:
             """Return the dotenv files that should be scanned."""
             return ["/workspace/.env"]
 

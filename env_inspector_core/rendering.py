@@ -24,7 +24,7 @@ def audit_safe_result(result: OperationResult, *, redact: bool) -> OperationResu
     )
 
 
-def export_rows(rows: list[dict[str, Any]], *, output: str) -> str:
+def export_rows(rows: List[Dict[str, Any]], *, output: str) -> str:
     """Export rows."""
     if output == "json":
         return json.dumps(rows, ensure_ascii=True, indent=2)

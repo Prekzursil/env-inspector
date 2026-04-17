@@ -22,7 +22,7 @@ class _CompletedProcessLike:
     returncode: int = 0
     stdout: bytes = b""
     stderr: bytes = b""
-    args: list[Any] = field(default_factory=list)
+    args: List[Any] = field(default_factory=list)
 
 
 def _case() -> unittest.TestCase:

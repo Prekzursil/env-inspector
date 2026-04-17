@@ -18,7 +18,7 @@ class SettledChecksRequest:
     repo_arg: str
     sha: str
     token: str
-    required: list[str]
+    required: List[str]
     timeout_seconds: int
     poll_seconds: int
 
@@ -70,7 +70,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _render_md(payload: dict[str, Any]) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# Quality Zero Gate - Required Contexts",
@@ -98,7 +98,7 @@ def _render_md(payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _required_contexts(args: argparse.Namespace) -> list[str]:
+def _required_contexts(args: argparse.Namespace) -> List[str]:
     """Required contexts."""
     required = [item.strip() for item in args.required_context if item.strip()]
     if not required:
@@ -120,9 +120,9 @@ def _snapshot(
     *,
     repo_arg: str,
     sha: str,
-    required: list[str],
-    contexts: dict[str, dict[str, str]],
-) -> dict[str, Any]:
+    required: List[str],
+    contexts: Dict[str, Dict[str, str]],
+) -> Dict[str, Any]:
     """Snapshot."""
     status, missing, failed = _evaluate(required, contexts)
     return {
@@ -137,7 +137,7 @@ def _snapshot(
     }
 
 
-def _has_in_progress_check_run(contexts: dict[str, dict[str, str]]) -> bool:
+def _has_in_progress_check_run(contexts: Dict[str, Dict[str, str]]) -> bool:
     """Has in progress check run."""
     return any(
         observed.get("source") == "check_run" and observed.get("state") != "completed"
@@ -145,7 +145,7 @@ def _has_in_progress_check_run(contexts: dict[str, dict[str, str]]) -> bool:
     )
 
 
-def _should_wait(payload: dict[str, Any]) -> bool:
+def _should_wait(payload: Dict[str, Any]) -> bool:
     """Should wait."""
     if payload["status"] == "pass":
         return False
@@ -154,10 +154,10 @@ def _should_wait(payload: dict[str, Any]) -> bool:
     return _has_in_progress_check_run(payload["contexts"])
 
 
-def _collect_until_settled(request: SettledChecksRequest) -> dict[str, Any]:
+def _collect_until_settled(request: SettledChecksRequest) -> Dict[str, Any]:
     """Collect until settled."""
     deadline = time.time() + max(request.timeout_seconds, 1)
-    final_payload: dict[str, Any] | None = None
+    final_payload: Dict[str, Any] | None = None
 
     while time.time() <= deadline:
         check_runs = _api_get_check_runs(

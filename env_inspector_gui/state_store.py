@@ -77,8 +77,8 @@ def save_ui_state(state_dir: Path, state: PersistedUiState) -> Path:
 def sanitize_loaded_state(
     state: PersistedUiState,
     *,
-    available_contexts: list[str],
-    available_targets: list[str],
+    available_contexts: List[str],
+    available_targets: List[str],
     fallback_root: Path,
 ) -> PersistedUiState:
     """Sanitize loaded state."""
@@ -109,7 +109,7 @@ def _sanitize_root(root_path: str, fallback_root: Path) -> Path:
     return Path(fallback_root)
 
 
-def _sanitize_context(context: str, available_contexts: list[str]) -> str:
+def _sanitize_context(context: str, available_contexts: List[str]) -> str:
     """Sanitize context."""
     if not available_contexts:
         return ""
@@ -119,8 +119,8 @@ def _sanitize_context(context: str, available_contexts: list[str]) -> str:
 
 
 def _sanitize_targets(
-    selected_targets: list[str], available_targets: list[str]
-) -> list[str]:
+    selected_targets: List[str], available_targets: List[str]
+) -> List[str]:
     """Sanitize targets."""
     available_set = set(available_targets)
     return [target for target in selected_targets if target in available_set]

@@ -159,7 +159,7 @@ def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(
     workspace.mkdir()
     monkeypatch.chdir(workspace)
 
-    calls: list[str] = []
+    calls: List[str] = []
 
     def _validated_root(_value):
         """Return the already validated workspace root for the legacy resolver."""

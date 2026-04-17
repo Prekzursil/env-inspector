@@ -138,7 +138,7 @@ def test_restore_wsl_dotenv_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: list[tuple[str, str, str]] = []
+    calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
@@ -159,7 +159,7 @@ def test_restore_wsl_bashrc_backup_uses_wsl_write_file(tmp_path: Path, monkeypat
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: list[tuple[str, str, str]] = []
+    calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
@@ -191,7 +191,7 @@ def test_restore_wsl_dotenv_backup_rejects_path_traversal(tmp_path: Path, monkey
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
-    calls: list[tuple[str, str, str]] = []
+    calls: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file",
@@ -247,7 +247,7 @@ def test_restore_powershell_target_all_users_uses_program_files_root(
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     profile = tmp_path / "program_files" / "PowerShell" / "7" / "profile.ps1"
 
-    writes: dict[str, object] = {}
+    writes: Dict[str, object] = {}
     monkeypatch.setattr(
         EnvInspectorService,
         "_validated_powershell_restore_path",

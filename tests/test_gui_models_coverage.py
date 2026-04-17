@@ -25,7 +25,7 @@ from tests.assertions import ensure
 
 def _make_record(**overrides: object) -> EnvRecord:
     """Make record."""
-    defaults: dict[str, Any] = {
+    defaults: Dict[str, Any] = {
         "source_type": "dotenv",
         "source_id": "dotenv:/workspace/.env",
         "source_path": "/workspace/.env",

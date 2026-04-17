@@ -88,10 +88,10 @@ def parse_named_path(value: str):
     return parse_named_path_impl(value, SAFE_INPUT_FILE_PATH_IN_WORKSPACE)
 
 
-def _collect_stats(args: argparse.Namespace) -> tuple[list[CoverageStats], set[str]]:
+def _collect_stats(args: argparse.Namespace) -> Tuple[List[CoverageStats], Set[str]]:
     """Collect stats."""
-    stats: list[CoverageStats] = []
-    covered_sources: set[str] = set()
+    stats: List[CoverageStats] = []
+    covered_sources: Set[str] = set()
     for item in args.xml:
         name, path = parse_named_path(item)
         stats.append(parse_coverage_xml(name, path))
