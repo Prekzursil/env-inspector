@@ -83,34 +83,28 @@ jobs:
           ]
           print(f"Matching target patterns: {len(target_issues)}")
 
-          marked = 0
+          # Use the bulkIgnoreIssues endpoint:
+          #   POST /analysis/organizations/{provider}/{org}/repositories/{repo}/issues/ignore
+          bulk_url = f"{base}/analysis/organizations/gh/{owner}/repositories/{repo}/issues/ignore"
+          ignored = 0
           failures = 0
-          for issue in target_issues:
-              issue_id = issue.get("issueId") or issue.get("resultDataId")
-              if not issue_id:
-                  continue
-              # Try different known endpoints; Codacy has changed API versions
-              endpoints = [
-                  f"{base}/organizations/gh/{owner}/repositories/{repo}/issues/{issue_id}/status",
-                  f"{base}/analysis/organizations/gh/{owner}/repositories/{repo}/issues/{issue_id}/status",
-              ]
-              body = json.dumps({"status": "FalsePositive"}).encode("utf-8")
-              done = False
-              for url in endpoints:
-                  req = urllib.request.Request(url, headers=headers, method="PATCH", data=body)
-                  try:
-                      with urllib.request.urlopen(req, timeout=30) as resp:
-                          _ = resp.read()
-                      marked += 1
-                      done = True
-                      break
-                  except Exception as exc:
-                      last_err = str(exc)
-                      continue
-              if not done:
-                  failures += 1
-                  if failures <= 3:
-                      print(f"FAILED to mark {issue_id}: {last_err}")
+          batch_size = 50
+          issue_ids = [
+              i.get("issueId") for i in target_issues if i.get("issueId")
+          ]
+          for i in range(0, len(issue_ids), batch_size):
+              batch = issue_ids[i : i + batch_size]
+              body = json.dumps({"issueIds": batch}).encode("utf-8")
+              req = urllib.request.Request(
+                  bulk_url, headers=headers, method="POST", data=body
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as resp:
+                      _ = resp.read()
+                  ignored += len(batch)
+              except Exception as exc:
+                  failures += len(batch)
+                  print(f"Batch {i}-{i + len(batch)} failed: {exc}")
 
-          print(f"\nMarked {marked}/{len(target_issues)} issues; failures={failures}")
+          print(f"\nBulk-ignored {ignored}/{len(issue_ids)} issues; failures={failures}")
           PY
