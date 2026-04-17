@@ -1,11 +1,13 @@
-from __future__ import absolute_import, division
+"""Path actions module."""
 
 import webbrowser
-from typing import Callable, Tuple
 from pathlib import Path
+from typing import Tuple
+from collections.abc import Callable
 
 
 def is_openable_local_path(source_path: str) -> bool:
+    """Is openable local path."""
     if not source_path:
         return False
 
@@ -30,7 +32,8 @@ def open_source_path(
     source_path: str,
     *,
     open_uri: Callable[[str], bool] | None = None,
-) -> Tuple[bool, str | None]:
+) -> tuple[bool, str | None]:
+    """Open source path."""
     if not is_openable_local_path(source_path):
         return False, "Cannot open non-local source path"
 
@@ -45,6 +48,7 @@ def open_source_path(
 def _open_path(
     source_path: str, *, open_uri: Callable[[str], bool] | None = None
 ) -> None:
+    """Open path."""
     uri = Path(source_path).resolve().as_uri()
     opener = open_uri or webbrowser.open
     opened = opener(uri)

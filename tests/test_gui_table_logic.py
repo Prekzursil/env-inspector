@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Test gui table logic module."""
 
 from typing import Dict
 
@@ -10,12 +10,12 @@ from env_inspector_gui.table_logic import (
     sort_display_rows,
     toggle_sort,
 )
-
 from tests.assertions import ensure
 
 
 def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
-    payload: Dict[str, object] = {
+    """Rec."""
+    payload: dict[str, object] = {
         "source_type": "dotenv",
         "source_path": "/workspace/.env",
         "context": "windows",
@@ -48,6 +48,7 @@ def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
 
 
 def test_build_display_rows_filters_context_and_only_secrets():
+    """Test build display rows filters context and only secrets."""
     rows = build_display_rows(
         DisplayRowsRequest(
             records=[
@@ -69,6 +70,7 @@ def test_build_display_rows_filters_context_and_only_secrets():
 
 
 def test_hidden_secret_search_uses_masked_value_not_raw_secret():
+    """Test hidden secret search uses masked value not raw secret."""
     record = _rec("API_TOKEN", "supersecretvalue", is_secret=True)
 
     hidden_rows = build_display_rows(
@@ -95,6 +97,7 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
 
 
 def test_sort_toggle_and_stable_sort_behavior():
+    """Test sort toggle and stable sort behavior."""
     rows = build_display_rows(
         DisplayRowsRequest(
             records=[
@@ -122,6 +125,7 @@ def test_sort_toggle_and_stable_sort_behavior():
 
 
 def test_bool_sort_columns_use_yes_no_semantics():
+    """Test bool sort columns use yes no semantics."""
     rows = build_display_rows(
         DisplayRowsRequest(
             records=[

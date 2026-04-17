@@ -1,8 +1,5 @@
 """Coverage tests for cli.py, resolver.py, secrets.py, models.py, storage.py."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 import sys
 import unittest
 from io import StringIO
@@ -13,15 +10,17 @@ import pytest
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
 from env_inspector_core.secrets import (
+    _is_base64_secret,
+    _is_path_like,
     looks_secret,
     mask_value,
-    _is_path_like,
-    _is_base64_secret,
 )
 from env_inspector_core.storage import BackupManager
+from tests.assertions import ensure
 
 
 def _case() -> unittest.TestCase:
+    """Case."""
     return unittest.TestCase()
 
 

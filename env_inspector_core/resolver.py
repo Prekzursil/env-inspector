@@ -1,8 +1,8 @@
-from __future__ import absolute_import, division
+"""Resolver module."""
 
 from typing import List, Tuple
-from .models import EnvRecord
 
+from .models import EnvRecord
 
 # Lower number means higher priority.
 WINDOWS_PRECEDENCE = {
@@ -29,8 +29,9 @@ LINUX_PRECEDENCE = {
 
 
 def resolve_effective_value(
-    records: List[EnvRecord], key: str, context: str
+    records: list[EnvRecord], key: str, context: str
 ) -> EnvRecord | None:
+    """Resolve effective value."""
     key_norm = key.strip().lower()
     candidates = [
         r
@@ -47,7 +48,8 @@ def resolve_effective_value(
     else:
         table = WINDOWS_PRECEDENCE
 
-    def rank(rec: EnvRecord) -> Tuple[int, int, str]:
+    def rank(rec: EnvRecord) -> tuple[int, int, str]:
+        """Rank."""
         source_rank = table.get(rec.source_type, rec.precedence_rank)
         return (source_rank, rec.precedence_rank, rec.source_path)
 

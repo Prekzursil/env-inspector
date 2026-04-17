@@ -1,16 +1,19 @@
-from __future__ import absolute_import, division
+"""Secret policy module."""
 
-from typing import Callable, Optional, Tuple
+from typing import Optional, Tuple
+from collections.abc import Callable
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.secrets import mask_value
 
 
 def is_record_secret(record: EnvRecord) -> bool:
+    """Is record secret."""
     return bool(getattr(record, "is_secret", False))
 
 
 def build_visible_value(record: EnvRecord, *, show_secrets: bool) -> str:
+    """Build visible value."""
     record_is_secret = is_record_secret(record)
     if show_secrets or not record_is_secret:
         return record.value
@@ -18,6 +21,7 @@ def build_visible_value(record: EnvRecord, *, show_secrets: bool) -> str:
 
 
 def build_search_value(record: EnvRecord, *, show_secrets: bool) -> str:
+    """Build search value."""
     value = build_visible_value(record, show_secrets=show_secrets)
     return " ".join(
         [
@@ -36,7 +40,8 @@ def resolve_copy_payload(
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
     as_pair: bool,
-) -> Tuple[str, bool]:
+) -> tuple[str, bool]:
+    """Resolve copy payload."""
     record_is_secret = is_record_secret(record)
     use_raw = show_secrets or not record_is_secret
     if record_is_secret and not show_secrets:
@@ -52,7 +57,8 @@ def resolve_load_value(
     *,
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
-) -> Tuple[Optional[str], bool]:
+) -> tuple[str | None, bool]:
+    """Resolve load value."""
     record_is_secret = is_record_secret(record)
     if show_secrets or not record_is_secret:
         return record.value, True

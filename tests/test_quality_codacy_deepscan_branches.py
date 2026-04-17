@@ -1,11 +1,11 @@
-from __future__ import absolute_import, division
+"""Test quality codacy deepscan branches module."""
 
-from email.message import Message
 import secrets
 import sys
 import unittest
-from typing import List, NoReturn, Optional, Tuple
 import urllib.error
+from email.message import Message
+from typing import List, NoReturn, Optional, Tuple
 
 import pytest
 
@@ -14,36 +14,44 @@ from scripts.quality import check_deepscan_zero as deepscan_mod
 
 
 def _case() -> unittest.TestCase:
+    """Case."""
     return unittest.TestCase()
 
 
 def _token() -> str:
+    """Token."""
     return secrets.token_hex(8)
 
 
 def _empty_token() -> str:
-    return str()
+    """Empty token."""
+    return ""
 
 
 def _http_error(code: int) -> urllib.error.HTTPError:
+    """Http error."""
     return urllib.error.HTTPError(
         url="https://api.example", code=code, msg="err", hdrs=Message(), fp=None
     )
 
 
 def _raise_http_error(code: int) -> NoReturn:
+    """Raise http error."""
     raise _http_error(code)
 
 
 def _raise_value_error(message: str = "bad") -> NoReturn:
+    """Raise value error."""
     raise ValueError(message)
 
 
 def _raise_url_error(reason: str = "network") -> NoReturn:
+    """Raise url error."""
     raise urllib.error.URLError(reason)
 
 
 def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
+    """Test codacy parse args accepts required repo fields."""
     monkeypatch.setattr(
         sys, "argv", ["prog", "--owner", "Prekzursil", "--repo", "env-inspector"]
     )
@@ -56,9 +64,11 @@ def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
 
 
 def test_codacy_request_json_applies_branch_name(monkeypatch):
+    """Test codacy request json applies branch name."""
     captured = {}
 
     def _fake_request_json_https(**kwargs):
+        """Fake request json https."""
         captured.update(kwargs)
         return {"total": 0}, {}
 
@@ -80,6 +90,7 @@ def test_codacy_request_json_applies_branch_name(monkeypatch):
 
 
 def test_codacy_request_json_rejects_non_dict_payload(monkeypatch):
+    """Test codacy request json rejects non dict payload."""
     monkeypatch.setattr(codacy_mod, "request_json_https", lambda **_kwargs: ([], {}))
 
     with pytest.raises(RuntimeError, match="Unexpected Codacy response payload"):
@@ -89,6 +100,7 @@ def test_codacy_request_json_rejects_non_dict_payload(monkeypatch):
 
 
 def test_codacy_extract_helpers_cover_empty_and_fallback_paths():
+    """Test codacy extract helpers cover empty and fallback paths."""
     case = _case()
     case.assertIsNone(codacy_mod.extract_total_open([]))
     case.assertEqual(codacy_mod._provider_candidates("gh"), ["gh", "github"])
@@ -102,6 +114,7 @@ def test_codacy_extract_helpers_cover_empty_and_fallback_paths():
 
 
 def test_codacy_sample_issue_findings_skips_invalid_items_and_honors_limit():
+    """Test codacy sample issue findings skips invalid items and honors limit."""
     payload = {
         "data": [
             "skip",
@@ -119,6 +132,7 @@ def test_codacy_sample_issue_findings_skips_invalid_items_and_honors_limit():
 
 
 def test_codacy_fetch_open_issues_handles_none_count(monkeypatch):
+    """Test codacy fetch open issues handles none count."""
     monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: {"data": []})
 
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
@@ -138,6 +152,7 @@ def test_codacy_fetch_open_issues_handles_none_count(monkeypatch):
 
 
 def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
+    """Test codacy fetch open issues handles zero and non zero."""
     monkeypatch.setattr(codacy_mod, "_request_json", lambda **_kwargs: {"total": 0})
 
     handled, open_issues, findings, error = codacy_mod._fetch_open_issues_for_provider(
@@ -156,6 +171,7 @@ def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
     calls = {"count": 0}
 
     def _fake_request_json(**_kwargs):
+        """Fake request json."""
         calls["count"] += 1
         if calls["count"] == 1:
             return {"total": 2}
@@ -180,6 +196,7 @@ def test_codacy_fetch_open_issues_handles_zero_and_non_zero(monkeypatch):
 
 
 def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
+    """Test codacy fetch open issues handles http and request errors."""
     monkeypatch.setattr(
         codacy_mod, "_request_json", lambda **_kwargs: _raise_http_error(404)
     )
@@ -230,11 +247,12 @@ def test_codacy_fetch_open_issues_handles_http_and_request_errors(monkeypatch):
 
 
 def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
+    """Test codacy query open issues fallback and last error."""
     monkeypatch.setattr(
         codacy_mod, "_provider_candidates", lambda _preferred: ["gh", "github"]
     )
 
-    responses: List[Tuple[bool, Optional[int], List[str], Optional[Exception]]] = [
+    responses: list[tuple[bool, int | None, list[str], Exception | None]] = [
         (False, None, [], _http_error(404)),
         (True, 0, [], None),
     ]
@@ -275,6 +293,7 @@ def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
 
 
 def test_deepscan_extract_total_open_and_request_guard(monkeypatch):
+    """Test deepscan extract total open and request guard."""
     payload = {"outer": [{"nested": {"open_issues": 3}}, {"hits": 2}]}
     case = _case()
     case.assertIn(deepscan_mod.extract_total_open(payload), {2, 3})
@@ -287,6 +306,7 @@ def test_deepscan_extract_total_open_and_request_guard(monkeypatch):
 
 
 def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
+    """Test deepscan resolve and fetch open issues paths."""
     host, path, query = deepscan_mod._resolve_deepscan_endpoint(
         "https://deepscan.io/api/projects/1/issues/open?scope=pull-request"
     )
@@ -295,7 +315,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     case.assertEqual(path, "/api/projects/1/issues/open")
     case.assertEqual(query, {"scope": "pull-request"})
 
-    findings: List[str] = []
+    findings: list[str] = []
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
@@ -329,7 +349,8 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
 
 
 def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
-    findings: List[str] = []
+    """Test deepscan fetch open issues handles unparseable total."""
+    findings: list[str] = []
     monkeypatch.setattr(
         deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}}
     )
@@ -349,6 +370,7 @@ def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
 
 
 def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
+    """Test deepscan main runs fetch when inputs present."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DEEPSCAN_API_TOKEN", _token())
     monkeypatch.setenv(
@@ -356,6 +378,7 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
     )
 
     def _deepscan_args():
+        """Deepscan args."""
         return type(
             "Args",
             (),
@@ -376,10 +399,12 @@ def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
 
 
 def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):
+    """Test codacy main uses query path when token present."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("CODACY_API_TOKEN", _token())
 
     def _codacy_args():
+        """Codacy args."""
         return type(
             "Args",
             (),

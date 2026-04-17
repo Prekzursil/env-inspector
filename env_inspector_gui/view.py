@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""View module."""
 
 from typing import Any, Dict, List, Tuple
 
@@ -17,7 +17,7 @@ class EnvInspectorView:
         self.filter_entry: Any = None
         self.details_value_text: Any = None
         self.details_value_scroll_x: Any = None
-        self.details_vars: Dict[str, Any] = {}
+        self.details_vars: dict[str, Any] = {}
 
         self.context_combo: Any = None
         self.wsl_distro_combo: Any = None
@@ -47,6 +47,7 @@ class EnvInspectorView:
         self._build_ui()
 
     def _build_ui(self) -> None:
+        """Build ui."""
         self._build_top_controls()
         self._build_scan_section()
         self._build_mutation_section()
@@ -55,6 +56,7 @@ class EnvInspectorView:
         self._build_bottom_bar()
 
     def _build_top_controls(self) -> None:
+        """Build top controls."""
         ttk = self.ttk
         top = ttk.Frame(self.tk, padding=10)
         top.pack(fill="x")
@@ -106,6 +108,7 @@ class EnvInspectorView:
         top.columnconfigure(3, weight=1)
 
     def _build_scan_section(self) -> None:
+        """Build scan section."""
         ttk = self.ttk
         scan = ttk.LabelFrame(self.tk, text="WSL Dotenv Scan", padding=10)
         scan.pack(fill="x", padx=10, pady=(0, 8))
@@ -137,6 +140,7 @@ class EnvInspectorView:
         self.wsl_scan_button.grid(row=0, column=6, sticky="w")
 
     def _build_mutation_section(self) -> None:
+        """Build mutation section."""
         ttk = self.ttk
         mutate = ttk.LabelFrame(self.tk, text="Set / Remove", padding=10)
         mutate.pack(fill="x", padx=10, pady=(0, 8))
@@ -180,6 +184,7 @@ class EnvInspectorView:
         )
 
     def _build_mid_section(self) -> Any:
+        """Build mid section."""
         ttk = self.ttk
         mid = ttk.PanedWindow(self.tk, orient="horizontal")
         mid.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -193,6 +198,7 @@ class EnvInspectorView:
         return detail_wrap
 
     def _build_table(self, table_wrap: Any) -> None:
+        """Build table."""
         ttk = self.ttk
         cols = (
             "context",
@@ -235,7 +241,8 @@ class EnvInspectorView:
             "<<TreeviewSelect>>", lambda _e: self.controller.on_tree_selected()
         )
 
-    def _create_details_var_map(self) -> Dict[str, Any]:
+    def _create_details_var_map(self) -> dict[str, Any]:
+        """Create details var map."""
         self.details_vars = {
             "name": self.tkmod.StringVar(value=""),
             "context": self.tkmod.StringVar(value=""),
@@ -251,6 +258,7 @@ class EnvInspectorView:
         return self.details_vars
 
     def _build_details_value_widgets(self, detail_wrap: Any) -> None:
+        """Build details value widgets."""
         ttk = self.ttk
 
         ttk.Label(detail_wrap, text="Name:").grid(row=0, column=0, sticky="nw")
@@ -277,6 +285,7 @@ class EnvInspectorView:
         self.details_value_scroll_x.grid(row=2, column=1, sticky="ew", padx=(6, 0))
 
     def _build_details_metadata_rows(self, detail_wrap: Any, *, start_row: int) -> int:
+        """Build details metadata rows."""
         ttk = self.ttk
         meta_fields = (
             ("Context", "context"),
@@ -300,6 +309,7 @@ class EnvInspectorView:
         return start_row + len(meta_fields)
 
     def _build_details_action_rows(self, detail_wrap: Any, *, start_row: int) -> None:
+        """Build details action rows."""
         ttk = self.ttk
         btn_row = ttk.Frame(detail_wrap)
         btn_row.grid(row=start_row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
@@ -332,6 +342,7 @@ class EnvInspectorView:
         self.detail_open_button.pack(side="left")
 
     def _build_details_section(self, detail_wrap: Any) -> None:
+        """Build details section."""
         self._create_details_var_map()
         self._build_details_value_widgets(detail_wrap)
         next_row = self._build_details_metadata_rows(detail_wrap, start_row=3)
@@ -340,6 +351,7 @@ class EnvInspectorView:
         detail_wrap.rowconfigure(1, weight=1)
 
     def _build_bottom_bar(self) -> None:
+        """Build bottom bar."""
         ttk = self.ttk
         bottom = ttk.Frame(self.tk, padding=10)
         bottom.pack(fill="x")
@@ -364,10 +376,12 @@ class EnvInspectorView:
         self.status = ttk.Label(bottom, text="")
         self.status.pack(side="right")
 
-    def set_context_values(self, contexts: List[str]) -> None:
+    def set_context_values(self, contexts: list[str]) -> None:
+        """Set context values."""
         self.context_combo.configure(values=contexts)
 
-    def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
+    def set_wsl_distros(self, distros: list[str], *, enabled: bool) -> None:
+        """Set wsl distros."""
         self.wsl_distro_combo.configure(values=distros)
         self.wsl_distro_combo.configure(state=("readonly" if enabled else "disabled"))
         state = "normal" if enabled else "disabled"
@@ -379,18 +393,22 @@ class EnvInspectorView:
             widget.configure(state=state)
 
     def set_root_label(self, text: str) -> None:
+        """Set root label."""
         self.root_label.configure(text=text)
 
     def set_status(self, text: str) -> None:
+        """Set status."""
         self.status.configure(text=text)
 
     def set_refresh_busy(self, busy: bool) -> None:
+        """Set refresh busy."""
         if busy:
             self.progress.start(10)
         else:
             self.progress.stop()
 
     def set_mutation_actions_enabled(self, enabled: bool) -> None:
+        """Set mutation actions enabled."""
         state = "normal" if enabled else "disabled"
         for widget in (
             self.refresh_button,
@@ -402,24 +420,29 @@ class EnvInspectorView:
             widget.configure(state=state)
 
     def clear_table(self) -> None:
+        """Clear table."""
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
+    def insert_table_row(self, values: tuple[Any, ...], *, striped: bool) -> str:
+        """Insert table row."""
         tag = "row_even" if striped else "row_odd"
         return str(self.tree.insert("", "end", values=values, tags=(tag,)))
 
     def configure_row_styles(self) -> None:
+        """Configure row styles."""
         self.tree.tag_configure("row_even", background="#f8f8f8")
         self.tree.tag_configure("row_odd", background="#ffffff")
 
     def update_details_value(self, text: str) -> None:
+        """Update details value."""
         self.details_value_text.configure(state="normal")
         self.details_value_text.delete("1.0", "end")
         self.details_value_text.insert("1.0", text)
         self.details_value_text.configure(state="disabled")
 
     def set_details_enabled(self, enabled: bool) -> None:
+        """Set details enabled."""
         state = "normal" if enabled else "disabled"
         for widget in (
             self.copy_name_button,
@@ -431,5 +454,6 @@ class EnvInspectorView:
             widget.configure(state=state)
 
     def focus_filter(self) -> None:
+        """Focus filter."""
         self.filter_entry.focus_set()
         self.filter_entry.selection_range(0, "end")

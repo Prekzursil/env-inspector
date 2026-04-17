@@ -1,10 +1,11 @@
-from __future__ import absolute_import, division
+"""Test service coverage branches module."""
 
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pytest
 
+import env_inspector_core.service as service_module
 from env_inspector_core.constants import (
     SOURCE_DOTENV,
     SOURCE_LINUX_BASHRC,
@@ -16,8 +17,6 @@ from env_inspector_core.constants import (
 )
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.service import EnvInspectorService
-import env_inspector_core.service as service_module
-
 from tests.assertions import ensure
 
 
@@ -129,11 +128,11 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
     svc.current_wsl_distro = "Ubuntu"
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
 
-    calls: Dict[str, object] = {}
+    calls: dict[str, object] = {}
 
     def _fake_collect_wsl_records(
         wsl, include_etc: bool, exclude_distros
-    ) -> List[EnvRecord]:
+    ) -> list[EnvRecord]:
         """Fake collect wsl records."""
         calls["exclude"] = exclude_distros
         return [
@@ -144,7 +143,7 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
 
     def _fake_collect_wsl_dotenv_records(
         wsl, distro: str, root_path: str, max_depth: int
-    ) -> List[EnvRecord]:
+    ) -> list[EnvRecord]:
         """Fake collect wsl dotenv records."""
         calls["dotenv"] = (distro, root_path, max_depth)
         return [
@@ -285,7 +284,7 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
             apply_changes=False,
         )
 
-    wsl_writes: List[Tuple[str, str, str]] = []
+    wsl_writes: list[tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "")
     monkeypatch.setattr(
         svc.wsl,
@@ -407,7 +406,7 @@ def test_restore_helpers_cover_linux_and_wsl_targets(
     svc._restore_linux_target(target="linux:bashrc", text="export A=1\n")
     ensure((fake_home / ".bashrc").read_text(encoding="utf-8") == "export A=1\n")
 
-    etc_calls: List[str] = []
+    etc_calls: list[str] = []
     monkeypatch.setattr(
         svc, "_write_linux_etc_environment_with_privilege", etc_calls.append
     )
@@ -417,7 +416,7 @@ def test_restore_helpers_cover_linux_and_wsl_targets(
     with pytest.raises(RuntimeError, match="Unsupported Linux restore target"):
         svc._restore_linux_target(target="linux:unknown", text="x")
 
-    wsl_calls: List[Tuple[str, str, str]] = []
+    wsl_calls: list[tuple[str, str, str]] = []
     monkeypatch.setattr(
         svc.wsl,
         "write_file_with_privilege",
@@ -458,11 +457,11 @@ def test_restore_helpers_cover_powershell_and_registry(
 
         def __init__(self) -> None:
             """Init."""
-            self.removed: List[Tuple[str, str]] = []
-            self.sets: List[Tuple[str, str, str]] = []
+            self.removed: list[tuple[str, str]] = []
+            self.sets: list[tuple[str, str, str]] = []
 
         @staticmethod
-        def list_scope(scope: str) -> Dict[str, str]:
+        def list_scope(scope: str) -> dict[str, str]:
             """List scope."""
             return {"KEEP": "1", "DROP": "2"}
 
@@ -486,7 +485,7 @@ def test_restore_helpers_cover_powershell_and_registry(
 def test_restore_helpers_cover_dispatch(tmp_path: Path, monkeypatch) -> None:
     """Test restore helpers cover dispatch."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
-    calls: List[str] = []
+    calls: list[str] = []
     monkeypatch.setattr(
         svc, "_restore_linux_target", lambda **kwargs: calls.append("linux")
     )

@@ -1,7 +1,5 @@
 """Coverage tests for env_inspector_gui.table_logic — missing lines 111, 137-140."""
 
-from __future__ import absolute_import, division
-
 from typing import Dict
 
 from env_inspector_core.models import EnvRecord
@@ -12,12 +10,12 @@ from env_inspector_gui.table_logic import (
     sort_display_rows,
     toggle_sort,
 )
-
 from tests.assertions import ensure
 
 
 def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
-    payload: Dict[str, object] = {
+    """Rec."""
+    payload: dict[str, object] = {
         "source_type": "dotenv",
         "source_path": "/workspace/.env",
         "context": "windows",

@@ -1,5 +1,5 @@
+"""Check quality secrets module."""
 #!/usr/bin/env python3
-from __future__ import absolute_import, division
 
 import argparse
 import json
@@ -28,6 +28,7 @@ DEFAULT_REQUIRED_VARS = [
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse args."""
     parser = argparse.ArgumentParser(
         description="Validate required quality-gate secrets/variables are configured."
     )
@@ -57,9 +58,10 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _dedupe(items: List[str]) -> List[str]:
-    seen: Set[str] = set()
-    out: List[str] = []
+def _dedupe(items: list[str]) -> list[str]:
+    """Dedupe."""
+    seen: set[str] = set()
+    out: list[str] = []
     for item in items:
         key = str(item or "").strip()
         if not key or key in seen:
@@ -70,12 +72,14 @@ def _dedupe(items: List[str]) -> List[str]:
 
 
 def _is_missing(name: str) -> bool:
+    """Is missing."""
     return not str(os.environ.get(name, "")).strip()
 
 
-def _partition_required(names: List[str]) -> Tuple[List[str], List[str]]:
-    missing: List[str] = []
-    present: List[str] = []
+def _partition_required(names: list[str]) -> tuple[list[str], list[str]]:
+    """Partition required."""
+    missing: list[str] = []
+    present: list[str] = []
     for name in names:
         if _is_missing(name):
             missing.append(name)
@@ -85,8 +89,9 @@ def _partition_required(names: List[str]) -> Tuple[List[str], List[str]]:
 
 
 def evaluate_env(
-    required_secrets: List[str], required_vars: List[str]
-) -> Dict[str, List[str]]:
+    required_secrets: list[str], required_vars: list[str]
+) -> dict[str, list[str]]:
+    """Evaluate env."""
     missing_secrets, present_secrets = _partition_required(required_secrets)
     missing_vars, present_vars = _partition_required(required_vars)
     return {
@@ -98,6 +103,7 @@ def evaluate_env(
 
 
 def _render_md(payload: dict) -> str:
+    """Render md."""
     lines = [
         "# Quality Secrets Preflight",
         "",
@@ -124,6 +130,7 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
+    """Main."""
     args = _parse_args()
 
     required_secrets = _dedupe(

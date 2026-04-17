@@ -1,6 +1,5 @@
+"""Assert coverage 100 module."""
 #!/usr/bin/env python3
-
-from __future__ import absolute_import, division
 
 import argparse
 import importlib
@@ -12,13 +11,15 @@ from scripts.quality import _coverage_assert_support as _support
 from scripts.quality._coverage_assert_support import (
     CoverageStats,
     _build_payload,
+    _write_outputs,
     coverage_sources_from_lcov,
     coverage_sources_from_xml,
     evaluate,
     parse_coverage_xml,
     parse_lcov,
+)
+from scripts.quality._coverage_assert_support import (
     parse_named_path as parse_named_path_impl,
-    _write_outputs,
 )
 
 _matches_required_source = _support._matches_required_source
@@ -29,6 +30,7 @@ posixpath = _support.posixpath
 
 
 def _load_security_helpers():
+    """Load security helpers."""
     try:
         security_imports = importlib.import_module("scripts.quality._security_imports")
     except ModuleNotFoundError:  # pragma: no cover - direct script execution
@@ -50,6 +52,7 @@ SAFE_INPUT_FILE_PATH_IN_WORKSPACE, SAFE_OUTPUT_PATH_IN_WORKSPACE = (
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse args."""
     parser = argparse.ArgumentParser(
         description="Assert minimum coverage for all declared components."
     )
@@ -81,12 +84,14 @@ def _parse_args() -> argparse.Namespace:
 
 
 def parse_named_path(value: str):
+    """Parse named path."""
     return parse_named_path_impl(value, SAFE_INPUT_FILE_PATH_IN_WORKSPACE)
 
 
-def _collect_stats(args: argparse.Namespace) -> Tuple[List[CoverageStats], Set[str]]:
-    stats: List[CoverageStats] = []
-    covered_sources: Set[str] = set()
+def _collect_stats(args: argparse.Namespace) -> tuple[list[CoverageStats], set[str]]:
+    """Collect stats."""
+    stats: list[CoverageStats] = []
+    covered_sources: set[str] = set()
     for item in args.xml:
         name, path = parse_named_path(item)
         stats.append(parse_coverage_xml(name, path))
@@ -99,6 +104,7 @@ def _collect_stats(args: argparse.Namespace) -> Tuple[List[CoverageStats], Set[s
 
 
 def main() -> int:
+    """Main."""
     args = _parse_args()
     stats, covered_sources = _collect_stats(args)
 

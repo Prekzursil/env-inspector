@@ -1,14 +1,16 @@
-from __future__ import absolute_import, division
+"""Service privileged module."""
 
 from pathlib import Path
 from shutil import which
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
-from typing import Callable, Optional
+from typing import Optional
+from collections.abc import Callable
 
 
 def _try_direct_write(
     path: Path, text: str, write_text_file: Callable[[Path, str], None]
 ) -> bool:
+    """Try direct write."""
     try:
         write_text_file(path, text)
         return True
@@ -22,6 +24,7 @@ def _run_sudo_tee(
     text: str,
     run_fn: Callable[..., CompletedProcess],
 ) -> CompletedProcess:
+    """Run sudo tee."""
     return run_fn(  # nosec B603
         [allowed_sudo_path, "-n", "tee", expected_path],
         input=text,
@@ -32,7 +35,8 @@ def _run_sudo_tee(
     )
 
 
-def _resolve_allowed_sudo(which_fn: Callable[[str], Optional[str]]) -> str:
+def _resolve_allowed_sudo(which_fn: Callable[[str], str | None]) -> str:
+    """Resolve allowed sudo."""
     sudo_path = which_fn("sudo")
     if sudo_path in {"/usr/bin/sudo", "/bin/sudo"}:
         return sudo_path
@@ -43,9 +47,10 @@ def _write_with_sudo(
     *,
     expected_path: str,
     text: str,
-    which_fn: Callable[[str], Optional[str]],
+    which_fn: Callable[[str], str | None],
     run_fn: Callable[..., CompletedProcess],
 ) -> None:
+    """Write with sudo."""
     proc = _run_sudo_tee(_resolve_allowed_sudo(which_fn), expected_path, text, run_fn)
     if proc.returncode == 0:
         return
@@ -58,6 +63,7 @@ def _write_with_sudo(
 
 
 def write_linux_etc_environment_with_privilege(*args, **kwargs) -> None:
+    """Write linux etc environment with privilege."""
     if args:
         raise TypeError(
             "write_linux_etc_environment_with_privilege accepts keyword arguments only."

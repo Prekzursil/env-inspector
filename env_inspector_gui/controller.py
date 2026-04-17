@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Controller module."""
 
 import os
 from datetime import datetime
@@ -15,14 +15,14 @@ from .models import (
     DisplayedRow,
     PersistedUiState,
     SortState,
-    build_status_line,
     build_effective_value_text,
+    build_status_line,
     has_multiple_dotenv_matches,
     reconcile_selected_targets,
     resolve_context_selection,
     resolve_selected_targets,
-    select_theme_name,
     select_target_dialog_result,
+    select_theme_name,
     summarize_operation_result,
 )
 from .path_actions import is_openable_local_path
@@ -47,10 +47,10 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.tk: Any = None
         self.view: Any = None
         self.root_path: Path = root_path
-        self.records_raw: List[EnvRecord] = []
-        self.displayed_rows: List[DisplayedRow] = []
-        self.rows_by_item: Dict[str, DisplayedRow] = {}
-        self.selected_targets: List[str] = []
+        self.records_raw: list[EnvRecord] = []
+        self.displayed_rows: list[DisplayedRow] = []
+        self.rows_by_item: dict[str, DisplayedRow] = {}
+        self.selected_targets: list[str] = []
         self.last_refresh_at: datetime | None = None
         self.filter_text: Any = None
         self.show_secrets: Any = None
@@ -87,6 +87,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     @staticmethod
     def _load_tk_modules():
+        """Load tk modules."""
         try:
             import tkinter as tk
             from tkinter import filedialog, messagebox, ttk
@@ -99,16 +100,19 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _assign_tk_modules(
         self, tk: Any, filedialog: Any, messagebox: Any, ttk: Any
     ) -> None:
+        """Assign tk modules."""
         self.tkmod = tk
         self.ttk = ttk
         self.filedialog = filedialog
         self.messagebox = messagebox
 
     def _init_root_window(self, tk: Any) -> None:
+        """Init root window."""
         self.tk = tk.Tk()
         self.tk.title(f"{APP_NAME} (Core + GUI)")
 
-    def _load_boot_state(self, root_path: Path) -> Tuple[PersistedUiState, Path]:
+    def _load_boot_state(self, root_path: Path) -> tuple[PersistedUiState, Path]:
+        """Load boot state."""
         loaded = load_ui_state(self.state_dir)
         fallback_root = resolve_scan_root(root_path)
         boot_state = sanitize_loaded_state(
@@ -122,6 +126,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
     def _initialize_runtime_state(
         self, tk: Any, boot_state: PersistedUiState, fallback_root: Path
     ) -> None:
+        """Initialize runtime state."""
         self.root_path = self._resolve_root_path(boot_state, fallback_root)
         self.records_raw = []
         self.displayed_rows = []
@@ -143,18 +148,21 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     @staticmethod
     def _resolve_root_path(boot_state: PersistedUiState, fallback_root: Path) -> Path:
+        """Resolve root path."""
         try:
             return resolve_scan_root(boot_state.root_path or fallback_root)
         except PathPolicyError:
             return fallback_root
 
     def _initialize_view(self, tk: Any, ttk: Any, boot_state: PersistedUiState) -> None:
+        """Initialize view."""
         self.view = EnvInspectorView(tk, ttk, self)
         self.view.set_root_label(str(self.root_path))
         self.view.configure_row_styles()
         self.tk.geometry(boot_state.window_geometry or "1480x860")
 
     def _apply_theme(self) -> None:
+        """Apply theme."""
         style = self.ttk.Style(self.tk)
         themes = set(style.theme_names())
         selected_theme = select_theme_name(os.name, tuple(themes))
@@ -164,19 +172,23 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         style.configure("Treeview", rowheight=24)
 
     def _bind_shortcuts(self) -> None:
+        """Bind shortcuts."""
         self.tk.bind("<Control-f>", self._on_ctrl_f)
         self.tk.bind("<F5>", self._on_f5)
         self.tk.bind("<Control-c>", self._on_ctrl_c)
 
     def _on_ctrl_f(self, _event: Any) -> str:
+        """On ctrl f."""
         self.view.focus_filter()
         return "break"
 
     def _on_f5(self, _event: Any) -> str:
+        """On f5."""
         self.refresh_data()
         return "break"
 
     def _on_ctrl_c(self, _event: Any) -> str | None:
+        """On ctrl c."""
         focused = self.tk.focus_get()
         if focused == self.view.tree:
             self.copy_selected_value()
@@ -184,10 +196,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return None
 
     def on_close(self) -> None:
+        """On close."""
         self._persist_state()
         self.tk.destroy()
 
     def _build_state(self) -> PersistedUiState:
+        """Build state."""
         return PersistedUiState(
             window_geometry=self.tk.geometry(),
             root_path=str(self.root_path),
@@ -204,15 +218,19 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
 
     def _persist_state(self) -> None:
+        """Persist state."""
         save_ui_state(self.state_dir, self._build_state())
 
     def run(self) -> None:
+        """Run."""
         self.tk.mainloop()
 
     def on_context_selected(self) -> None:
+        """On context selected."""
         self.refresh_data()
 
     def on_filter_changed(self) -> None:
+        """On filter changed."""
         self._render_table()
         key = self.key_text.get().strip()
         if key:
@@ -220,16 +238,19 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._persist_state()
 
     def on_filter_escape(self) -> None:
+        """On filter escape."""
         if self.filter_text.get():
             self.filter_text.set("")
             self.on_filter_changed()
 
     def on_sort_column(self, column: str) -> None:
+        """On sort column."""
         self.sort_state = toggle_sort(self.sort_state, column)
         self._render_table()
         self._persist_state()
 
     def choose_folder(self) -> None:
+        """Choose folder."""
         selected = self.filedialog.askdirectory(initialdir=str(self.root_path))
         if not selected:
             return
@@ -238,12 +259,14 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.refresh_data()
 
     def _selected_row(self) -> DisplayedRow | None:
+        """Selected row."""
         selected = self.view.tree.selection()
         if not selected:
             return None
         return self.rows_by_item.get(str(selected[0]))
 
     def _on_row_selected_update_details(self, row: DisplayedRow | None) -> None:
+        """On row selected update details."""
         if row is None:
             self._clear_details()
             return
@@ -274,24 +297,29 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     @staticmethod
     def _record_flag(record: EnvRecord, name: str) -> bool:
+        """Record flag."""
         return bool(getattr(record, name, False))
 
     def _clear_details(self) -> None:
+        """Clear details."""
         self._set_detail_values(dict.fromkeys(self.view.details_vars, ""))
         self.view.update_details_value("")
         self.view.set_details_enabled(False)
 
-    def _set_detail_values(self, values: Dict[str, str]) -> None:
+    def _set_detail_values(self, values: dict[str, str]) -> None:
+        """Set detail values."""
         for key, value in values.items():
             if key in self.view.details_vars:
                 self.view.details_vars[key].set(value)
 
-    def _set_detail_pairs(self, pairs: Tuple[Tuple[str, str], ...]) -> None:
+    def _set_detail_pairs(self, pairs: tuple[tuple[str, str], ...]) -> None:
+        """Set detail pairs."""
         for key, value in pairs:
             if key in self.view.details_vars:
                 self.view.details_vars[key].set(value)
 
     def on_tree_selected(self) -> None:
+        """On tree selected."""
         row = self._selected_row()
         if row:
             self.key_text.set(row.record.name)
@@ -299,6 +327,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._on_row_selected_update_details(row)
 
     def _update_context_values(self) -> None:
+        """Update context values."""
         contexts = self.service.list_contexts()
         self.view.set_context_values(contexts)
         selection = resolve_context_selection(
@@ -313,6 +342,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.view.set_wsl_distros(distros, enabled=bool(distros))
 
     def _fetch_records(self) -> None:
+        """Fetch records."""
         kwargs = {
             "root": self.root_path,
             "context": self.context_var.get() or None,
@@ -328,6 +358,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.records_raw = self.service.list_records_raw(**kwargs)
 
     def _reconcile_targets(self) -> None:
+        """Reconcile targets."""
         available = self.service.available_targets(
             self.records_raw, context=self.context_var.get()
         )
@@ -338,6 +369,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.targets_summary_var.set(f"Targets: {len(self.selected_targets)} selected")
 
     def _render_table(self) -> None:
+        """Render table."""
         self.view.clear_table()
         self.rows_by_item.clear()
 
@@ -371,21 +403,25 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._update_status_line(len(self.displayed_rows), len(self.records_raw))
 
     def _update_status_line(self, shown: int, total: int) -> None:
+        """Update status line."""
         context = self.context_var.get() or self.service.runtime_context
         self._set_status(build_status_line(shown, total, context, self.last_refresh_at))
 
     def _set_status(self, text: str) -> None:
+        """Set status."""
         view = getattr(self, "view", None)
         if view is not None:
             view.set_status(text)
 
     def _set_busy(self, busy: bool) -> None:
+        """Set busy."""
         view = getattr(self, "view", None)
         if view is not None:
             view.set_mutation_actions_enabled(not busy)
             view.set_refresh_busy(busy)
 
     def refresh_data(self) -> None:
+        """Refresh data."""
         self._set_busy(True)
         self._set_status("Refreshing...")
 
@@ -407,6 +443,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             self._set_busy(False)
 
     def _update_effective(self, key: str) -> None:
+        """Update effective."""
         context = self.context_var.get() or self.service.runtime_context
         rec = self.service.resolve_effective(key, context, self.records_raw)
         self.effective_value_var.set(
@@ -418,7 +455,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             )
         )
 
-    def choose_targets(self) -> List[str] | None:
+    def choose_targets(self) -> list[str] | None:
+        """Choose targets."""
         available = self.service.available_targets(
             self.records_raw, context=self.context_var.get()
         )
@@ -444,8 +482,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return list(self.selected_targets)
 
     def _maybe_choose_dotenv_targets(
-        self, key: str, targets: List[str]
-    ) -> List[str] | None:
+        self, key: str, targets: list[str]
+    ) -> list[str] | None:
+        """Maybe choose dotenv targets."""
         dotenv_targets = self._collect_dotenv_targets(targets)
         if len(dotenv_targets) <= 1 or not self._has_multiple_dotenv_matches(key):
             return targets
@@ -463,7 +502,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         ]
 
     @staticmethod
-    def _collect_dotenv_targets(targets: List[str]) -> List[str]:
+    def _collect_dotenv_targets(targets: list[str]) -> list[str]:
+        """Collect dotenv targets."""
         return [
             target
             for target in targets
@@ -471,11 +511,13 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         ]
 
     def _has_multiple_dotenv_matches(self, key: str) -> bool:
+        """Has multiple dotenv matches."""
         return has_multiple_dotenv_matches(self.records_raw, key)
 
     def _preview_operation(
-        self, action: str, key: str, value: str, targets: List[str]
-    ) -> List[Dict[str, Any]]:
+        self, action: str, key: str, value: str, targets: list[str]
+    ) -> list[dict[str, Any]]:
+        """Preview operation."""
         if action == "set":
             return self.service.preview_set(
                 key=key, value=value, targets=targets, scope_roots=[self.root_path]
@@ -485,8 +527,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
 
     def _confirm_diff(
-        self, action: str, previews: List[Dict[str, Any]], preview_only: bool = False
+        self, action: str, previews: list[dict[str, Any]], preview_only: bool = False
     ) -> bool:
+        """Confirm diff."""
         dialog = DiffPreviewDialog(
             self.tk, action=action, previews=previews, preview_only=preview_only
         )
@@ -494,8 +537,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return bool(dialog.confirmed)
 
     def _apply_operation(
-        self, action: str, key: str, value: str, targets: List[str]
-    ) -> Dict[str, Any]:
+        self, action: str, key: str, value: str, targets: list[str]
+    ) -> dict[str, Any]:
+        """Apply operation."""
         if action == "set":
             return self.service.set_key(
                 key=key, value=value, targets=targets, scope_roots=[self.root_path]
@@ -505,6 +549,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
 
     def _run_operation(self, action: str) -> None:
+        """Run operation."""
         resolved = self._resolve_operation_inputs()
         if resolved is None:
             return
@@ -524,7 +569,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._report_operation_result(action, result)
         self.refresh_data()
 
-    def _resolve_operation_inputs(self) -> Tuple[str, str, List[str]] | None:
+    def _resolve_operation_inputs(self) -> tuple[str, str, list[str]] | None:
+        """Resolve operation inputs."""
         key = self.key_text.get().strip()
         value = self.value_text.get()
         if not key:
@@ -542,8 +588,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return key, value, scoped_targets
 
     def _safe_preview(
-        self, action: str, key: str, value: str, targets: List[str]
-    ) -> List[Dict[str, Any]] | None:
+        self, action: str, key: str, value: str, targets: list[str]
+    ) -> list[dict[str, Any]] | None:
+        """Safe preview."""
         try:
             return self._preview_operation(action, key, value, targets)
         except (OSError, PathPolicyError, RuntimeError) as exc:
@@ -551,15 +598,17 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return None
 
     def _safe_apply(
-        self, action: str, key: str, value: str, targets: List[str]
-    ) -> Dict[str, Any] | None:
+        self, action: str, key: str, value: str, targets: list[str]
+    ) -> dict[str, Any] | None:
+        """Safe apply."""
         try:
             return self._apply_operation(action, key, value, targets)
         except (OSError, PathPolicyError, RuntimeError) as exc:
             self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {exc}")
             return None
 
-    def _report_operation_result(self, action: str, result: Dict[str, Any]) -> None:
+    def _report_operation_result(self, action: str, result: dict[str, Any]) -> None:
+        """Report operation result."""
         summary = summarize_operation_result(action, result)
         if summary.error_message is not None:
             self.messagebox.showerror(APP_NAME, summary.error_message)
@@ -575,4 +624,5 @@ class EnvInspectorApp:
         self._controller = EnvInspectorController(root_path)
 
     def run(self) -> None:
+        """Run."""
         self._controller.run()

@@ -1,16 +1,13 @@
 """Owned Sentry zero-gate regression tests from the PR 39 coverage set."""
 
-from __future__ import absolute_import, division
-
-from pathlib import Path
-from types import SimpleNamespace
 import runpy
 import sys
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from scripts.quality import check_sentry_zero as sentry_mod
-
 from tests.assertions import ensure
 
 

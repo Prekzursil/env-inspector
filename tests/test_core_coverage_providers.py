@@ -1,8 +1,5 @@
 """Coverage tests for providers.py — Windows registry, Linux paths, and edge cases."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 import types
 import unittest
 from pathlib import Path
@@ -18,6 +15,7 @@ from env_inspector_core.constants import (
     SOURCE_WINDOWS_MACHINE,
     SOURCE_WINDOWS_USER,
 )
+from tests.assertions import ensure
 
 
 def _case() -> unittest.TestCase:

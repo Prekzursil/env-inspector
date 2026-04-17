@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Test gui secret policy module."""
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.secret_policy import (
@@ -6,11 +6,11 @@ from env_inspector_gui.secret_policy import (
     resolve_copy_payload,
     resolve_load_value,
 )
-
 from tests.assertions import ensure
 
 
 def _secret_record() -> EnvRecord:
+    """Secret record."""
     return EnvRecord(
         source_type="dotenv",
         source_id="dotenv:/workspace/.env",
@@ -28,6 +28,7 @@ def _secret_record() -> EnvRecord:
 
 
 def test_search_value_uses_masked_representation_when_hidden():
+    """Test search value uses masked representation when hidden."""
     rec = _secret_record()
     hidden = build_search_value(rec, show_secrets=False)
     shown = build_search_value(rec, show_secrets=True)
@@ -37,6 +38,7 @@ def test_search_value_uses_masked_representation_when_hidden():
 
 
 def test_copy_payload_confirms_raw_secret_or_falls_back_to_masked():
+    """Test copy payload confirms raw secret or falls back to masked."""
     rec = _secret_record()
 
     masked, masked_raw = resolve_copy_payload(
@@ -53,6 +55,7 @@ def test_copy_payload_confirms_raw_secret_or_falls_back_to_masked():
 
 
 def test_load_value_blocks_hidden_secret_without_confirmation():
+    """Test load value blocks hidden secret without confirmation."""
     rec = _secret_record()
 
     blocked, blocked_raw = resolve_load_value(

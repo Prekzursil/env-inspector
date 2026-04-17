@@ -1,18 +1,16 @@
 """Coverage tests for service_wsl.py — WSL target resolution edge cases."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 import pytest
 
 from env_inspector_core.service_wsl import (
+    _resolve_standard_wsl_target,
+    _split_wsl_target,
+    parse_wsl_dotenv_target,
+    resolve_wsl_target,
     validate_wsl_distro_name,
     validate_wsl_dotenv_path,
-    parse_wsl_dotenv_target,
-    _split_wsl_target,
-    _resolve_standard_wsl_target,
-    resolve_wsl_target,
 )
+from tests.assertions import ensure
 
 
 # Line 10: validate_wsl_distro_name with null byte

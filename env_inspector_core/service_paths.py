@@ -1,11 +1,13 @@
-from __future__ import absolute_import, division
+"""Service paths module."""
 
 import os
 from pathlib import Path, PureWindowsPath
-from typing import Callable, List, Sequence, Tuple
+from typing import List, Tuple
+from collections.abc import Callable, Sequence
 
 
-def get_powershell_profile_paths() -> List[Path]:
+def get_powershell_profile_paths() -> list[Path]:
+    """Get powershell profile paths."""
     docs = Path.home() / "Documents"
     current = docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
     all_users = Path(r"C:\\Program Files\\PowerShell\\7\\profile.ps1")
@@ -13,6 +15,7 @@ def get_powershell_profile_paths() -> List[Path]:
 
 
 def is_path_within(path: Path, root: Path) -> bool:
+    """Is path within."""
     try:
         path.relative_to(root)
         return True
@@ -21,6 +24,7 @@ def is_path_within(path: Path, root: Path) -> bool:
 
 
 def validate_path_in_roots(path: Path, roots: Sequence[Path], *, label: str) -> Path:
+    """Validate path in roots."""
     resolved_path = path.resolve(strict=False)
     resolved_roots = [root.resolve(strict=False) for root in roots]
     for root in resolved_roots:
@@ -30,6 +34,7 @@ def validate_path_in_roots(path: Path, roots: Sequence[Path], *, label: str) -> 
 
 
 def write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
+    """Write text file."""
     if ensure_parent:
         path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
@@ -43,6 +48,7 @@ def write_scoped_text_file(
     text: str,
     label: str,
 ) -> Path:
+    """Write scoped text file."""
     safe_path = validate_path_in_roots(candidate_path, list(allowed_roots), label=label)
     write_text_file(safe_path, text, ensure_parent=True)
     return safe_path
@@ -54,7 +60,8 @@ def powershell_target_path_and_roots(
     profile_resolver: Callable[[str], Path],
     current_user_target: str,
     all_users_target: str,
-) -> Tuple[Path, List[Path], bool]:
+) -> tuple[Path, list[Path], bool]:
+    """Powershell target path and roots."""
     if target == current_user_target:
         profile = profile_resolver(current_user_target).resolve(strict=False)
         return profile, [Path.home().resolve(strict=False)], False
@@ -71,6 +78,7 @@ def validated_powershell_restore_path(
     current_user_target: str,
     all_users_target: str,
 ) -> Path:
+    """Validated powershell restore path."""
     profile, allowed_roots, _requires_priv = powershell_target_path_and_roots(
         target,
         profile_resolver=profile_resolver,
@@ -83,6 +91,7 @@ def validated_powershell_restore_path(
 
 
 def linux_etc_environment_path(linux_etc_env_path: str) -> Path:
+    """Linux etc environment path."""
     path = (
         Path(PureWindowsPath(linux_etc_env_path).as_posix())
         if os.name == "nt"

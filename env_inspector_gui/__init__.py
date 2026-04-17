@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division
+"""Init module."""
+
 from .controller import EnvInspectorApp
 
 __all__ = ["EnvInspectorApp"]

@@ -1,12 +1,12 @@
-from __future__ import absolute_import, division
+"""Service ops module."""
 
-from dataclasses import dataclass
 import difflib
+from dataclasses import dataclass
 from typing import Tuple, Type
 
+from . import service_ops_request as _service_ops_request
 from .models import OperationResult
 from .secrets import mask_value
-from . import service_ops_request as _service_ops_request
 
 normalize_target_operation_batch = _service_ops_request.normalize_target_operation_batch
 normalize_target_operation_request = (
@@ -30,6 +30,7 @@ class OperationResultInput:
 
 
 def diff_text(before: str, after: str, target: str) -> str:
+    """Diff text."""
     diff = difflib.unified_diff(
         before.splitlines(),
         after.splitlines(),
@@ -41,12 +42,14 @@ def diff_text(before: str, after: str, target: str) -> str:
 
 
 def masked_value(*, secret_operation: bool, value: str | None) -> str | None:
+    """Masked value."""
     if not secret_operation or value is None:
         return None
     return mask_value(value)
 
 
 def make_operation_result(payload: OperationResultInput) -> OperationResult:
+    """Make operation result."""
     return OperationResult(
         operation_id=payload.operation_id,
         target=payload.target,
@@ -62,10 +65,12 @@ def make_operation_result(payload: OperationResultInput) -> OperationResult:
 
 
 def operation_result(payload: OperationResultInput) -> OperationResult:
+    """Operation result."""
     return make_operation_result(payload)
 
 
-def operation_error_types() -> Tuple[Type[BaseException], ...]:
+def operation_error_types() -> tuple[type[BaseException], ...]:
+    """Operation error types."""
     return (
         RuntimeError,
         ValueError,

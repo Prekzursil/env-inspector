@@ -1,7 +1,5 @@
 """Coverage tests for env_inspector_gui.state_store — missing lines 43, 51, 55-56, 59, 105, 107, 119."""
 
-from __future__ import absolute_import, division
-
 import json
 from pathlib import Path
 
@@ -9,14 +7,13 @@ from env_inspector_core.path_policy import PathPolicyError
 from env_inspector_gui import state_store as state_store_mod
 from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import (
-    load_ui_state,
     _sanitize_context,
     _sanitize_root,
-    _sanitize_sort_column,
     _sanitize_scan_depth,
+    _sanitize_sort_column,
     _sanitize_targets,
+    load_ui_state,
 )
-
 from tests.assertions import ensure
 
 
@@ -47,6 +44,7 @@ def test_load_ui_state_from_dict_raises(tmp_path: Path):
     original_from_dict = PersistedUiState.from_dict
 
     def bad_from_dict(payload):
+        """Bad from dict."""
         raise TypeError("forced error")
 
     PersistedUiState.from_dict = classmethod(lambda cls, p: bad_from_dict(p))
@@ -90,17 +88,20 @@ def test_sanitize_sort_column_invalid():
 
 
 def test_sanitize_sort_column_valid():
+    """Test sanitize sort column valid."""
     ensure(_sanitize_sort_column("context") == "context")
 
 
 def test_sanitize_scan_depth_clamps():
     # 0 triggers the `or 5` fallback, so int(0 or 5) == 5
+    """Test sanitize scan depth clamps."""
     ensure(_sanitize_scan_depth(0) == 5)
     ensure(_sanitize_scan_depth(100) == 20)
     ensure(_sanitize_scan_depth(10) == 10)
 
 
 def test_sanitize_targets_prunes():
+    """Test sanitize targets prunes."""
     result = _sanitize_targets(["a", "b", "c"], ["a", "c", "d"])
     ensure(result == ["a", "c"])
 
@@ -122,6 +123,7 @@ def test_sanitize_root_double_failure_returns_fallback_path(
     """
 
     def _always_raise(_value):
+        """Always raise."""
         raise PathPolicyError("forced for coverage")
 
     monkeypatch.setattr(state_store_mod, "resolve_scan_root", _always_raise)

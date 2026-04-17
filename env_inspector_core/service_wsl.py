@@ -1,10 +1,11 @@
-from __future__ import absolute_import, division
+"""Service wsl module."""
 
 from pathlib import PurePosixPath
 from typing import Tuple
 
 
 def validate_wsl_distro_name(raw: str) -> str:
+    """Validate wsl distro name."""
     distro = (raw or "").strip()
     if not distro or ":" in distro or "\x00" in distro:
         raise RuntimeError(f"Unsupported WSL distro name: {raw!r}")
@@ -12,6 +13,7 @@ def validate_wsl_distro_name(raw: str) -> str:
 
 
 def validate_wsl_dotenv_path(raw: str, *, path_error: str) -> str:
+    """Validate wsl dotenv path."""
     candidate = (raw or "").strip()
     if not candidate or "\x00" in candidate:
         raise RuntimeError(path_error)
@@ -29,7 +31,8 @@ def parse_wsl_dotenv_target(
     prefix: str,
     validate_distro_name_fn,
     validate_dotenv_path_fn,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
+    """Parse wsl dotenv target."""
     raw = target[len(prefix) :]
     try:
         distro, path = raw.split(":", 1)
@@ -38,7 +41,8 @@ def parse_wsl_dotenv_target(
     return validate_distro_name_fn(distro), validate_dotenv_path_fn(path)
 
 
-def _split_wsl_target(target: str) -> Tuple[str, str]:
+def _split_wsl_target(target: str) -> tuple[str, str]:
+    """Split wsl target."""
     parts = target.split(":", 2)
     if len(parts) != 3:
         raise RuntimeError(f"Unsupported WSL target: {target}")
@@ -51,7 +55,8 @@ def _resolve_standard_wsl_target(
     *,
     validate_distro_name_fn,
     linux_etc_env_path: str,
-) -> Tuple[str, str, str, bool]:
+) -> tuple[str, str, str, bool]:
+    """Resolve standard wsl target."""
     distro, suffix = _split_wsl_target(target)
     distro_name = validate_distro_name_fn(distro)
     if suffix == "bashrc":
@@ -61,7 +66,8 @@ def _resolve_standard_wsl_target(
     raise RuntimeError(f"Unsupported WSL target: {target}")
 
 
-def resolve_wsl_target(*args, **kwargs) -> Tuple[str, str, str, bool]:
+def resolve_wsl_target(*args, **kwargs) -> tuple[str, str, str, bool]:
+    """Resolve wsl target."""
     if not args:
         raise TypeError("resolve_wsl_target requires a target argument.")
     target = args[0]

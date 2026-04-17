@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Test quality http builders module."""
 
 from typing import Dict, List, Tuple
 
@@ -7,20 +7,22 @@ import pytest
 from scripts.quality import check_codacy_zero as codacy_mod
 from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
-
 from tests.assertions import ensure
 
 
 def _fixture_token() -> str:
+    """Fixture token."""
     return "-".join(("fixture", "token"))
 
 
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
-    captured: Dict[str, object] = {}
+    """Test codacy request json uses fixed host and validated segments."""
+    captured: dict[str, object] = {}
 
     def _fake_request_json_https(
         **kwargs: object,
-    ) -> Tuple[Dict[str, int], Dict[str, str]]:
+    ) -> tuple[dict[str, int], dict[str, str]]:
+        """Fake request json https."""
         captured.update(kwargs)
         return {"total": 0}, {}
 
@@ -44,6 +46,7 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
 
 
 def test_codacy_request_json_rejects_unsafe_identifier():
+    """Test codacy request json rejects unsafe identifier."""
     with pytest.raises(ValueError, match="unsupported characters"):
         codacy_mod._request_json(
             provider="gh",
@@ -56,11 +59,13 @@ def test_codacy_request_json_rejects_unsafe_identifier():
 
 
 def test_deepscan_request_json_uses_fixed_host(monkeypatch):
-    captured: Dict[str, object] = {}
+    """Test deepscan request json uses fixed host."""
+    captured: dict[str, object] = {}
 
     def _fake_request_json_https(
         **kwargs: object,
-    ) -> Tuple[Dict[str, int], Dict[str, str]]:
+    ) -> tuple[dict[str, int], dict[str, str]]:
+        """Fake request json https."""
         captured.update(kwargs)
         return {"open_issues": 0}, {}
 
@@ -79,11 +84,13 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
 
 
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
-    captured: Dict[str, object] = {}
+    """Test sentry request project issues uses fixed host."""
+    captured: dict[str, object] = {}
 
     def _fake_request_json_https(
         **kwargs: object,
-    ) -> Tuple[List[object], Dict[str, str]]:
+    ) -> tuple[list[object], dict[str, str]]:
+        """Fake request json https."""
         captured.update(kwargs)
         return [], {"x-hits": "0"}
 

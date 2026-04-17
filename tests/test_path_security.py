@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division
+"""Test path security module."""
+
 from pathlib import Path
 
 import pytest
@@ -9,11 +10,11 @@ from env_inspector_core.path_policy import (
     parse_scoped_dotenv_target,
     resolve_scan_root,
 )
-
 from tests.assertions import ensure
 
 
 def test_resolve_scan_root_rejects_null_byte(tmp_path: Path):
+    """Test resolve scan root rejects null byte."""
     bad = str(tmp_path) + "\x00suffix"
     with pytest.raises(PathPolicyError):
         resolve_scan_root(bad)
@@ -22,6 +23,7 @@ def test_resolve_scan_root_rejects_null_byte(tmp_path: Path):
 def test_parse_scoped_dotenv_target_allows_path_inside_scope(
     tmp_path: Path, monkeypatch
 ):
+    """Test parse scoped dotenv target allows path inside scope."""
     monkeypatch.chdir(tmp_path)
     project = tmp_path / "project"
     project.mkdir()
@@ -35,6 +37,7 @@ def test_parse_scoped_dotenv_target_allows_path_inside_scope(
 
 
 def test_parse_scoped_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch):
+    """Test parse scoped dotenv target rejects outside scope."""
     monkeypatch.chdir(tmp_path)
     allowed = tmp_path / "allowed"
     outside = tmp_path / "outside"
@@ -51,6 +54,7 @@ def test_parse_scoped_dotenv_target_rejects_outside_scope(tmp_path: Path, monkey
 def test_parse_scoped_dotenv_target_rejects_non_dotenv_filename(
     tmp_path: Path, monkeypatch
 ):
+    """Test parse scoped dotenv target rejects non dotenv filename."""
     monkeypatch.chdir(tmp_path)
     folder = tmp_path / "folder"
     folder.mkdir()

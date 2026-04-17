@@ -1,10 +1,9 @@
 """Typed request models shared by service helpers."""
 
-from __future__ import absolute_import, division
-
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Sequence
+from typing import List
+from collections.abc import Sequence
 
 from .constants import DEFAULT_SCAN_DEPTH
 
@@ -27,8 +26,8 @@ class TargetOperationBatch:
     action: str
     key: str
     value: str | None
-    targets: List[str]
-    scope_roots: List[str | Path] | None = None
+    targets: list[str]
+    scope_roots: list[str | Path] | None = None
 
 
 @dataclass(frozen=True)
@@ -37,7 +36,7 @@ class ListRecordsRequest:
 
     root: str | Path | None = None
     context: str | None = None
-    source: List[str] | None = None
+    source: list[str] | None = None
     wsl_path: str | None = None
     distro: str | None = None
     scan_depth: int = DEFAULT_SCAN_DEPTH

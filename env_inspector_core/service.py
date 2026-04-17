@@ -1,7 +1,5 @@
 """Primary Env Inspector service implementation."""
 
-from __future__ import absolute_import, division
-
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List
@@ -35,40 +33,73 @@ from .resolver import resolve_effective_value
 from .service_listing import (
     HostCollectionRequest,
     HostRowCollectors,
+)
+from .service_listing import (
     apply_row_filters as _apply_row_filters_helper,
+)
+from .service_listing import (
     collect_host_rows as _collect_host_rows_helper,
+)
+from .service_listing import (
     collect_wsl_rows as _collect_wsl_rows_helper,
+)
+from .service_listing import (
     powershell_target_for_path as _powershell_target_for_path_helper,
+)
+from .service_listing import (
     record_target as _record_target_helper,
+)
+from .service_listing import (
     rows_to_payload as _rows_to_payload_helper,
 )
-from .service_ops import (
-    diff_text as _diff_text_helper,
-    masked_value as _masked_value_helper,
-    operation_error_types as _operation_error_types_helper,
-)
-from .service_paths import (
-    is_path_within as _is_path_within,
-    validate_path_in_roots as _validate_path_in_roots,
-    write_scoped_text_file as _write_scoped_text_file,
-    write_text_file as _write_text_file,
-)
-from .service_privileged import run as _privileged_run, which as _privileged_which
-from .service_restore import (
-    restore_dotenv_target as _restore_dotenv_target_helper,
-    restore_linux_target as _restore_linux_target_helper,
-    restore_powershell_target as _restore_powershell_target_helper,
-    restore_target as _restore_target_helper,
-    restore_windows_registry_target as _restore_windows_registry_target_helper,
-    restore_wsl_target as _restore_wsl_target_helper,
-)
-from .service_wsl import validate_wsl_distro_name as _validate_wsl_distro_name_helper
 from .service_models import (
     ListRecordsRequest,
     ShellMutationRequest,
     TargetOperationBatch,
     TargetOperationRequest,
 )
+from .service_ops import (
+    diff_text as _diff_text_helper,
+)
+from .service_ops import (
+    masked_value as _masked_value_helper,
+)
+from .service_ops import (
+    operation_error_types as _operation_error_types_helper,
+)
+from .service_paths import (
+    is_path_within as _is_path_within,
+)
+from .service_paths import (
+    validate_path_in_roots as _validate_path_in_roots,
+)
+from .service_paths import (
+    write_scoped_text_file as _write_scoped_text_file,
+)
+from .service_paths import (
+    write_text_file as _write_text_file,
+)
+from .service_privileged import run as _privileged_run
+from .service_privileged import which as _privileged_which
+from .service_restore import (
+    restore_dotenv_target as _restore_dotenv_target_helper,
+)
+from .service_restore import (
+    restore_linux_target as _restore_linux_target_helper,
+)
+from .service_restore import (
+    restore_powershell_target as _restore_powershell_target_helper,
+)
+from .service_restore import (
+    restore_target as _restore_target_helper,
+)
+from .service_restore import (
+    restore_windows_registry_target as _restore_windows_registry_target_helper,
+)
+from .service_restore import (
+    restore_wsl_target as _restore_wsl_target_helper,
+)
+from .service_wsl import validate_wsl_distro_name as _validate_wsl_distro_name_helper
 from .storage import AuditLogger, BackupManager
 
 DOTENV_TARGET_PREFIX = _service_mutations.DOTENV_TARGET_PREFIX
@@ -196,7 +227,7 @@ class EnvInspectorService:
         """Resolve `/etc/environment` through the class seam."""
         return _service_aliases.linux_etc_environment_path(cls)
 
-    def bridge_distros(self) -> List[str]:
+    def bridge_distros(self) -> list[str]:
         """Return available WSL bridge distros."""
         return self._bridge_distros()
 
@@ -207,7 +238,7 @@ class EnvInspectorService:
     def validate_path_in_roots(
         self,
         path: Path,
-        roots: List[Path],
+        roots: list[Path],
         *,
         label: str,
     ) -> Path:
@@ -222,7 +253,7 @@ class EnvInspectorService:
         self,
         *,
         candidate_path: Path,
-        allowed_roots: List[Path],
+        allowed_roots: list[Path],
         text: str,
         label: str,
     ) -> Path:
@@ -322,8 +353,8 @@ class EnvInspectorService:
 
     def effective_scope_roots(
         self,
-        scope_roots: List[str | Path] | None = None,
-    ) -> List[Path]:
+        scope_roots: list[str | Path] | None = None,
+    ) -> list[Path]:
         """Resolve scope roots through the bound helper."""
         return self._effective_scope_roots(scope_roots)
 
@@ -353,10 +384,10 @@ class EnvInspectorService:
 
     def _effective_scope_roots(
         self,
-        scope_roots: List[str | Path] | None = None,
-    ) -> List[Path]:
+        scope_roots: list[str | Path] | None = None,
+    ) -> list[Path]:
         """Return the default scope roots plus any validated overrides."""
-        roots: List[Path] = list(self.default_scope_roots)
+        roots: list[Path] = list(self.default_scope_roots)
         if scope_roots:
             roots.extend(normalize_scope_roots(scope_roots))
         return normalize_scope_roots(roots)
@@ -365,12 +396,12 @@ class EnvInspectorService:
     def resolve_effective(
         key: str,
         context: str,
-        records: List[EnvRecord],
+        records: list[EnvRecord],
     ) -> EnvRecord | None:
         """Resolve the effective record for a key within a context."""
         return resolve_effective_value(records, key, context)
 
-    def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
+    def _collect_host_rows(self, root_path: Path, scan_depth: int) -> list[EnvRecord]:
         """Collect host-visible records for the active runtime context."""
         return _collect_host_rows_helper(
             request=HostCollectionRequest(
@@ -397,7 +428,7 @@ class EnvInspectorService:
         scan_depth: int,
         distro: str | None,
         wsl_path: str | None,
-    ) -> List[EnvRecord]:
+    ) -> list[EnvRecord]:
         """Collect records from the requested WSL distro and optional dotenv path."""
         return _collect_wsl_rows_helper(
             runtime_context=self.runtime_context,
@@ -414,7 +445,7 @@ class EnvInspectorService:
         self,
         request: ListRecordsRequest | None = None,
         **kwargs: Any,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Collect records, apply filters, and serialize the result payload."""
         if request is None:
             request = ListRecordsRequest(**kwargs)
@@ -450,7 +481,7 @@ class EnvInspectorService:
         *,
         target: str,
         text: str,
-        scope_roots: List[Path],
+        scope_roots: list[Path],
     ) -> None:
         """Restore a scoped dotenv target from backup text."""
         _restore_dotenv_target_helper(
@@ -511,7 +542,7 @@ class EnvInspectorService:
         *,
         target: str,
         text: str,
-        scope_roots: List[Path],
+        scope_roots: list[Path],
     ) -> None:
         """Dispatch backup restoration to the target-specific helper."""
         _restore_target_helper(
@@ -529,8 +560,8 @@ class EnvInspectorService:
         self,
         *,
         backup: str,
-        scope_roots: List[str | Path] | None = None,
-    ) -> Dict[str, Any]:
+        scope_roots: list[str | Path] | None = None,
+    ) -> dict[str, Any]:
         """Restore a recorded backup payload to its original target."""
         operation_id = f"restore-{uuid.uuid4().hex[:10]}"
         path = Path(backup)

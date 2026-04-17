@@ -1,9 +1,7 @@
 """Coverage tests for rendering.py — CSV, table, and JSON export paths."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 from env_inspector_core.rendering import export_rows
+from tests.assertions import ensure
 
 
 def test_export_rows_json_output() -> None:

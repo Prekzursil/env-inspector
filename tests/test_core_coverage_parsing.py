@@ -1,20 +1,18 @@
 """Coverage tests for parsing.py — validation and parsing edge cases."""
 
-from __future__ import absolute_import, division
-from tests.assertions import ensure
-
 import pytest
 
 from env_inspector_core.parsing import (
-    validate_env_key,
-    validate_env_value,
+    _render_remove,
+    _render_upsert,
+    _replace_first_match,
     parse_dotenv_text,
     parse_etc_environment,
-    _render_upsert,
-    _render_remove,
-    _replace_first_match,
     upsert_export,
+    validate_env_key,
+    validate_env_value,
 )
+from tests.assertions import ensure
 
 
 # Line 18: validate_env_key empty key

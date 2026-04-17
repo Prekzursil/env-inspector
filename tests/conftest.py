@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division
+"""Conftest module."""
+
 import sys
 from pathlib import Path
 

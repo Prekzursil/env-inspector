@@ -1,31 +1,35 @@
-from __future__ import absolute_import, division
+"""Storage module."""
 
-from typing import Dict, List, Tuple
 import glob
 import json
 import os
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 from .models import OperationResult
 
 
 def _mkdirp(path: Path) -> None:
+    """Mkdirp."""
     os.makedirs(path, exist_ok=True)
 
 
 def _path_exists(path: Path) -> bool:
+    """Path exists."""
     return os.path.exists(path)
 
 
 def _read_text(path: Path) -> str:
+    """Read text."""
     resolved = Path(path).resolve()
     with open(resolved, encoding="utf-8") as handle:  # noqa: S108 - caller validates scope
         return handle.read()
 
 
 def _write_text(path: Path, text: str) -> None:
+    """Write text."""
     resolved = Path(path).resolve()
     with open(resolved, "w", encoding="utf-8") as handle:  # noqa: S108 - caller validates scope
         handle.write(text)
@@ -40,6 +44,7 @@ class BackupManager:
         _mkdirp(self.base_dir)
 
     def backup_text(self, target: str, text: str) -> Path:
+        """Backup text."""
         now, path = self._next_backup_path()
         path = self._normalize_backup_path(path)
         payload = {"target": target, "created_at": now, "text": text}
@@ -47,7 +52,8 @@ class BackupManager:
         self._enforce_retention(target)
         return path
 
-    def _next_backup_path(self) -> Tuple[str, Path]:
+    def _next_backup_path(self) -> tuple[str, Path]:
+        """Next backup path."""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
         for sequence in range(10000):
@@ -58,6 +64,7 @@ class BackupManager:
         raise RuntimeError("Could not allocate unique backup file name")
 
     def _normalize_backup_path(self, candidate: Path) -> Path:
+        """Normalize backup path."""
         resolved = candidate.resolve(strict=False)
         try:
             resolved.relative_to(self.base_dir)
@@ -66,21 +73,24 @@ class BackupManager:
         return resolved
 
     def _enforce_retention(self, target: str) -> None:
+        """Enforce retention."""
         files = self.list_backups(target)
         if len(files) <= self.retention:
             return
         for old in files[self.retention :]:
             old.unlink(missing_ok=True)
 
-    def list_backups(self, target: str) -> List[Path]:
-        backups: List[Path] = []
+    def list_backups(self, target: str) -> list[Path]:
+        """List backups."""
+        backups: list[Path] = []
         for backup in self.list_all_backups():
             payload = self._load_backup_payload(backup)
             if payload is not None and str(payload.get("target", "")) == target:
                 backups.append(backup)
         return sorted(backups, reverse=True)
 
-    def list_all_backups(self) -> List[Path]:
+    def list_all_backups(self) -> list[Path]:
+        """List all backups."""
         return sorted(
             (
                 Path(path)
@@ -93,6 +103,7 @@ class BackupManager:
 
     @staticmethod
     def _load_backup_payload(backup_path: Path) -> dict | None:
+        """Load backup payload."""
         try:
             payload = json.loads(_read_text(backup_path))
         except (OSError, TypeError, ValueError):
@@ -101,11 +112,13 @@ class BackupManager:
 
     @staticmethod
     def restore_text(backup_path: Path) -> str:
+        """Restore text."""
         payload = json.loads(_read_text(Path(backup_path)))
         return str(payload["text"])
 
     @staticmethod
-    def read_backup_payload(backup_path: Path) -> Dict[str, str]:
+    def read_backup_payload(backup_path: Path) -> dict[str, str]:
+        """Read backup payload."""
         payload = json.loads(_read_text(Path(backup_path)))
         return {"target": str(payload["target"]), "text": str(payload["text"])}
 
@@ -119,6 +132,7 @@ class AuditLogger:
         self.path = self.base_dir / "audit.log"
 
     def log(self, result: OperationResult) -> None:
+        """Log."""
         payload = asdict(result)
         payload["logged_at"] = datetime.now(timezone.utc).isoformat()
         line = json.dumps(payload, ensure_ascii=True)

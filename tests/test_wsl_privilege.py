@@ -1,14 +1,12 @@
 """Tests for privileged WSL file writes and availability probing."""
 
-from __future__ import absolute_import, division
-from subprocess import CompletedProcess  # nosec B404
 from pathlib import Path
+from subprocess import CompletedProcess  # nosec B404
 from typing import List
 
 import pytest
 
 from env_inspector_core.providers import WslProvider
-
 from tests.assertions import ensure
 
 
@@ -23,7 +21,7 @@ def _proc(
 
 def test_write_file_with_privilege_root_success() -> None:
     """Write through the root path when the first privileged attempt succeeds."""
-    calls: List[List[str]] = []
+    calls: list[list[str]] = []
 
     def runner(cmd, **_kwargs) -> CompletedProcess:
         """Capture the command issued by the privileged root write path."""
@@ -43,8 +41,8 @@ def test_write_file_with_privilege_root_success() -> None:
 
 def test_write_file_with_privilege_falls_back_to_sudo() -> None:
     """Retry with `sudo tee` when the direct root write attempt fails."""
-    calls: List[List[str]] = []
-    inputs: List[bytes | None] = []
+    calls: list[list[str]] = []
+    inputs: list[bytes | None] = []
 
     def runner(cmd, **kwargs) -> CompletedProcess:
         """Record write attempts and fail the direct root path once."""
@@ -86,7 +84,7 @@ def test_available_probes_command_and_returns_false_when_probe_fails(
     tmp_path: Path,
 ) -> None:
     """Return false when the WSL availability probe exits unsuccessfully."""
-    calls: List[List[str]] = []
+    calls: list[list[str]] = []
     fake_wsl = tmp_path / "wsl.exe"
     fake_wsl.write_text("", encoding="utf-8")
 

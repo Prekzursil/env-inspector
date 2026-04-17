@@ -1,10 +1,10 @@
+"""Codacy zero impl module."""
 #!/usr/bin/env python3
-from __future__ import absolute_import, division
 
 import argparse
-from dataclasses import replace
-import urllib.error
 import sys
+import urllib.error
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any, List, Tuple
 
 try:
@@ -32,10 +32,12 @@ safe_output_path_in_workspace = _support.safe_output_path_in_workspace
 
 
 def _public_codacy_module() -> Any | None:
+    """Public codacy module."""
     return sys.modules.get("scripts.quality.check_codacy_zero")
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse args."""
     parser = argparse.ArgumentParser(
         description="Assert Codacy has zero total open issues."
     )
@@ -62,6 +64,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _extract_numeric_total(payload: dict, keys: tuple) -> int | None:
+    """Extract numeric total."""
     for key in keys:
         value = payload.get(key)
         if isinstance(value, (int, float)):
@@ -70,6 +73,7 @@ def _extract_numeric_total(payload: dict, keys: tuple) -> int | None:
 
 
 def extract_total_open(payload: Any) -> int | None:
+    """Extract total open."""
     if not isinstance(payload, dict):
         return None
 
@@ -79,7 +83,7 @@ def extract_total_open(payload: Any) -> int | None:
         if total is not None:
             return total
 
-    stack: List[Any] = [payload]
+    stack: list[Any] = [payload]
     while stack:
         node = stack.pop()
         if isinstance(node, dict):
@@ -97,7 +101,8 @@ def extract_total_open(payload: Any) -> int | None:
 def _fetch_open_issues_for_provider(
     request: CodacyRequest | None = None,
     **kwargs: Any,
-) -> Tuple[bool, int | None, List[str], Exception | None]:
+) -> tuple[bool, int | None, list[str], Exception | None]:
+    """Fetch open issues for provider."""
     request = _resolve_codacy_request(request, kwargs)
 
     public = _public_codacy_module()
@@ -119,8 +124,9 @@ def _fetch_open_issues_for_provider(
 def _attempt_issue_total(
     request: CodacyRequest,
     request_json_fn: Any,
-) -> Tuple[bool, int | None, List[str], Exception | None]:
-    findings: List[str] = []
+) -> tuple[bool, int | None, list[str], Exception | None]:
+    """Attempt issue total."""
+    findings: list[str] = []
 
     try:
         return True, _request_issue_total(request, request_json_fn), findings, None
@@ -137,6 +143,7 @@ def _attempt_issue_total(
 def _resolve_codacy_request(
     request: CodacyRequest | None, kwargs: Any
 ) -> CodacyRequest:
+    """Resolve codacy request."""
     if request is None:
         return CodacyRequest(**kwargs)
     if kwargs:
@@ -145,13 +152,15 @@ def _resolve_codacy_request(
 
 
 def _request_issue_total(request: CodacyRequest, request_json_fn: Any) -> int | None:
+    """Request issue total."""
     payload = request_json_fn(request=replace(request, limit=1, method="POST", data={}))
     return extract_total_open(payload)
 
 
 def _handle_http_error(
-    exc: urllib.error.HTTPError, findings: List[str]
-) -> Tuple[bool, Exception]:
+    exc: urllib.error.HTTPError, findings: list[str]
+) -> tuple[bool, Exception]:
+    """Handle http error."""
     if exc.code == 404:
         return False, exc
     findings.append(f"Codacy API request failed: HTTP {exc.code}")
@@ -163,7 +172,8 @@ def _non_zero_issue_findings(
     open_issues: int,
     request_json_fn: Any,
     sample_findings_fn: Any,
-) -> List[str]:
+) -> list[str]:
+    """Non zero issue findings."""
     findings = [f"Codacy reports {open_issues} open issues (expected 0)."]
     sample_payload = request_json_fn(
         request=replace(request, limit=20, method="POST", data={})
@@ -178,7 +188,8 @@ def _issue_total_findings(
     handled: bool,
     request_json_fn: Any,
     sample_findings_fn: Any,
-) -> List[str]:
+) -> list[str]:
+    """Issue total findings."""
     if not handled:
         return []
     if open_issues is None:
@@ -192,7 +203,8 @@ def _issue_total_findings(
 
 def _query_open_issues(
     request: CodacyRequest | None = None, **kwargs: Any
-) -> Tuple[int | None, List[str]]:
+) -> tuple[int | None, list[str]]:
+    """Query open issues."""
     if request is None:
         request = CodacyRequest(**kwargs)
     elif kwargs:
@@ -224,6 +236,7 @@ def _query_open_issues(
 
 
 def _render_md(payload: dict) -> str:
+    """Render md."""
     lines = [
         "# Codacy Zero Gate",
         "",

@@ -1,7 +1,5 @@
 """Controller-focused GUI regression tests."""
 
-from __future__ import absolute_import, division
-
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple, cast
@@ -9,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.controller import EnvInspectorController
 from env_inspector_gui.models import PersistedUiState
-
 from tests.assertions import ensure
 
 
@@ -32,8 +29,8 @@ class _View:
     """Minimal view stub used for busy-state assertions."""
 
     def __init__(self) -> None:
-        self.enabled_states: List[bool] = []
-        self.busy_states: List[bool] = []
+        self.enabled_states: list[bool] = []
+        self.busy_states: list[bool] = []
 
     def set_mutation_actions_enabled(self, enabled: bool) -> None:
         """Record whether mutation actions were enabled."""
@@ -116,7 +113,7 @@ class _ControllerHarness(EnvInspectorController):
         self._during_bootstrap = False
 
     @staticmethod
-    def _load_tk_modules() -> Tuple[Any, Any, Any, Any]:
+    def _load_tk_modules() -> tuple[Any, Any, Any, Any]:
         """Provide stub Tk modules for controller bootstrap."""
         return (
             _BOOTSTRAP_TK_MODULE,
@@ -132,7 +129,7 @@ class _ControllerHarness(EnvInspectorController):
     def _apply_theme(self) -> None:
         """Skip theme configuration during tests."""
 
-    def _load_boot_state(self, _root_path: Path) -> Tuple[PersistedUiState, Path]:
+    def _load_boot_state(self, _root_path: Path) -> tuple[PersistedUiState, Path]:
         """Provide a deterministic boot state for controller tests."""
         return PersistedUiState(context="linux"), Path.cwd()
 
@@ -173,7 +170,7 @@ class _ContextSelectionHarness(_ControllerHarness):
 
     def __init__(self) -> None:
         super().__init__()
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
     def refresh_data(self) -> None:
         """Record explicit refresh calls after bootstrap."""
@@ -199,7 +196,7 @@ class _RefreshHarness(_ControllerHarness):
         self.key_text = _Var("API_TOKEN")
         self.effective_value_var = _Var("")
         self.view = None
-        self.events: List[Tuple[str, Optional[object]]] = []
+        self.events: list[tuple[str, object | None]] = []
 
     def _set_busy(self, busy: bool) -> None:
         """Record busy-state updates."""
@@ -247,19 +244,19 @@ class _OperationHarness(_ControllerHarness):
         self.key_text = _Var("API_TOKEN")
         self.value_text = _Var("abc")
         self.selected_targets = ["windows:user"]
-        self.records_raw: List[EnvRecord] = []
-        self.calls: List[Tuple[str, Optional[object]]] = []
+        self.records_raw: list[EnvRecord] = []
+        self.calls: list[tuple[str, object | None]] = []
         self.messagebox = cast(Any, _MessageBox())
 
     def _set_status(self, _text: str) -> None:
         """Ignore status updates during mutation tests."""
         return None
 
-    def choose_targets(self) -> List[str]:
+    def choose_targets(self) -> list[str]:
         """Return the current target selection."""
         return list(self.selected_targets)
 
-    def _maybe_choose_dotenv_targets(self, _key: str, targets: List[str]) -> List[str]:
+    def _maybe_choose_dotenv_targets(self, _key: str, targets: list[str]) -> list[str]:
         """Keep dotenv targets unchanged during tests."""
         return list(targets)
 
@@ -268,8 +265,8 @@ class _OperationHarness(_ControllerHarness):
         action: str,
         key: str,
         value: str,
-        targets: List[str],
-    ) -> List[Dict[str, object]]:
+        targets: list[str],
+    ) -> list[dict[str, object]]:
         """Record preview calls and return a successful preview payload."""
         self.calls.append(("preview", action))
         return [{"target": "windows:user", "success": True, "diff_preview": ""}]
@@ -277,7 +274,7 @@ class _OperationHarness(_ControllerHarness):
     def _confirm_diff(
         self,
         action: str,
-        previews: List[Dict[str, object]],
+        previews: list[dict[str, object]],
         preview_only: bool = False,
     ) -> bool:
         """Record confirmation requests and always accept them."""
@@ -289,8 +286,8 @@ class _OperationHarness(_ControllerHarness):
         action: str,
         key: str,
         value: str,
-        targets: List[str],
-    ) -> Dict[str, object]:
+        targets: list[str],
+    ) -> dict[str, object]:
         """Record apply calls and return a successful result payload."""
         self.calls.append(("apply", action))
         return {"success": True, "operation_id": "op-1"}

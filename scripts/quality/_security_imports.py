@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+"""Security imports module."""
 
 import importlib
 import sys
@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 def _load_helpers_module():
+    """Load helpers module."""
     try:
         return importlib.import_module("scripts.security_helpers")
     except ModuleNotFoundError:

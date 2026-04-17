@@ -1,30 +1,35 @@
-from __future__ import absolute_import, division
+"""Models module."""
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
+from typing import Any, Dict, List
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from env_inspector_core.models import EnvRecord
 
 from .secret_policy import resolve_copy_payload
 
 
-def _coerce_text(payload: Dict[str, object], key: str, default: str) -> str:
+def _coerce_text(payload: dict[str, object], key: str, default: str) -> str:
+    """Coerce text."""
     value = payload.get(key, default)
     return str(value or default)
 
 
-def _coerce_flag(payload: Dict[str, object], key: str, default: bool = False) -> bool:
+def _coerce_flag(payload: dict[str, object], key: str, default: bool = False) -> bool:
+    """Coerce flag."""
     return bool(payload.get(key, default))
 
 
-def _coerce_items(payload: Dict[str, object], key: str) -> List[str]:
+def _coerce_items(payload: dict[str, object], key: str) -> list[str]:
+    """Coerce items."""
     value = payload.get(key) or []
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if isinstance(item, str)]
 
 
-def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
+def _coerce_number(payload: dict[str, object], key: str, default: int) -> int:
+    """Coerce number."""
     value = payload.get(key, default)
     result = default
     if isinstance(value, bool):
@@ -62,18 +67,20 @@ class PersistedUiState:
     show_secrets: bool = False
     only_secrets: bool = False
     filter_text: str = ""
-    selected_targets: List[str] = field(default_factory=list)
+    selected_targets: list[str] = field(default_factory=list)
     sort_column: str = "name"
     sort_descending: bool = False
     wsl_distro: str = ""
     wsl_path: str = ""
     scan_depth: int = 5
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
+        """To dict."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, payload: Dict[str, object]) -> "PersistedUiState":
+    def from_dict(cls, payload: dict[str, object]) -> "PersistedUiState":
+        """From dict."""
         return cls(
             version=_coerce_number(payload, "version", 1),
             window_geometry=_coerce_text(payload, "window_geometry", "1480x860"),
@@ -113,7 +120,7 @@ class ContextSelection:
 
     context: str
     wsl_distro: str
-    distros: List[str]
+    distros: list[str]
 
 
 @dataclass(frozen=True)
@@ -125,6 +132,7 @@ class OperationResultSummary:
 
 
 def select_theme_name(os_name: str, themes: Sequence[str]) -> str | None:
+    """Select theme name."""
     theme_set = set(themes)
     if os_name == "nt":
         for preferred in ("vista", "xpnative"):
@@ -145,6 +153,7 @@ def resolve_context_selection(
     current_wsl_distro: str,
     runtime_context: str,
 ) -> ContextSelection:
+    """Resolve context selection."""
     distros = [
         context.split(":", 1)[1] for context in contexts if context.startswith("wsl:")
     ]
@@ -166,7 +175,8 @@ def resolve_context_selection(
 
 def reconcile_selected_targets(
     selected_targets: Sequence[str], available_targets: Sequence[str]
-) -> List[str]:
+) -> list[str]:
+    """Reconcile selected targets."""
     if not selected_targets:
         return list(available_targets)
     remaining = [target for target in selected_targets if target in available_targets]
@@ -174,6 +184,7 @@ def reconcile_selected_targets(
 
 
 def has_multiple_dotenv_matches(records: Iterable[EnvRecord], key: str) -> bool:
+    """Has multiple dotenv matches."""
     found = 0
     for record in records:
         if record.name == key and record.source_type in {"dotenv", "wsl_dotenv"}:
@@ -184,6 +195,7 @@ def has_multiple_dotenv_matches(records: Iterable[EnvRecord], key: str) -> bool:
 
 
 def build_status_line(shown: int, total: int, context: str, last_refresh_at) -> str:
+    """Build status line."""
     when = "-" if last_refresh_at is None else last_refresh_at.strftime("%H:%M:%S")
     return (
         f"Showing {shown} / {total} entries | Context: {context} | Last refresh: {when}"
@@ -193,10 +205,11 @@ def build_status_line(shown: int, total: int, context: str, last_refresh_at) -> 
 def resolve_selected_targets(
     *,
     selected_targets: Sequence[str],
-    choose_targets: Callable[[], List[str] | None],
+    choose_targets: Callable[[], list[str] | None],
     key: str,
-    maybe_choose_dotenv_targets: Callable[[str, List[str]], List[str] | None],
-) -> List[str] | None:
+    maybe_choose_dotenv_targets: Callable[[str, list[str]], list[str] | None],
+) -> list[str] | None:
+    """Resolve selected targets."""
     targets = list(selected_targets)
     if not targets:
         targets = choose_targets() or []
@@ -210,6 +223,7 @@ def resolve_selected_targets(
 def summarize_operation_result(
     action: str, result: Mapping[str, Any]
 ) -> OperationResultSummary:
+    """Summarize operation result."""
     if isinstance(result, dict) and "results" in result:
         failures = _batch_failures(result["results"])
         if failures:
@@ -234,15 +248,17 @@ def summarize_operation_result(
     )
 
 
-def _batch_failures(results: Any) -> List[Mapping[str, Any]]:
+def _batch_failures(results: Any) -> list[Mapping[str, Any]]:
+    """Batch failures."""
     return [
         item for item in results if isinstance(item, dict) and not item.get("success")
     ]
 
 
 def select_target_dialog_result(
-    result: List[str] | None, *, messagebox: Any, app_name: str
-) -> List[str] | None:
+    result: list[str] | None, *, messagebox: Any, app_name: str
+) -> list[str] | None:
+    """Select target dialog result."""
     if result is None:
         return None
     if not result:
@@ -258,6 +274,7 @@ def build_effective_value_text(
     key: str,
     show_secrets: bool,
 ) -> str:
+    """Build effective value text."""
     if not key:
         return "Effective: (select key)"
     if record is None:

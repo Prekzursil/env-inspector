@@ -1,7 +1,5 @@
 """Linux-specific service and provider coverage tests."""
 
-from __future__ import absolute_import, division
-
 from pathlib import Path
 from typing import List
 
@@ -11,7 +9,6 @@ import env_inspector_core.service as service_module
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
 from env_inspector_core.service import EnvInspectorService
-
 from tests.assertions import ensure
 
 _ORIGINAL_PATH_EXISTS = service_module._path_exists
@@ -91,11 +88,11 @@ def _patch_linux_etc_environment_reads(
 
 def _patch_linux_etc_environment_denied(
     monkeypatch: pytest.MonkeyPatch, etc_env: Path
-) -> List[str]:
+) -> list[str]:
     """Force direct `/etc/environment` writes to raise `PermissionError`."""
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
     real_write_text_file = EnvInspectorService._write_text_file
-    writes: List[str] = []
+    writes: list[str] = []
 
     def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
         """Raise on direct target writes while allowing ordinary fixture writes."""
@@ -178,7 +175,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(
             return True
 
         @staticmethod
-        def list_distros_for_ui() -> List[str]:
+        def list_distros_for_ui() -> list[str]:
             """Return distros for the UI context list."""
             return ["Ubuntu", "Debian"]
 
@@ -226,7 +223,7 @@ def test_service_list_contexts_keeps_all_distros_without_active_linux_bridge(
             return True
 
         @staticmethod
-        def list_distros_for_ui() -> List[str]:
+        def list_distros_for_ui() -> list[str]:
             """Return bridge distros for the context picker."""
             return ["Ubuntu", "Debian"]
 

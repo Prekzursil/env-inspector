@@ -1,12 +1,14 @@
-from __future__ import absolute_import, division
+"""Test qlty config module."""
 
 from pathlib import Path
+
 import tomllib
 
 from tests.assertions import ensure
 
 
 def test_qlty_config_enables_blocking_smells() -> None:
+    """Test qlty config enables blocking smells."""
     config_path = Path(".qlty/qlty.toml")
     ensure(config_path.exists())
 

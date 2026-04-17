@@ -1,7 +1,5 @@
 """Restore handlers for env-inspector targets across providers."""
 
-from __future__ import absolute_import, division
-
 import json
 from pathlib import Path
 

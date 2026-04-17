@@ -1,18 +1,20 @@
-from __future__ import absolute_import, division
+"""Service ops request module."""
 
 from typing import Any, Dict, Tuple
 
 
 def _raise_mixed_request_usage() -> None:
+    """Raise mixed request usage."""
     raise TypeError("Pass either a request object or legacy arguments, not both.")
 
 
 def _extract_request_object(
     *,
-    args: Tuple[Any, ...],
-    kwargs: Dict[str, Any],
-    required_attributes: Tuple[str, ...],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    required_attributes: tuple[str, ...],
 ) -> Any | None:
+    """Extract request object."""
     if "request" in kwargs:
         request = kwargs.pop("request")
         if kwargs or args:
@@ -28,7 +30,8 @@ def _extract_request_object(
     return None
 
 
-def _target_operation_payload(request: Any) -> Dict[str, Any]:
+def _target_operation_payload(request: Any) -> dict[str, Any]:
+    """Target operation payload."""
     return {
         "target": request.target,
         "key": request.key,
@@ -38,7 +41,8 @@ def _target_operation_payload(request: Any) -> Dict[str, Any]:
     }
 
 
-def _target_operation_batch_payload(request: Any) -> Dict[str, Any]:
+def _target_operation_batch_payload(request: Any) -> dict[str, Any]:
+    """Target operation batch payload."""
     return {
         "action": request.action,
         "key": request.key,
@@ -51,23 +55,27 @@ def _target_operation_batch_payload(request: Any) -> Dict[str, Any]:
 
 
 def _coerce_string(value: Any) -> str:
+    """Coerce string."""
     return str(value)
 
 
 def _coerce_optional_string(value: Any) -> str | None:
+    """Coerce optional string."""
     return None if value is None else _coerce_string(value)
 
 
 def _require_values(message: str, **values: Any) -> None:
+    """Require values."""
     if any(value is None for value in values.values()):
         raise TypeError(message)
 
 
 def _resolve_operation_inputs(
-    args: Tuple[Any, ...],
-    kwargs: Dict[str, Any],
-    field_names: Tuple[str, ...],
-) -> Tuple[Any, ...]:
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+    field_names: tuple[str, ...],
+) -> tuple[Any, ...]:
+    """Resolve operation inputs."""
     if args and isinstance(args[0], str):
         return tuple(
             args[index] if len(args) > index else kwargs.pop(name, None)
@@ -76,7 +84,8 @@ def _resolve_operation_inputs(
     return tuple(kwargs.pop(name, None) for name in field_names)
 
 
-def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+def normalize_target_operation_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Normalize target operation request."""
     request = _extract_request_object(
         args=args,
         kwargs=kwargs,
@@ -105,7 +114,8 @@ def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, A
     }
 
 
-def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Normalize target operation batch."""
     request = _extract_request_object(
         args=args,
         kwargs=kwargs,

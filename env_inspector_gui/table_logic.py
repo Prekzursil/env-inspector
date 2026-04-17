@@ -1,9 +1,8 @@
 """Helpers for filtering and sorting GUI table rows."""
 
-from __future__ import absolute_import, division
-
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
+from typing import Dict, List
+from collections.abc import Iterable
 
 from env_inspector_core.models import EnvRecord
 
@@ -11,12 +10,12 @@ from .models import DisplayedRow, SortState
 from .secret_policy import build_search_value, build_visible_value
 
 
-def _record_payload(rec: EnvRecord) -> Dict[str, object]:
+def _record_payload(rec: EnvRecord) -> dict[str, object]:
     """Return a normalized payload for analyzer-friendly flag access."""
     return rec.to_dict()
 
 
-def _record_flag(rec_payload: Dict[str, object], key: str) -> bool:
+def _record_flag(rec_payload: dict[str, object], key: str) -> bool:
     """Return a boolean flag from a serialized record payload."""
     return bool(rec_payload.get(key, False))
 
@@ -75,9 +74,9 @@ class DisplayRowsRequest:
     show_secrets: bool
 
 
-def build_display_rows(request: DisplayRowsRequest) -> List[DisplayedRow]:
+def build_display_rows(request: DisplayRowsRequest) -> list[DisplayedRow]:
     """Build the filtered GUI rows for the current table request."""
-    rows: List[DisplayedRow] = []
+    rows: list[DisplayedRow] = []
     query_text = request.query.strip().lower()
 
     for idx, rec in enumerate(request.records):
@@ -141,9 +140,9 @@ def _sort_key(row: DisplayedRow, column: str):
 
 
 def sort_display_rows(
-    rows: List[DisplayedRow],
+    rows: list[DisplayedRow],
     sort_state: SortState,
-) -> List[DisplayedRow]:
+) -> list[DisplayedRow]:
     """Return rows sorted by the active GUI sort state."""
     column = sort_state.column or "name"
     return sorted(

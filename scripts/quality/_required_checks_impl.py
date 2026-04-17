@@ -1,11 +1,11 @@
+"""Required checks impl module."""
 #!/usr/bin/env python3
-from __future__ import absolute_import, division
 
 import argparse
 import os
 import time
-from datetime import datetime, timezone
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
@@ -18,7 +18,7 @@ class SettledChecksRequest:
     repo_arg: str
     sha: str
     token: str
-    required: List[str]
+    required: list[str]
     timeout_seconds: int
     poll_seconds: int
 
@@ -54,6 +54,7 @@ safe_output_path_in_workspace = _http.safe_output_path_in_workspace
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse args."""
     parser = argparse.ArgumentParser(
         description="Wait for required GitHub check contexts and assert they are successful."
     )
@@ -69,7 +70,8 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _render_md(payload: Dict[str, Any]) -> str:
+def _render_md(payload: dict[str, Any]) -> str:
+    """Render md."""
     lines = [
         "# Quality Zero Gate - Required Contexts",
         "",
@@ -96,7 +98,8 @@ def _render_md(payload: Dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _required_contexts(args: argparse.Namespace) -> List[str]:
+def _required_contexts(args: argparse.Namespace) -> list[str]:
+    """Required contexts."""
     required = [item.strip() for item in args.required_context if item.strip()]
     if not required:
         raise SystemExit("At least one --required-context is required")
@@ -104,6 +107,7 @@ def _required_contexts(args: argparse.Namespace) -> List[str]:
 
 
 def _github_token() -> str:
+    """Github token."""
     token = (
         os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")
     ).strip()
@@ -116,9 +120,10 @@ def _snapshot(
     *,
     repo_arg: str,
     sha: str,
-    required: List[str],
-    contexts: Dict[str, Dict[str, str]],
-) -> Dict[str, Any]:
+    required: list[str],
+    contexts: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    """Snapshot."""
     status, missing, failed = _evaluate(required, contexts)
     return {
         "status": status,
@@ -132,14 +137,16 @@ def _snapshot(
     }
 
 
-def _has_in_progress_check_run(contexts: Dict[str, Dict[str, str]]) -> bool:
+def _has_in_progress_check_run(contexts: dict[str, dict[str, str]]) -> bool:
+    """Has in progress check run."""
     return any(
         observed.get("source") == "check_run" and observed.get("state") != "completed"
         for observed in contexts.values()
     )
 
 
-def _should_wait(payload: Dict[str, Any]) -> bool:
+def _should_wait(payload: dict[str, Any]) -> bool:
+    """Should wait."""
     if payload["status"] == "pass":
         return False
     if payload["missing"]:
@@ -147,9 +154,10 @@ def _should_wait(payload: Dict[str, Any]) -> bool:
     return _has_in_progress_check_run(payload["contexts"])
 
 
-def _collect_until_settled(request: SettledChecksRequest) -> Dict[str, Any]:
+def _collect_until_settled(request: SettledChecksRequest) -> dict[str, Any]:
+    """Collect until settled."""
     deadline = time.time() + max(request.timeout_seconds, 1)
-    final_payload: Optional[Dict[str, Any]] = None
+    final_payload: dict[str, Any] | None = None
 
     while time.time() <= deadline:
         check_runs = _api_get_check_runs(

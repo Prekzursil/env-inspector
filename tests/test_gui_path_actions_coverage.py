@@ -1,11 +1,8 @@
 """Coverage tests for env_inspector_gui.path_actions — missing lines 10, 21-24, 37-38, 48."""
 
-from __future__ import absolute_import, division
-
 from pathlib import Path
 
 from env_inspector_gui.path_actions import is_openable_local_path, open_source_path
-
 from tests.assertions import ensure
 
 
@@ -49,6 +46,7 @@ def test_open_source_path_opener_raises_oserror(tmp_path: Path):
     local_file.write_text("A=1\n", encoding="utf-8")
 
     def bad_opener(uri: str) -> bool:
+        """Bad opener."""
         raise OSError("disk error")
 
     ok, err = open_source_path(str(local_file), open_uri=bad_opener)
