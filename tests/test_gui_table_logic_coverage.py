@@ -19,7 +19,7 @@ def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
         "source_type": "dotenv",
         "source_path": "/workspace/.env",
         "context": "windows",
-        "is_secret": False,
+        "is_secret": False,  # nosec B105
         "is_persistent": False,
         "is_mutable": True,
         "precedence_rank": 50,

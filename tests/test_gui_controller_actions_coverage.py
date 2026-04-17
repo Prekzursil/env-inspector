@@ -25,7 +25,7 @@ def _make_record(**overrides: object) -> EnvRecord:
         "context": "windows",
         "name": "KEY",
         "value": "val",
-        "is_secret": False,
+        "is_secret": False,  # nosec B105
         "is_persistent": False,
         "is_mutable": True,
         "precedence_rank": 50,

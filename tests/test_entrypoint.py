@@ -99,7 +99,7 @@ def test_legacy_print_secrets_skips_non_secret_rows(
         """List records."""
         return [
             {
-                "is_secret": False,
+                "is_secret": False,  # nosec B105
                 "source_type": "dotenv",
                 "source_id": ".env",
                 "name": "PUBLIC_VAR",
