@@ -22,6 +22,11 @@ class TargetPickerDialog:
         import tkinter as tk
         from tkinter import ttk
 
+        # Stash the tkinter modules on the instance so per-row builders can
+        # use them without inflating their own parameter counts (qlty smell
+        # threshold is 5 params; passing tk + ttk would push us over).
+        self._tk = tk
+        self._ttk = ttk
         self.result: List[str] | None = None
         self._targets = list(targets)
         self._vars: Dict[str, tk.BooleanVar] = {}
@@ -45,8 +50,8 @@ class TargetPickerDialog:
         ttk.Label(frame, text="Choose one or more targets for this operation:").pack(
             anchor="w", pady=(0, 8)
         )
-        self._build_search_row(frame, tk, ttk)
-        self._build_preset_row(frame, ttk)
+        self._build_search_row(frame)
+        self._build_preset_row(frame)
 
         canvas = tk.Canvas(frame, highlightthickness=0)
         scroll = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
@@ -59,9 +64,7 @@ class TargetPickerDialog:
 
         canvas.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
-        self._build_target_checks(
-            body, selected_set, has_selected=selected is not None, tk=tk, ttk=ttk
-        )
+        self._build_target_checks(body, selected_set, has_selected=selected is not None)
 
         self.selected_count_label = ttk.Label(frame, text="")
         self.selected_count_label.pack(anchor="w", pady=(8, 0))
@@ -76,8 +79,10 @@ class TargetPickerDialog:
         # the Coverage 100 Gate would treat as a partial branch).
         cast(Any, self.search_entry).focus_set()
 
-    def _build_search_row(self, frame: Any, tk: Any, ttk: Any) -> None:
+    def _build_search_row(self, frame: Any) -> None:
         """Build search row."""
+        ttk = self._ttk
+        tk = self._tk
         search_row = ttk.Frame(frame)
         search_row.pack(fill="x", pady=(0, 8))
         ttk.Label(search_row, text="Search:").pack(side="left")
@@ -86,8 +91,9 @@ class TargetPickerDialog:
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(6, 0))
         self.search_entry.bind("<KeyRelease>", self._on_search_keyrelease)
 
-    def _build_preset_row(self, frame: Any, ttk: Any) -> None:
+    def _build_preset_row(self, frame: Any) -> None:
         """Build preset row."""
+        ttk = self._ttk
         preset_row = ttk.Frame(frame)
         preset_row.pack(fill="x", pady=(0, 8))
         ttk.Button(preset_row, text="Select All", command=self._select_all).pack(
@@ -112,10 +118,10 @@ class TargetPickerDialog:
         selected_set: Set[str],
         *,
         has_selected: bool,
-        tk: Any,
-        ttk: Any,
     ) -> None:
         """Build target checks."""
+        tk = self._tk
+        ttk = self._ttk
         for target in self._targets:
             default = target in selected_set if has_selected else True
             var = tk.BooleanVar(value=default)
