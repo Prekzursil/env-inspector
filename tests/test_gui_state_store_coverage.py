@@ -5,6 +5,8 @@ from __future__ import absolute_import, division
 import json
 from pathlib import Path
 
+from env_inspector_core.path_policy import PathPolicyError
+from env_inspector_gui import state_store as state_store_mod
 from env_inspector_gui.models import PersistedUiState
 from env_inspector_gui.state_store import (
     load_ui_state,
@@ -107,3 +109,19 @@ def test_sanitize_root_fallback(tmp_path: Path):
     """Lines in _sanitize_root: bad root_path falls through to fallback_root."""
     result = _sanitize_root("", tmp_path)
     ensure(str(result) == str(tmp_path))
+
+
+def test_sanitize_root_double_failure_returns_fallback_path(tmp_path: Path, monkeypatch):
+    """Lines 97-100: when both resolve attempts raise, return Path(fallback_root) verbatim.
+
+    Mocking the resolver isolates this branch from pytest tmp layout —
+    callers may pass fallback paths that still fail policy checks (e.g. if
+    cwd changes mid-flight), and we must not crash.
+    """
+
+    def _always_raise(_value):
+        raise PathPolicyError("forced for coverage")
+
+    monkeypatch.setattr(state_store_mod, "resolve_scan_root", _always_raise)
+    result = _sanitize_root("any-bad-input", tmp_path)
+    ensure(result == Path(tmp_path))
