@@ -1,4 +1,7 @@
-"""Coverage tests for env_inspector_gui.state_store — missing lines 43, 51, 55-56, 59, 105, 107, 119."""
+"""Coverage tests for env_inspector_gui.state_store.
+
+Targets previously-missing lines 43, 51, 55-56, 59, 105, 107, 119.
+"""
 
 import json
 from pathlib import Path
