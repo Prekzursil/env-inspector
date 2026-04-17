@@ -85,7 +85,7 @@ def test_sentry_collect_projects_prefers_args_and_env_fallback():
 def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
     """Test sentry scan projects covers header fallback and failures."""
 
-    def _fake_request_project_issues(_org: str, project: str, token: str):
+    def _fake_request_project_issues(_org: str, project: str, token: str):  # pylint: disable=unused-argument
         """Fake request project issues."""
         return [{"id": "1"}], {}
 

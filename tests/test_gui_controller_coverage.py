@@ -208,7 +208,8 @@ def test_choose_folder_selected(tmp_path: Path):
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
     ctrl.state_dir = Path("/var/state-fixture")
-    with (
+    # PyLint < 2.10 mis-reads parenthesized-with as a tuple context manager (E1129).
+    with (  # pylint: disable=not-context-manager
         patch("env_inspector_gui.controller.resolve_scan_root", return_value=tmp_path),
         patch("env_inspector_gui.controller.save_ui_state"),
     ):

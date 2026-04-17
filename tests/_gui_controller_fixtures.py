@@ -157,7 +157,9 @@ class _MockView:
     def clear_table() -> None:
         """Stub for testing."""
 
-    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
+    def insert_table_row(  # pylint: disable=no-self-use
+        self, values: Tuple[Any, ...], *, striped: bool
+    ) -> str:
         """Handle insert table row.
 
         Captures call args so production code matches our test surface; the
