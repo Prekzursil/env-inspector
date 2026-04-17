@@ -1,5 +1,13 @@
 ---
 engines:
+  # Codacy's deprecated 'pylint' tool runs alongside the modern
+  # pylintpython3 engine and emits Python-2 compat warnings (W1618 /
+  # W1619) plus PEP 585 false positives (E1136) that the active analyser
+  # already handles correctly. Disable the deprecated duplicate so the
+  # modern engine is the single source of truth — no real findings are
+  # suppressed.
+  pylint:
+    enabled: false
   pylintpython3:
     python_version: 3
     config_file: ".pylintrc"
