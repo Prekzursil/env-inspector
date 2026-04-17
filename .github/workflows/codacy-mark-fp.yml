@@ -84,17 +84,29 @@ jobs:
           print(f"Matching target patterns: {len(target_issues)}")
 
           # Use the bulkIgnoreIssues endpoint:
-          #   POST /analysis/organizations/{provider}/{org}/repositories/{repo}/issues/ignore
-          bulk_url = f"{base}/analysis/organizations/gh/{owner}/repositories/{repo}/issues/ignore"
+          #   POST /analysis/organizations/{provider}/{org}/repositories/{repo}/issues/bulk-ignore
+          # Body: {"issues": [{"id": "...", "reason": "false_positive", ...}, ...]}
+          bulk_url = (
+              f"{base}/analysis/organizations/gh/{owner}/repositories/{repo}/issues/bulk-ignore"
+          )
           ignored = 0
           failures = 0
           batch_size = 50
-          issue_ids = [
-              i.get("issueId") for i in target_issues if i.get("issueId")
+          payload_items = [
+              {
+                  "id": i.get("issueId"),
+                  "reason": "false_positive",
+                  "reasonDetails": (
+                      "Codacy deprecated PyLint or PEP 585 false positive — "
+                      "see Quality Zero PR #78/#79 history."
+                  ),
+              }
+              for i in target_issues
+              if i.get("issueId")
           ]
-          for i in range(0, len(issue_ids), batch_size):
-              batch = issue_ids[i : i + batch_size]
-              body = json.dumps({"issueIds": batch}).encode("utf-8")
+          for i in range(0, len(payload_items), batch_size):
+              batch = payload_items[i : i + batch_size]
+              body = json.dumps({"issues": batch}).encode("utf-8")
               req = urllib.request.Request(
                   bulk_url, headers=headers, method="POST", data=body
               )
@@ -106,5 +118,7 @@ jobs:
                   failures += len(batch)
                   print(f"Batch {i}-{i + len(batch)} failed: {exc}")
 
-          print(f"\nBulk-ignored {ignored}/{len(issue_ids)} issues; failures={failures}")
+          print(
+              f"\nBulk-ignored {ignored}/{len(payload_items)} issues; failures={failures}"
+          )
           PY
