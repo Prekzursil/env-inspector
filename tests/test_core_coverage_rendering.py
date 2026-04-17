@@ -1,6 +1,7 @@
 """Coverage tests for rendering.py — CSV, table, and JSON export paths."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 from env_inspector_core.rendering import export_rows
 
@@ -9,30 +10,30 @@ def test_export_rows_json_output() -> None:
     """export_rows returns valid JSON for output='json'."""
     rows = [{"context": "linux", "source_type": "dotenv", "name": "A", "value": "1"}]
     result = export_rows(rows, output="json")
-    assert '"A"' in result
-    assert '"1"' in result
+    ensure('"A"' in result)
+    ensure('"1"' in result)
 
 
 def test_export_rows_csv_output() -> None:
     """export_rows returns CSV with header and data for output='csv'."""
     rows = [{"context": "linux", "source_type": "dotenv", "name": "A", "value": "1"}]
     result = export_rows(rows, output="csv")
-    assert "context" in result
-    assert "linux" in result
+    ensure("context" in result)
+    ensure("linux" in result)
 
 
 def test_export_rows_csv_empty() -> None:
     """export_rows returns empty string for CSV with no rows (line 32)."""
     result = export_rows([], output="csv")
-    assert result == ""
+    ensure(result == "")
 
 
 def test_export_rows_table_output() -> None:
     """export_rows returns tab-separated table for output='table' (lines 40-41)."""
     rows = [{"context": "linux", "source_type": "dotenv", "name": "A", "value": "1"}]
     result = export_rows(rows, output="table")
-    assert "linux\tdotenv\tA\t1" in result
-    assert result.endswith("\n")
+    ensure("linux\tdotenv\tA\t1" in result)
+    ensure(result.endswith("\n"))
 
 
 def test_export_rows_table_empty() -> None:

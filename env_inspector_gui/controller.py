@@ -71,10 +71,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.sort_state = SortState(column=boot_state.sort_column, descending=boot_state.sort_descending)
         self._initialize_view(tk, ttk, boot_state)
         self._bind_shortcuts()
-        self.tk.protocol("WM_DELETE_WINDOW", self.on_close)
+        # _init_root_window assigned a real Tk instance; the runtime tk root is non-optional from here on.
+        root_tk = self.tk
+        root_tk.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.refresh_data()
-        self.tk.after_idle(self.view.focus_filter)
+        root_tk.after_idle(self.view.focus_filter)
 
     @staticmethod
     def _load_tk_modules():
@@ -110,11 +112,11 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
     def _initialize_runtime_state(self, tk: Any, boot_state: PersistedUiState, fallback_root: Path) -> None:
         self.root_path = self._resolve_root_path(boot_state, fallback_root)
-        self.records_raw: List[EnvRecord] = []
-        self.displayed_rows: List[DisplayedRow] = []
-        self.rows_by_item: Dict[str, DisplayedRow] = {}
+        self.records_raw = []
+        self.displayed_rows = []
+        self.rows_by_item = {}
         self.selected_targets = list(boot_state.selected_targets)
-        self.last_refresh_at: datetime | None = None
+        self.last_refresh_at = None
 
         self.filter_text = tk.StringVar(value=boot_state.filter_text)
         self.show_secrets = tk.BooleanVar(value=boot_state.show_secrets)

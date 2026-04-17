@@ -98,7 +98,8 @@ def _install_mock_tkinter():
 class TestTargetPickerDialog:
     """Tests for TargetPickerDialog behaviour with mocked tkinter."""
 
-    def _build(self, targets=None, selected=None):
+    @staticmethod
+    def _build(targets=None, selected=None):
         """Handle  build."""
         if targets is None:
             targets = ["dotenv:/a/.env", "windows:user", "wsl:Ubuntu:bashrc"]
@@ -249,7 +250,8 @@ class TestTargetPickerDialog:
 class TestDotenvTargetDialog:
     """Tests for DotenvTargetDialog behaviour with mocked tkinter."""
 
-    def _build(self, key="API_KEY", targets=None):
+    @staticmethod
+    def _build(key="API_KEY", targets=None):
         """Handle  build."""
         if targets is None:
             targets = ["dotenv:/a/.env", "dotenv:/b/.env"]
@@ -274,7 +276,7 @@ class TestDotenvTargetDialog:
     def test_apply(self):
         """Test apply."""
         dialog = self._build()
-        for name, var in dialog._vars:
+        for _name, var in dialog._vars:
             var.get.return_value = True
         dialog._apply()
         ensure(dialog.result is not None)
@@ -291,7 +293,8 @@ class TestDotenvTargetDialog:
 class TestDiffPreviewDialog:
     """Tests for DiffPreviewDialog behaviour with mocked tkinter."""
 
-    def _build(self, action="set", previews=None, preview_only=False):
+    @staticmethod
+    def _build(action="set", previews=None, preview_only=False):
         """Handle  build."""
         if previews is None:
             previews = [
@@ -350,7 +353,8 @@ class TestDiffPreviewDialog:
         dialog = self._build(preview_only=True)
         ensure(dialog.confirmed is False)
 
-    def test_diff_tag_static_method(self):
+    @staticmethod
+    def test_diff_tag_static_method():
         """Test diff tag static method."""
         from env_inspector_gui.dialogs import DiffPreviewDialog
         ensure(DiffPreviewDialog._diff_tag("@@ -1,2 +1,3 @@") == "diff_hunk")
@@ -376,7 +380,8 @@ class TestDiffPreviewDialog:
 class TestBackupPickerDialog:
     """Tests for BackupPickerDialog behaviour with mocked tkinter."""
 
-    def _build(self, backups=None):
+    @staticmethod
+    def _build(backups=None):
         """Handle  build."""
         if backups is None:
             backups = ["backup1.zip", "backup2.zip"]

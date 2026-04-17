@@ -1,6 +1,7 @@
 """Coverage tests for parsing.py — validation and parsing edge cases."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 import pytest
 
@@ -42,8 +43,8 @@ def test_parse_dotenv_text_skips_invalid_key() -> None:
     """parse_dotenv_text skips lines with invalid key format."""
     text = "1BAD_KEY=value\nGOOD_KEY=value\n"
     result = parse_dotenv_text(text)
-    assert len(result) == 1
-    assert result[0][0] == "GOOD_KEY"
+    ensure(len(result) == 1)
+    ensure(result[0][0] == "GOOD_KEY")
 
 
 # Line 156: parse_etc_environment skips non-matching lines
@@ -52,7 +53,7 @@ def test_parse_etc_environment_skips_non_matching_lines() -> None:
     text = "VALID=1\nnot a valid line\n# comment\n\n"
     result = parse_etc_environment(text)
     assert len(result) == 1
-    assert result["VALID"] == "1"
+    ensure(result["VALID"] == "1")
 
 
 # Branch 45->47: _render_upsert with empty lines and no trailing newline
@@ -60,7 +61,7 @@ def test_render_upsert_empty_lines_no_trailing() -> None:
     """_render_upsert empty lines, no trailing newline gives empty string (branch 45->47)."""
     result = _render_upsert([], False)
     # "\n".join([]) = "", then `False or []` is falsy, so no newline
-    assert result == ""
+    ensure(result == "")
 
 
 # Branch 53->55: _render_remove with trailing newline but empty lines
@@ -81,8 +82,8 @@ def test_replace_first_match_drops_duplicates() -> None:
         replacement="export A='new'",
         matcher=lambda line: "export A=" in line,
     )
-    assert replaced is True
-    assert out == ["export A='new'", "export B='2'"]
+    ensure(replaced is True)
+    ensure(out == ["export A='new'", "export B='2'"])
     # The second "export A='3'" line was dropped
 
 
@@ -90,6 +91,6 @@ def test_upsert_export_replaces_duplicates() -> None:
     """upsert_export handles content with duplicate export lines."""
     content = "export A='1'\nexport B='2'\nexport A='3'\n"
     result = upsert_export(content, "A", "new")
-    assert result.count("export A=") == 1
-    assert "export A='new'" in result
-    assert "export B='2'" in result
+    ensure(result.count("export A=") == 1)
+    ensure("export A='new'" in result)
+    ensure("export B='2'" in result)

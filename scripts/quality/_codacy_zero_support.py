@@ -54,6 +54,7 @@ safe_output_path_in_workspace = cast(
 def _public_codacy_module() -> Any | None:
     return sys.modules.get("scripts.quality.check_codacy_zero")
 
+
 __all__ = [
     "CODACY_API_HOST",
     "CODACY_REQUEST_EXCEPTIONS",

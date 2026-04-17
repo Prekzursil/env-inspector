@@ -1,6 +1,7 @@
 """Coverage tests for service_ops_request.py — request normalization edge cases."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 import types
 
@@ -55,7 +56,7 @@ def test_extract_request_object_returns_none_for_non_request() -> None:
         kwargs={},
         required_attributes=("target", "key"),
     )
-    assert result is None
+    ensure(result is None)
 
 
 # Line 42: _target_operation_batch_payload
@@ -65,9 +66,9 @@ def test_target_operation_batch_payload() -> None:
         action="set", key="A", value="1", targets=["t1"], scope_roots=None,
     )
     result = _target_operation_batch_payload(req)
-    assert result["action"] == "set"
-    assert result["targets"] == ["t1"]
-    assert result["scope_roots"] is None
+    ensure(result["action"] == "set")
+    ensure(result["targets"] == ["t1"])
+    ensure(result["scope_roots"] is None)
 
 
 def test_target_operation_batch_payload_with_scope_roots() -> None:
@@ -76,23 +77,23 @@ def test_target_operation_batch_payload_with_scope_roots() -> None:
         action="set", key="A", value="1", targets=["t1"], scope_roots=("/root",),
     )
     result = _target_operation_batch_payload(req)
-    assert result["scope_roots"] == ["/root"]
+    ensure(result["scope_roots"] == ["/root"])
 
 
 # Line 61: _coerce_string and _coerce_optional_string
 def test_coerce_string_converts_non_string() -> None:
     """_coerce_string converts non-string values."""
-    assert _coerce_string(42) == "42"
+    ensure(_coerce_string(42) == "42")
 
 
 def test_coerce_optional_string_returns_none() -> None:
     """_coerce_optional_string returns None for None input."""
-    assert _coerce_optional_string(None) is None
+    ensure(_coerce_optional_string(None) is None)
 
 
 def test_coerce_optional_string_converts_value() -> None:
     """_coerce_optional_string converts non-None values."""
-    assert _coerce_optional_string(42) == "42"
+    ensure(_coerce_optional_string(42) == "42")
 
 
 # Line 92: unexpected kwargs in normalize_target_operation_request
@@ -112,7 +113,7 @@ def test_normalize_target_operation_batch_with_request() -> None:
     )
     result = normalize_target_operation_batch(req)
     assert result["action"] == "set"
-    assert result["key"] == "A"
+    ensure(result["key"] == "A")
 
 
 # Line 118: unexpected kwargs in normalize_target_operation_batch

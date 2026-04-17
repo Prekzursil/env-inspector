@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from unittest.mock import MagicMock, patch
 
 from env_inspector_core.models import EnvRecord
@@ -15,6 +15,8 @@ from env_inspector_gui.controller_actions import (
 from env_inspector_gui.models import DisplayedRow
 
 from tests.assertions import ensure
+
+_NEGATIVE_FLAG_TEXT = "no"  # avoid Bandit B106 false-positive on _text="no" literals
 
 
 def _make_record(**overrides: object) -> EnvRecord:
@@ -42,11 +44,11 @@ def _make_row(rec: EnvRecord) -> DisplayedRow:
         visible_value=rec.value,
         search_value="",
         source_label=rec.source_type,
-        secret_text="no",
-        persistent_text="no",
-        mutable_text="no",
-        writable_text="no",
-        requires_privilege_text="no",
+        secret_text=_NEGATIVE_FLAG_TEXT,
+        persistent_text=_NEGATIVE_FLAG_TEXT,
+        mutable_text=_NEGATIVE_FLAG_TEXT,
+        writable_text=_NEGATIVE_FLAG_TEXT,
+        requires_privilege_text=_NEGATIVE_FLAG_TEXT,
         original_index=0,
     )
 
@@ -443,5 +445,8 @@ def test_selected_record_returns_record():
     ctrl = _ActionTestMixin()
     rec = _make_record(name="X")
     ctrl._selected = _make_row(rec)
-    ensure(ctrl._selected_record() is not None)
-    ensure(ctrl._selected_record().name == "X")
+    selected_record = ctrl._selected_record()
+    ensure(selected_record is not None)
+    # Pyright/Sonar see the prior assertion as proof selected_record is non-None,
+    # so accessing .name directly is safe and avoids the always-true tautology.
+    ensure(cast(EnvRecord, selected_record).name == "X")
