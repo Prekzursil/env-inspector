@@ -111,7 +111,10 @@ def _request_json(
 
     payload, _headers = request_json_fn(
         host=CODACY_API_HOST,
-        path=f"/api/v3/analysis/organizations/{provider_slug}/{owner_slug}/repositories/{repo_slug}/issues/search",
+        path=(
+            f"/api/v3/analysis/organizations/{provider_slug}"
+            f"/{owner_slug}/repositories/{repo_slug}/issues/search"
+        ),
         headers=headers,
         method=request.method,
         query={"limit": str(max(request.limit, 1))},

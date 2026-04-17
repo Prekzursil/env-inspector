@@ -174,7 +174,8 @@ def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[s
     for item in stats:
         if item.percent < min_percent:
             findings.append(
-                f"{item.name} coverage below {min_percent:.2f}%: {item.percent:.2f}% ({item.covered}/{item.total})"
+                f"{item.name} coverage below {min_percent:.2f}%: "
+                f"{item.percent:.2f}% ({item.covered}/{item.total})"
             )
 
     combined_total = sum(item.total for item in stats)
@@ -184,7 +185,8 @@ def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[s
     )
     if combined < min_percent:
         findings.append(
-            f"combined coverage below {min_percent:.2f}%: {combined:.2f}% ({combined_covered}/{combined_total})"
+            f"combined coverage below {min_percent:.2f}%: "
+            f"{combined:.2f}% ({combined_covered}/{combined_total})"
         )
     return findings
 
@@ -227,7 +229,8 @@ def _append_component_lines(lines: List[str], payload: Dict[str, Any]) -> None:
     if components:
         for item in components:
             lines.append(
-                f"- `{item['name']}`: `{item['percent']:.2f}%` ({item['covered']}/{item['total']}) from `{item['path']}`"
+                f"- `{item['name']}`: `{item['percent']:.2f}%` "
+                f"({item['covered']}/{item['total']}) from `{item['path']}`"
             )
         return
     lines.append(_NONE_LIST_ITEM)

@@ -51,7 +51,10 @@ def test_cli_csv_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     ensure("MY_VAR" in output or "context" in output)
 
 
-def test_cli_csv_empty_rows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:  # noqa: ARG001 - pytest fixture
+def test_cli_csv_empty_rows(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,  # noqa: ARG001 - pytest fixture
+) -> None:
     """CLI list with csv output and no matching rows exercises empty CSV path (line 156)."""
     from env_inspector_core.cli import _emit_stdout_rows
 

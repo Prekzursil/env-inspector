@@ -333,7 +333,10 @@ class TestDiffPreviewDialog:
                 {
                     "target": "dotenv:/a/.env",
                     "success": True,
-                    "diff_preview": "@@ -1,2 +1,3 @@\n KEY=old\n+KEY=new\n-REMOVED=yes\n+++header\n---header\n context line",
+                    "diff_preview": (
+                        "@@ -1,2 +1,3 @@\n KEY=old\n+KEY=new\n"
+                        "-REMOVED=yes\n+++header\n---header\n context line"
+                    ),
                     "error_message": None,
                 },
                 {

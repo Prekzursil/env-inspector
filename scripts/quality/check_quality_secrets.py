@@ -47,7 +47,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Fail when required secrets/vars are missing. Default mode only reports missing items.",
+        help=(
+            "Fail when required secrets/vars are missing. "
+            "Default mode only reports missing items."
+        ),
     )
     parser.add_argument(
         "--out-json", default="quality-secrets/secrets.json", help="Output JSON path"
