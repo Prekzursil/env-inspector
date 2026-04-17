@@ -1,5 +1,5 @@
-"""Required checks impl module."""
 #!/usr/bin/env python3
+"""Required checks impl module."""
 
 import argparse
 import os
@@ -56,7 +56,9 @@ safe_output_path_in_workspace = _http.safe_output_path_in_workspace
 def _parse_args() -> argparse.Namespace:
     """Parse args."""
     parser = argparse.ArgumentParser(
-        description="Wait for required GitHub check contexts and assert they are successful."
+        description=(
+            "Wait for required GitHub check contexts and assert they are successful."
+        )
     )
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--sha", required=True, help="commit SHA")

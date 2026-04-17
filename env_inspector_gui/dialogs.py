@@ -237,7 +237,10 @@ class DotenvTargetDialog:
 
         ttk.Label(
             frame,
-            text=f"'{key}' appears in multiple .env targets. Choose which file(s) to modify:",
+            text=(
+                f"'{key}' appears in multiple .env targets. "
+                "Choose which file(s) to modify:"
+            ),
         ).pack(anchor="w", pady=(0, 8))
 
         for target in targets:

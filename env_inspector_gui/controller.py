@@ -550,6 +550,10 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             key=key, targets=targets, scope_roots=[self.root_path]
         )
 
+    def run_operation(self, action: str) -> None:
+        """Public entry point for view buttons that triggers a mutation flow."""
+        self._run_operation(action)
+
     def _run_operation(self, action: str) -> None:
         """Run operation."""
         resolved = self._resolve_operation_inputs()

@@ -29,7 +29,7 @@ jobs:
           import urllib.parse
           import urllib.request
 
-          token = os.environ.get("CODACY_TOKEN", "").strip()
+          token = os.environ.get("CODACY_TOKEN", "").strip()  # skipcq: SCT-A000 - env var name lookup
           if not token:
               raise SystemExit("CODACY token missing")
           patterns = {p.strip() for p in os.environ.get("PATTERNS", "").split(",") if p.strip()}

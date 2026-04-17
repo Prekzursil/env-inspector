@@ -28,7 +28,10 @@ def restore_dotenv_target(*args, **kwargs) -> None:
 
 
 def restore_linux_target(*args, **kwargs) -> None:
-    """Restore a Linux target — supports ~/.bashrc and /etc/environment via privilege helper."""
+    """Restore a Linux target.
+
+    Supports ~/.bashrc and /etc/environment via privilege helper.
+    """
     if args:
         raise TypeError("restore_linux_target accepts keyword arguments only.")
 
@@ -55,7 +58,11 @@ def restore_linux_target(*args, **kwargs) -> None:
 
 
 def restore_wsl_target(*args, **kwargs) -> None:
-    """Restore a WSL target — wsl_dotenv:, wsl:<distro>:bashrc, or wsl:<distro>:etc_environment."""
+    """Restore a WSL target.
+
+    Targets: wsl_dotenv:, wsl:<distro>:bashrc, or
+    wsl:<distro>:etc_environment.
+    """
     if args:
         raise TypeError("restore_wsl_target accepts keyword arguments only.")
 
@@ -137,7 +144,7 @@ def restore_windows_registry_target(*args, **kwargs) -> None:
 
 
 def restore_target(*args, **kwargs) -> None:
-    """Top-level restore dispatcher that routes targets to provider-specific handlers."""
+    """Route restore targets to provider-specific handlers."""
     if args:
         raise TypeError("restore_target accepts keyword arguments only.")
 

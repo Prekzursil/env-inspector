@@ -122,7 +122,7 @@ def test_request_json_https_http_error(monkeypatch):
         @staticmethod
         def open(request, timeout=0):  # noqa: ARG004 - urllib calls with this kw
             """Raise a deterministic HTTP error for the request."""
-            del timeout  # acknowledged but unused
+            # timeout intentionally unused — urllib calls open() with this kw
             headers = Message()
             raise urllib.error.HTTPError(
                 request.full_url,

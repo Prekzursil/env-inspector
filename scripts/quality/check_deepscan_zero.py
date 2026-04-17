@@ -1,5 +1,5 @@
-"""Check deepscan zero module."""
 #!/usr/bin/env python3
+"""Check deepscan zero module."""
 
 import argparse
 import importlib

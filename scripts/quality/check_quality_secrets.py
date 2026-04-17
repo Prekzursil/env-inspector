@@ -1,5 +1,5 @@
-"""Check quality secrets module."""
 #!/usr/bin/env python3
+"""Check quality secrets module."""
 
 import argparse
 import json
