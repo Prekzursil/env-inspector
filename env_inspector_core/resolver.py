@@ -45,4 +45,4 @@ def resolve_effective_value(records: List[EnvRecord], key: str, context: str) ->
         source_rank = table.get(rec.source_type, rec.precedence_rank)
         return (source_rank, rec.precedence_rank, rec.source_path)
 
-    return sorted(candidates, key=rank)[0]
+    return min(candidates, key=rank)
