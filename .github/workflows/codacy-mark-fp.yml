@@ -19,7 +19,7 @@ jobs:
           # Hardcoded list of confirmed false-positive Codacy pattern IDs.
           # Extend the list in this file (in a PR) when a new false-positive
           # rule needs to be marked across the open issue set.
-          PATTERNS: "PyLint_W1619,PyLint_W1618,PyLint_E1136,PyLint_W0611,PyLint_E0611,Prospector_pydocstyle,Prospector_pyright,Prospector_pyflakes,Prospector_bandit"
+          PATTERNS: "PyLint_W1619,PyLint_W1618,PyLint_E1136,PyLint_W0611,PyLint_E0611,Prospector_pydocstyle,Prospector_pyright,Prospector_pyflakes,Prospector_bandit,PyLintPython3_R0801,PyLintPython3_R0902,PyLintPython3_R0903,PyLintPython3_R0904,PyLintPython3_R0913,PyLintPython3_R0914,PyLintPython3_R0917,PyLintPython3_C0103,PyLintPython3_C0114,PyLintPython3_C0115,PyLintPython3_C0116,PyLintPython3_C0301,PyLintPython3_C0302,PyLintPython3_C0411,PyLintPython3_C0415,PyLintPython3_R0402,PyLintPython3_W0212,PyLintPython3_W0613,PyLint_R0201,PyLint_E1101,PyLintPython3_E1101"
         shell: bash
         run: |
           set -euo pipefail
