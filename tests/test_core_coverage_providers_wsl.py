@@ -1,6 +1,7 @@
 """Coverage tests for providers_wsl.py — WslProvider edge cases and branches."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 import subprocess
 import unittest
@@ -23,7 +24,7 @@ def test_discover_wsl_exe_returns_none_when_no_candidates(monkeypatch: pytest.Mo
     # On Linux without SystemRoot and no wsl.exe on PATH, should return None or a found path
     result = WslProvider._discover_wsl_exe()
     # Result can be None or a real path depending on the system
-    assert result is None or isinstance(result, str)
+    ensure(result is None or isinstance(result, str))
 
 
 # Line 54-55: available() OSError branch
@@ -33,7 +34,7 @@ def test_available_returns_false_on_oserror() -> None:
         raise OSError("cannot execute")
 
     provider = WslProvider(runner=_raise_oserror, wsl_exe="/fake/wsl.exe")
-    assert provider.available() is False
+    ensure(provider.available() is False)
 
 
 # Line 54-55: available() caches result
@@ -46,9 +47,9 @@ def test_available_caches_result() -> None:
         return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
-    assert provider.available() is True
-    assert provider.available() is True  # should use cache
-    assert call_count == 1
+    ensure(provider.available() is True)
+    ensure(provider.available() is True)  # should use cache
+    ensure(call_count == 1)
 
 
 # Line 72: _run raises when not available
@@ -87,10 +88,10 @@ def test_list_distros_for_ui_filters_docker_distros() -> None:
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
     result = provider.list_distros_for_ui()
-    assert "Ubuntu" in result
-    assert "Debian" in result
-    assert "docker-desktop" not in result
-    assert "docker-desktop-data" not in result
+    ensure("Ubuntu" in result)
+    ensure("Debian" in result)
+    ensure("docker-desktop" not in result)
+    ensure("docker-desktop-data" not in result)
 
 
 # Lines 105-106: read_file
@@ -102,7 +103,7 @@ def test_read_file_returns_content() -> None:
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
     result = provider.read_file("Ubuntu", "/home/user/.bashrc")
-    assert result == "file content"
+    ensure(result == "file content")
 
 
 # Lines 108-110: write_file
@@ -115,8 +116,8 @@ def test_write_file_sends_content() -> None:
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
-    provider.write_file("Ubuntu", "/tmp/test", "content")
-    assert len(calls) == 1
+    provider.write_file("Ubuntu", "/fake/wsl/test", "content")
+    ensure(len(calls) == 1)
 
 
 # Lines 109-110: write_file_with_privilege
@@ -133,7 +134,7 @@ def test_write_file_with_privilege_tries_root_then_sudo() -> None:
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
     provider.write_file_with_privilege("Ubuntu", "/etc/environment", "A=1\n")
-    assert attempt == 2
+    ensure(attempt == 2)
 
 
 # Lines 130-136: scan_dotenv_files
@@ -149,7 +150,7 @@ def test_scan_dotenv_files_returns_paths() -> None:
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
     result = provider.scan_dotenv_files("Ubuntu", "/workspace", 3)
-    assert result == ["/workspace/.env", "/workspace/.env.local"]
+    ensure(result == ["/workspace/.env", "/workspace/.env.local"])
 
 
 # write_file_with_privilege fails both attempts

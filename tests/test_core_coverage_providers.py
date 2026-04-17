@@ -1,6 +1,7 @@
 """Coverage tests for providers.py — Windows registry, Linux paths, and edge cases."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 import types
 import unittest
@@ -39,7 +40,7 @@ def test_require_winreg_returns_module_when_present(monkeypatch: pytest.MonkeyPa
     """_require_winreg returns the module when it is not None."""
     fake = types.SimpleNamespace()
     monkeypatch.setattr(providers, "_winreg", fake)
-    assert providers._require_winreg() is fake
+    ensure(providers._require_winreg() is fake)
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +54,7 @@ def test_windows_registry_provider_init_succeeds_on_windows(monkeypatch: pytest.
     fake_winreg = types.SimpleNamespace()
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
     provider = providers.WindowsRegistryProvider()
-    assert isinstance(provider, providers.WindowsRegistryProvider)
+    ensure(isinstance(provider, providers.WindowsRegistryProvider))
 
 
 # ---------------------------------------------------------------------------
@@ -84,9 +85,9 @@ def test_scope_details_user_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
 
     root, path, access = providers.WindowsRegistryProvider._scope_details("User", fake_winreg.KEY_READ)
-    assert root == "HKCU"
-    assert path == r"Environment"
-    assert access == fake_winreg.KEY_READ
+    ensure(root == "HKCU")
+    ensure(path == r"Environment")
+    ensure(access == fake_winreg.KEY_READ)
 
 
 def test_scope_details_machine_scope(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -95,9 +96,9 @@ def test_scope_details_machine_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
 
     root, path, access = providers.WindowsRegistryProvider._scope_details("Machine", fake_winreg.KEY_READ)
-    assert root == "HKLM"
-    assert "Session Manager" in path
-    assert access == (fake_winreg.KEY_READ | fake_winreg.KEY_WOW64_64KEY)
+    ensure(root == "HKLM")
+    ensure("Session Manager" in path)
+    ensure(access == (fake_winreg.KEY_READ | fake_winreg.KEY_WOW64_64KEY))
 
 
 def test_scope_details_invalid_scope(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -146,7 +147,7 @@ def test_list_scope_returns_registry_values(monkeypatch: pytest.MonkeyPatch) -> 
 
     provider = providers.WindowsRegistryProvider()
     result = provider.list_scope("User")
-    assert result == {"PATH": "C:\\Windows", "HOME": "C:\\Users\\test"}
+    ensure(result == {"PATH": "C:\\Windows", "HOME": "C:\\Users\\test"})
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +309,7 @@ def test_collect_powershell_profile_records_skips_missing_files(tmp_path: Path) 
     """collect_powershell_profile_records skips paths that don't exist."""
     missing = tmp_path / "nonexistent.ps1"
     records = providers.collect_powershell_profile_records([missing])
-    assert records == []
+    ensure(records == [])
 
 
 # ---------------------------------------------------------------------------

@@ -16,6 +16,8 @@ from env_inspector_gui.models import DisplayedRow
 
 from tests.assertions import ensure
 
+_NEGATIVE_FLAG_TEXT = "no"  # avoid Bandit B106 false-positive on _text="no" literals
+
 
 def _make_record(**overrides: object) -> EnvRecord:
     defaults: Dict[str, Any] = {
@@ -42,11 +44,11 @@ def _make_row(rec: EnvRecord) -> DisplayedRow:
         visible_value=rec.value,
         search_value="",
         source_label=rec.source_type,
-        secret_text="no",
-        persistent_text="no",
-        mutable_text="no",
-        writable_text="no",
-        requires_privilege_text="no",
+        secret_text=_NEGATIVE_FLAG_TEXT,
+        persistent_text=_NEGATIVE_FLAG_TEXT,
+        mutable_text=_NEGATIVE_FLAG_TEXT,
+        writable_text=_NEGATIVE_FLAG_TEXT,
+        requires_privilege_text=_NEGATIVE_FLAG_TEXT,
         original_index=0,
     )
 

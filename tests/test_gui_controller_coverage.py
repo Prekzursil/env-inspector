@@ -13,6 +13,8 @@ from env_inspector_gui.models import DisplayedRow, PersistedUiState
 
 from tests.assertions import ensure
 
+_NEGATIVE_FLAG_TEXT = "no"  # avoid Bandit B106 false-positive on _text="no" literals
+
 
 class _Var:
     """Minimal tkinter variable stub for testing."""
@@ -148,7 +150,8 @@ class _MockView:
     def configure_row_styles(self) -> None:
         """Stub for testing."""
 
-    def clear_table(self) -> None:
+    @staticmethod
+    def clear_table() -> None:
         """Stub for testing."""
 
     def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
@@ -238,11 +241,11 @@ def _make_row(rec: EnvRecord) -> DisplayedRow:
         visible_value=rec.value,
         search_value="",
         source_label=rec.source_type,
-        secret_text="no",
-        persistent_text="no",
-        mutable_text="no",
-        writable_text="no",
-        requires_privilege_text="no",
+        secret_text=_NEGATIVE_FLAG_TEXT,
+        persistent_text=_NEGATIVE_FLAG_TEXT,
+        mutable_text=_NEGATIVE_FLAG_TEXT,
+        writable_text=_NEGATIVE_FLAG_TEXT,
+        requires_privilege_text=_NEGATIVE_FLAG_TEXT,
         original_index=0,
     )
 
@@ -355,7 +358,7 @@ def test_on_filter_changed_with_key():
     ctrl.service = MagicMock()
     ctrl.service.resolve_effective = MagicMock(return_value=None)
     ctrl.service.runtime_context = "linux"
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.on_filter_changed()
 
@@ -367,7 +370,7 @@ def test_on_filter_changed_no_key():
     ctrl.records_raw = []
     ctrl.service = MagicMock()
     ctrl.service.runtime_context = "linux"
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.on_filter_changed()
 
@@ -381,7 +384,7 @@ def test_on_filter_escape_with_text():
     ctrl.records_raw = []
     ctrl.service = MagicMock()
     ctrl.service.runtime_context = "linux"
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.on_filter_escape()
     ensure(ctrl.filter_text.get() == "")
@@ -402,7 +405,7 @@ def test_on_sort_column():
     ctrl.records_raw = []
     ctrl.service = MagicMock()
     ctrl.service.runtime_context = "linux"
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.on_sort_column("value")
     ensure(ctrl.sort_state.column == "value")
@@ -429,7 +432,7 @@ def test_choose_folder_selected(tmp_path: Path):
     ctrl.service.available_targets = MagicMock(return_value=[])
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.resolve_scan_root", return_value=tmp_path), \
          patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.choose_folder()
@@ -449,7 +452,7 @@ def test_build_state():
 def test_on_close():
     """Test on close."""
     ctrl = _Harness()
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.on_close()
 
@@ -517,7 +520,7 @@ def test_choose_targets_cancelled():
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
     ctrl.messagebox = MagicMock()
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
 
     with patch("env_inspector_gui.controller.TargetPickerDialog") as MockDialog:
         instance = MagicMock()
@@ -536,7 +539,7 @@ def test_choose_targets_selected():
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
     ctrl.messagebox = MagicMock()
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     ctrl.targets_summary_var = _Var("")
 
     with patch("env_inspector_gui.controller.TargetPickerDialog") as MockDialog:
@@ -558,7 +561,7 @@ def test_choose_targets_empty_selection():
     ctrl.service = MagicMock()
     ctrl.service.available_targets = MagicMock(return_value=["a", "b"])
     ctrl.messagebox = MagicMock()
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
 
     with patch("env_inspector_gui.controller.TargetPickerDialog") as MockDialog:
         instance = MagicMock()
@@ -924,7 +927,7 @@ def test_on_f5():
     ctrl.service.available_targets = MagicMock(return_value=[])
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     with patch("env_inspector_gui.controller.save_ui_state"):
         result = ctrl._on_f5(None)
     ensure(result == "break")
@@ -994,7 +997,7 @@ def test_real_load_boot_state():
     ctrl = _Harness()
     ctrl.service = MagicMock()
     ctrl.service.list_contexts = MagicMock(return_value=["linux"])
-    ctrl.state_dir = Path("/tmp/nonexistent_state_dir_test")
+    ctrl.state_dir = Path("/var/nonexistent-state-dir-test")
     cwd = Path.cwd()
     with patch("env_inspector_gui.controller.load_ui_state", return_value=PersistedUiState()), \
          patch("env_inspector_gui.controller.resolve_scan_root", return_value=cwd), \
@@ -1097,7 +1100,7 @@ def test_refresh_data_with_view_and_selected_row():
     ctrl.service.list_records_raw = MagicMock(return_value=[rec])
     ctrl.service.resolve_effective = MagicMock(return_value=rec)
     ctrl.key_text = _Var("TEST")
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
     # After _render_table, rows_by_item will have the new item
     ctrl.view.tree.selection.return_value = ("item1",)
 
@@ -1130,7 +1133,7 @@ def test_refresh_data_with_tk_none():
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
     ctrl.key_text = _Var("")
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
 
     # Let the refresh proceed normally but set tk to None just before _persist_state
     original_render_table = ctrl._render_table
@@ -1173,7 +1176,7 @@ def test_refresh_data_full():
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
     ctrl.key_text = _Var("TEST")
-    ctrl.state_dir = Path("/tmp/test_state")
+    ctrl.state_dir = Path("/var/state-fixture")
 
     with patch("env_inspector_gui.controller.save_ui_state"):
         ctrl.refresh_data()
