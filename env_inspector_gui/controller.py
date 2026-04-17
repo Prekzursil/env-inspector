@@ -94,7 +94,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             from tkinter import filedialog, messagebox, ttk
         except ModuleNotFoundError as exc:  # pragma: no cover
             raise RuntimeError(
-                "Tkinter is not available in this Python installation. Install tkinter/python3-tk and retry."
+                "Tkinter is not available in this Python installation. "
+                "Install tkinter/python3-tk and retry."
             ) from exc
         return tk, filedialog, messagebox, ttk
 

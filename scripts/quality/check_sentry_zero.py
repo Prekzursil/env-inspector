@@ -51,7 +51,10 @@ def _parse_args() -> argparse.Namespace:
         "--project",
         action="append",
         default=[],
-        help="Project slug (repeatable, falls back to SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)",
+        help=(
+            "Project slug (repeatable, falls back to "
+            "SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)"
+        ),
     )
     parser.add_argument(
         "--token",
@@ -140,7 +143,8 @@ def _resolve_unresolved_count(
         unresolved = len(issues)
         if unresolved >= 1:
             failures.append(
-                f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
+                f"Sentry project {project} returned unresolved issues "
+                "but no X-Hits header for exact totals."
             )
     return unresolved
 

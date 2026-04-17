@@ -471,7 +471,10 @@ def test_restore_backup_failure():
 
 
 def test_load_selected_secret_loaded_but_masked():
-    """Line 64: record_is_secret and not raw — patched resolve_load_value returns (masked, False)."""
+    """Cover line 64: secret + masked path.
+
+    record_is_secret + not raw -> patched resolve_load_value returns (masked, False).
+    """
     ctrl = _ActionTestMixin()
     ctrl.show_secrets = _Var(False)
     rec = _make_record(name="TOKEN", value="secret123", is_secret=True)

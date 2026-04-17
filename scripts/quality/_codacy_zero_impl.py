@@ -228,7 +228,8 @@ def _query_open_issues(
             return open_issues, findings
         last_exc = error
     findings = [
-        f"Codacy API endpoint was not found for provider(s): {', '.join(provider_candidates_fn(request.provider))}."
+        f"Codacy API endpoint was not found for provider(s): "
+        f"{', '.join(provider_candidates_fn(request.provider))}."
     ]
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")
