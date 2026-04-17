@@ -51,7 +51,7 @@ def test_cli_csv_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     ensure("MY_VAR" in output or "context" in output)
 
 
-def test_cli_csv_empty_rows(
+def test_cli_csv_empty_rows(  # pylint: disable=unused-argument
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,  # noqa: ARG001 - pytest fixture
 ) -> None:

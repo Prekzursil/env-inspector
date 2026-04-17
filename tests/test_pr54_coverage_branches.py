@@ -154,7 +154,7 @@ def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(
         )
 
 
-def test_restore_helpers_reject_positional_arguments(
+def test_restore_helpers_reject_positional_arguments(  # pylint: disable=unused-argument
     tmp_path: Path,  # noqa: ARG001 - pytest fixture
 ) -> None:
     """Test restore helpers reject positional arguments."""

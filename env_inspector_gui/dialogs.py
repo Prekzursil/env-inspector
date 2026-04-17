@@ -59,7 +59,9 @@ class TargetPickerDialog:
 
         canvas.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
-        self._build_target_checks(body, selected_set, selected is not None, tk, ttk)
+        self._build_target_checks(
+            body, selected_set, has_selected=selected is not None, tk=tk, ttk=ttk
+        )
 
         self.selected_count_label = ttk.Label(frame, text="")
         self.selected_count_label.pack(anchor="w", pady=(8, 0))
@@ -105,7 +107,13 @@ class TargetPickerDialog:
         )
 
     def _build_target_checks(
-        self, body: Any, selected_set: Set[str], has_selected: bool, tk: Any, ttk: Any
+        self,
+        body: Any,
+        selected_set: Set[str],
+        *,
+        has_selected: bool,
+        tk: Any,
+        ttk: Any,
     ) -> None:
         """Build target checks."""
         for target in self._targets:

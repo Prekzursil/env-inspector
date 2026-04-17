@@ -131,7 +131,7 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
     calls: Dict[str, object] = {}
 
     def _fake_collect_wsl_records(
-        wsl, include_etc: bool, exclude_distros
+        wsl, include_etc: bool, exclude_distros  # pylint: disable=unused-argument
     ) -> List[EnvRecord]:
         """Fake collect wsl records."""
         calls["exclude"] = exclude_distros
@@ -142,7 +142,7 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
         ]
 
     def _fake_collect_wsl_dotenv_records(
-        wsl, distro: str, root_path: str, max_depth: int
+        wsl, distro: str, root_path: str, max_depth: int  # pylint: disable=unused-argument
     ) -> List[EnvRecord]:
         """Fake collect wsl dotenv records."""
         calls["dotenv"] = (distro, root_path, max_depth)
