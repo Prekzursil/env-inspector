@@ -1,8 +1,10 @@
 from __future__ import absolute_import, division
 
+import argparse
 from email.message import Message
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from unittest import TestCase
 import urllib.error
 
@@ -58,8 +60,8 @@ def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monke
 
 
 def test_sentry_collect_projects_prefers_args_and_env_fallback():
-    args_with_projects = SimpleNamespace(project=["backend", "web"])
-    args_without_projects = SimpleNamespace(project=[])
+    args_with_projects = cast(argparse.Namespace, SimpleNamespace(project=["backend", "web"]))
+    args_without_projects = cast(argparse.Namespace, SimpleNamespace(project=[]))
 
     ensure(sentry_mod._collect_projects(args_with_projects, {}) == ["backend", "web"])
     ensure(

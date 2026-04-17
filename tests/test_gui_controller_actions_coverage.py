@@ -445,5 +445,6 @@ def test_selected_record_returns_record():
     ctrl = _ActionTestMixin()
     rec = _make_record(name="X")
     ctrl._selected = _make_row(rec)
-    ensure(ctrl._selected_record() is not None)
-    ensure(ctrl._selected_record().name == "X")
+    selected_record = ctrl._selected_record()
+    ensure(selected_record is not None)
+    ensure(selected_record is not None and selected_record.name == "X")

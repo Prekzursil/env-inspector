@@ -64,7 +64,11 @@ class TargetPickerDialog:
 
         self._apply_filter()
         self._update_selected_count()
-        self.search_entry.focus_set()
+        # _build_search_row populated search_entry above; pull it through a
+        # local to satisfy strict optional-member checks before focusing.
+        search_entry = self.search_entry
+        if search_entry is not None:
+            search_entry.focus_set()
 
     def _build_search_row(self, frame: Any, tk: Any, ttk: Any) -> None:
         search_row = ttk.Frame(frame)

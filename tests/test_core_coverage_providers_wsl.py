@@ -3,13 +3,28 @@
 from __future__ import absolute_import, division
 from tests.assertions import ensure
 
-import subprocess
 import unittest
+from dataclasses import dataclass, field
+from typing import Any, List
 from unittest.mock import MagicMock
 
 import pytest
 
 from env_inspector_core.providers_wsl import WslProvider
+
+
+@dataclass
+class _CompletedProcessLike:
+    """In-test stand-in for subprocess.CompletedProcess (no real process launched).
+
+    Avoids Bandit B404 by not importing the subprocess module directly; the
+    runner indirection in WslProvider already accepts any duck-typed callable.
+    """
+
+    returncode: int = 0
+    stdout: bytes = b""
+    stderr: bytes = b""
+    args: List[Any] = field(default_factory=list)
 
 
 def _case() -> unittest.TestCase:
@@ -30,6 +45,7 @@ def test_discover_wsl_exe_returns_none_when_no_candidates(monkeypatch: pytest.Mo
 # Line 54-55: available() OSError branch
 def test_available_returns_false_on_oserror() -> None:
     """available() returns False when runner raises OSError."""
+
     def _raise_oserror(*args, **kwargs):
         raise OSError("cannot execute")
 
@@ -41,10 +57,11 @@ def test_available_returns_false_on_oserror() -> None:
 def test_available_caches_result() -> None:
     """available() caches the result after first call."""
     call_count = 0
+
     def _fake_runner(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+        return _CompletedProcessLike(args=[], returncode=0, stdout=b"", stderr=b"")
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     ensure(provider.available() is True)
@@ -64,8 +81,9 @@ def test_run_raises_when_unavailable() -> None:
 # Lines 89-90: _run raises on non-zero return code
 def test_run_raises_on_nonzero_return() -> None:
     """_run raises RuntimeError when the command returns non-zero."""
+
     def _fake_runner(*args, **kwargs):
-        return subprocess.CompletedProcess(
+        return _CompletedProcessLike(
             args=[], returncode=1, stdout=b"", stderr=b"some error"
         )
 
@@ -78,8 +96,9 @@ def test_run_raises_on_nonzero_return() -> None:
 # Line 102: list_distros_for_ui filters helper distros
 def test_list_distros_for_ui_filters_docker_distros() -> None:
     """list_distros_for_ui filters out docker-desktop helper distros."""
+
     def _fake_runner(*args, **kwargs):
-        return subprocess.CompletedProcess(
+        return _CompletedProcessLike(
             args=[], returncode=0,
             stdout=b"Ubuntu\ndocker-desktop\nDebian\ndocker-desktop-data\n",
             stderr=b"",
@@ -97,8 +116,9 @@ def test_list_distros_for_ui_filters_docker_distros() -> None:
 # Lines 105-106: read_file
 def test_read_file_returns_content() -> None:
     """read_file runs cat command and returns the output."""
+
     def _fake_runner(*args, **kwargs):
-        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"file content", stderr=b"")
+        return _CompletedProcessLike(args=[], returncode=0, stdout=b"file content", stderr=b"")
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
@@ -110,9 +130,10 @@ def test_read_file_returns_content() -> None:
 def test_write_file_sends_content() -> None:
     """write_file sends content via stdin to the WSL command."""
     calls = []
+
     def _fake_runner(*args, **kwargs):
         calls.append((args, kwargs))
-        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+        return _CompletedProcessLike(args=[], returncode=0, stdout=b"", stderr=b"")
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
@@ -124,12 +145,13 @@ def test_write_file_sends_content() -> None:
 def test_write_file_with_privilege_tries_root_then_sudo() -> None:
     """write_file_with_privilege tries root first, falls back to sudo."""
     attempt = 0
+
     def _fake_runner(*args, **kwargs):
         nonlocal attempt
         attempt += 1
         if attempt == 1:
-            return subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"root failed")
-        return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+            return _CompletedProcessLike(args=[], returncode=1, stdout=b"", stderr=b"root failed")
+        return _CompletedProcessLike(args=[], returncode=0, stdout=b"", stderr=b"")
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True
@@ -140,8 +162,9 @@ def test_write_file_with_privilege_tries_root_then_sudo() -> None:
 # Lines 130-136: scan_dotenv_files
 def test_scan_dotenv_files_returns_paths() -> None:
     """scan_dotenv_files returns discovered dotenv file paths."""
+
     def _fake_runner(*args, **kwargs):
-        return subprocess.CompletedProcess(
+        return _CompletedProcessLike(
             args=[], returncode=0,
             stdout=b"/workspace/.env\n/workspace/.env.local\n",
             stderr=b"",
@@ -156,8 +179,9 @@ def test_scan_dotenv_files_returns_paths() -> None:
 # write_file_with_privilege fails both attempts
 def test_write_file_with_privilege_raises_on_both_failures() -> None:
     """write_file_with_privilege raises when both root and sudo fail."""
+
     def _fake_runner(*args, **kwargs):
-        return subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"failed")
+        return _CompletedProcessLike(args=[], returncode=1, stdout=b"", stderr=b"failed")
 
     provider = WslProvider(runner=_fake_runner, wsl_exe="/fake/wsl.exe")
     provider._available_cache = True

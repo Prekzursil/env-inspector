@@ -40,7 +40,7 @@ def restore_linux_target(*args, **kwargs) -> None:
         raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
 
     if target == bashrc_target:
-        path_out = Path(Path.home(), ".bashrc").resolve()
+        path_out: Path = Path(Path.home(), ".bashrc").resolve()
         bashrc_parent = Path(path_out.parent)
         bashrc_parent.mkdir(parents=True, exist_ok=True)
         path_out.write_text(text, encoding="utf-8")

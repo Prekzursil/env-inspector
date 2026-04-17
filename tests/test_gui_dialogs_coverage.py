@@ -276,7 +276,7 @@ class TestDotenvTargetDialog:
     def test_apply(self):
         """Test apply."""
         dialog = self._build()
-        for name, var in dialog._vars:
+        for _name, var in dialog._vars:
             var.get.return_value = True
         dialog._apply()
         ensure(dialog.result is not None)
