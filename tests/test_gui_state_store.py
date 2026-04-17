@@ -47,7 +47,7 @@ def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
 
     ensure(isinstance(loaded, PersistedUiState))
     ensure(loaded.filter_text == "")
-    ensure(loaded.selected_targets == [])
+    ensure(not loaded.selected_targets)
 
 
 def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):

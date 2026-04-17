@@ -120,8 +120,9 @@ def test_request_json_https_http_error(monkeypatch):
         """Opener stub that always raises an HTTP error."""
 
         @staticmethod
-        def open(request, timeout=0):
+        def open(request, timeout=0):  # noqa: ARG004 - urllib calls with this kw
             """Raise a deterministic HTTP error for the request."""
+            del timeout  # acknowledged but unused
             headers = Message()
             raise urllib.error.HTTPError(
                 request.full_url,

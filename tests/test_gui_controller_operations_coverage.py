@@ -205,7 +205,7 @@ def test_fetch_records_basic():
     ctrl.service = MagicMock()
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl._fetch_records()
-    ensure(ctrl.records_raw == [])
+    ensure(not ctrl.records_raw)
 
 
 def test_fetch_records_with_wsl():
@@ -216,7 +216,7 @@ def test_fetch_records_with_wsl():
     ctrl.service = MagicMock()
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl._fetch_records()
-    ensure(ctrl.records_raw == [])
+    ensure(not ctrl.records_raw)
 
 
 # --- _reconcile_targets ---
