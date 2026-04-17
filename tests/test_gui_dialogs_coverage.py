@@ -263,7 +263,8 @@ class TestTargetPickerDialog:
         for var in dialog._vars.values():
             var.get.return_value = True
         dialog._update_selected_count()
-        dialog.selected_count_label.configure.assert_called()
+        # PyLint can't see through MagicMock attributes; assert_called is real on mocks.
+        dialog.selected_count_label.configure.assert_called()  # pylint: disable=no-member
 
     def test_sync_scrollregion(self):
         """Test sync scrollregion."""

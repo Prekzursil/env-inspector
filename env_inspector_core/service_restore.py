@@ -45,7 +45,8 @@ def restore_linux_target(*args, **kwargs) -> None:
         path_out: Path = Path(Path.home(), ".bashrc").resolve()
         bashrc_parent = Path(path_out.parent)
         bashrc_parent.mkdir(parents=True, exist_ok=True)
-        path_out.write_text(text, encoding="utf-8")
+        # PyLint mis-infers path_out as PurePath despite the explicit Path annotation.
+        path_out.write_text(text, encoding="utf-8")  # pylint: disable=no-member
         return
     if target == etc_target:
         write_linux_etc_env_fn(text)
