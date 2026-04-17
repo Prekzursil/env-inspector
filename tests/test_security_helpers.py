@@ -120,6 +120,7 @@ def test_request_json_https_http_error(monkeypatch):
         """Opener stub that always raises an HTTP error."""
 
         @staticmethod
+        # pylint: disable=unused-argument  # urllib calls open() with timeout kw
         def open(request, timeout=0):  # noqa: ARG004 - urllib calls with this kw
             """Raise a deterministic HTTP error for the request."""
             # timeout intentionally unused — urllib calls open() with this kw

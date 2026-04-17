@@ -157,7 +157,8 @@ class _MockView:
     def clear_table() -> None:
         """Stub for testing."""
 
-    def insert_table_row(  # pylint: disable=no-self-use
+    # pylint: disable=no-self-use,unused-argument  # mirror view protocol
+    def insert_table_row(
         self, values: Tuple[Any, ...], *, striped: bool
     ) -> str:
         """Handle insert table row.

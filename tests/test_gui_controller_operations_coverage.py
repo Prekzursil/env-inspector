@@ -128,6 +128,15 @@ def test_run_operation_no_key():
     ctrl.messagebox.showerror.assert_called_once()
 
 
+def test_public_run_operation_delegates_to_private():
+    """Public run_operation entry point delegates to _run_operation."""
+    ctrl = _Harness()
+    ctrl.key_text = _Var("")
+    ctrl.messagebox = MagicMock()
+    ctrl.run_operation("set")
+    ctrl.messagebox.showerror.assert_called_once()
+
+
 def test_run_operation_preview_fails():
     """Test run operation preview fails."""
     ctrl = _Harness()
