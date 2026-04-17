@@ -1,3 +1,5 @@
+"""Restore handlers for env-inspector targets across providers."""
+
 from __future__ import absolute_import, division
 
 import json
@@ -5,6 +7,7 @@ from pathlib import Path
 
 
 def restore_dotenv_target(*args, **kwargs) -> None:
+    """Restore a dotenv-style target by writing the supplied text inside scope roots."""
     if args:
         raise TypeError("restore_dotenv_target accepts keyword arguments only.")
 
@@ -27,12 +30,15 @@ def restore_dotenv_target(*args, **kwargs) -> None:
 
 
 def restore_linux_target(*args, **kwargs) -> None:
+    """Restore a Linux target — supports ~/.bashrc and /etc/environment via privilege helper."""
     if args:
         raise TypeError("restore_linux_target accepts keyword arguments only.")
 
     target = kwargs.pop("target")
     text = kwargs.pop("text")
-    write_linux_etc_environment_with_privilege_fn = kwargs.pop("write_linux_etc_environment_with_privilege_fn")
+    write_linux_etc_env_fn = kwargs.pop(
+        "write_linux_etc_environment_with_privilege_fn"
+    )
     bashrc_target = kwargs.pop("bashrc_target", "linux:bashrc")
     etc_target = kwargs.pop("etc_target", "linux:etc_environment")
     if kwargs:
@@ -40,18 +46,19 @@ def restore_linux_target(*args, **kwargs) -> None:
         raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
 
     if target == bashrc_target:
-        path_out = Path(Path.home(), ".bashrc").resolve()
+        path_out: Path = Path(Path.home(), ".bashrc").resolve()
         bashrc_parent = Path(path_out.parent)
         bashrc_parent.mkdir(parents=True, exist_ok=True)
         path_out.write_text(text, encoding="utf-8")
         return
     if target == etc_target:
-        write_linux_etc_environment_with_privilege_fn(text)
+        write_linux_etc_env_fn(text)
         return
     raise RuntimeError(f"Unsupported Linux restore target: {target}")
 
 
 def restore_wsl_target(*args, **kwargs) -> None:
+    """Restore a WSL target — wsl_dotenv:, wsl:<distro>:bashrc, or wsl:<distro>:etc_environment."""
     if args:
         raise TypeError("restore_wsl_target accepts keyword arguments only.")
 
@@ -82,12 +89,17 @@ def restore_wsl_target(*args, **kwargs) -> None:
 
 
 def restore_powershell_target(*args, **kwargs) -> None:
+    """Restore a PowerShell profile target via the validated path helper."""
     if args:
-        raise TypeError("restore_powershell_target accepts keyword arguments only.")
+        raise TypeError(
+            "restore_powershell_target accepts keyword arguments only."
+        )
 
     target = kwargs.pop("target")
     text = kwargs.pop("text")
-    validated_powershell_restore_path_fn = kwargs.pop("validated_powershell_restore_path_fn")
+    validated_powershell_restore_path_fn = kwargs.pop(
+        "validated_powershell_restore_path_fn"
+    )
     write_text_file_fn = kwargs.pop("write_text_file_fn")
     if kwargs:
         unexpected = ", ".join(sorted(kwargs))
@@ -98,8 +110,11 @@ def restore_powershell_target(*args, **kwargs) -> None:
 
 
 def restore_windows_registry_target(*args, **kwargs) -> None:
+    """Restore Windows registry environment variables for a given user/machine scope."""
     if args:
-        raise TypeError("restore_windows_registry_target accepts keyword arguments only.")
+        raise TypeError(
+            "restore_windows_registry_target accepts keyword arguments only."
+        )
 
     target = kwargs.pop("target")
     text = kwargs.pop("text")
@@ -127,6 +142,7 @@ def restore_windows_registry_target(*args, **kwargs) -> None:
 
 
 def restore_target(*args, **kwargs) -> None:
+    """Top-level restore dispatcher that routes targets to provider-specific handlers."""
     if args:
         raise TypeError("restore_target accepts keyword arguments only.")
 
@@ -137,7 +153,9 @@ def restore_target(*args, **kwargs) -> None:
     restore_linux_target_fn = kwargs.pop("restore_linux_target_fn")
     restore_wsl_target_fn = kwargs.pop("restore_wsl_target_fn")
     restore_powershell_target_fn = kwargs.pop("restore_powershell_target_fn")
-    restore_windows_registry_target_fn = kwargs.pop("restore_windows_registry_target_fn")
+    restore_windows_registry_target_fn = kwargs.pop(
+        "restore_windows_registry_target_fn"
+    )
     if kwargs:
         unexpected = ", ".join(sorted(kwargs))
         raise TypeError(f"Unexpected keyword argument(s): {unexpected}")
@@ -156,6 +174,7 @@ def restore_target(*args, **kwargs) -> None:
 
 
 def _restore_dispatch(target: str):
+    """Pick the per-provider dispatch helper for the given restore target string."""
     if target.startswith("dotenv:"):
         return _dispatch_restore_dotenv
     if target.startswith("linux:"):
@@ -170,20 +189,35 @@ def _restore_dispatch(target: str):
 
 
 def _dispatch_restore_dotenv(**kwargs) -> None:
-    kwargs["restore_dotenv_target_fn"](target=kwargs["target"], text=kwargs["text"], scope_roots=kwargs["scope_roots"])
+    """Forward dotenv-target restore work to the injected callable."""
+    kwargs["restore_dotenv_target_fn"](
+        target=kwargs["target"],
+        text=kwargs["text"],
+        scope_roots=kwargs["scope_roots"],
+    )
 
 
 def _dispatch_restore_linux(**kwargs) -> None:
-    kwargs["restore_linux_target_fn"](target=kwargs["target"], text=kwargs["text"])
+    """Forward Linux-target restore work to the injected callable."""
+    kwargs["restore_linux_target_fn"](
+        target=kwargs["target"], text=kwargs["text"]
+    )
 
 
 def _dispatch_restore_wsl(**kwargs) -> None:
+    """Forward WSL-target restore work to the injected callable."""
     kwargs["restore_wsl_target_fn"](target=kwargs["target"], text=kwargs["text"])
 
 
 def _dispatch_restore_powershell(**kwargs) -> None:
-    kwargs["restore_powershell_target_fn"](target=kwargs["target"], text=kwargs["text"])
+    """Forward PowerShell-target restore work to the injected callable."""
+    kwargs["restore_powershell_target_fn"](
+        target=kwargs["target"], text=kwargs["text"]
+    )
 
 
 def _dispatch_restore_windows(**kwargs) -> None:
-    kwargs["restore_windows_registry_target_fn"](target=kwargs["target"], text=kwargs["text"])
+    """Forward Windows-registry restore work to the injected callable."""
+    kwargs["restore_windows_registry_target_fn"](
+        target=kwargs["target"], text=kwargs["text"]
+    )

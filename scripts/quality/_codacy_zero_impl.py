@@ -5,17 +5,21 @@ import argparse
 from dataclasses import replace
 import urllib.error
 import sys
-from typing import Any, List, Tuple
+from typing import TYPE_CHECKING, Any, List, Tuple
 
 try:
     from . import _codacy_zero_support as _support
 except ImportError:  # pragma: no cover - direct script execution
     import _codacy_zero_support as _support  # type: ignore
 
+if TYPE_CHECKING:
+    from scripts.quality._codacy_zero_support import CodacyRequest
+else:
+    CodacyRequest = _support.CodacyRequest
+
 CODACY_API_HOST = _support.CODACY_API_HOST
 CODACY_REQUEST_EXCEPTIONS = _support.CODACY_REQUEST_EXCEPTIONS
 TOTAL_KEYS = _support.TOTAL_KEYS
-CodacyRequest = _support.CodacyRequest
 _fetch_sample_payload = _support._fetch_sample_payload
 _first_text = _support._first_text
 _format_issue_sample = _support._format_issue_sample

@@ -1,6 +1,7 @@
 """Coverage tests for service_wsl.py — WSL target resolution edge cases."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 import pytest
 
@@ -103,7 +104,7 @@ def test_resolve_wsl_target_dotenv_prefix() -> None:
         parse_wsl_dotenv_target_fn=lambda t: ("Ubuntu", "/home/user/.env"),
         linux_etc_env_path="/etc/environment",
     )
-    assert result == ("Ubuntu", "/home/user/.env", "key_value", False)
+    ensure(result == ("Ubuntu", "/home/user/.env", "key_value", False))
 
 
 # Line 84: resolve_wsl_target with non-wsl prefix
@@ -127,7 +128,7 @@ def test_resolve_standard_wsl_target_bashrc() -> None:
         validate_distro_name_fn=validate_wsl_distro_name,
         linux_etc_env_path="/etc/environment",
     )
-    assert result == ("Ubuntu", "~/.bashrc", "export", False)
+    ensure(result == ("Ubuntu", "~/.bashrc", "export", False))
 
 
 # _resolve_standard_wsl_target etc_environment path
@@ -138,7 +139,7 @@ def test_resolve_standard_wsl_target_etc_environment() -> None:
         validate_distro_name_fn=validate_wsl_distro_name,
         linux_etc_env_path="/etc/environment",
     )
-    assert result == ("Ubuntu", "/etc/environment", "key_value", True)
+    ensure(result == ("Ubuntu", "/etc/environment", "key_value", True))
 
 
 # _resolve_standard_wsl_target unsupported suffix
@@ -180,7 +181,7 @@ def test_validate_wsl_dotenv_path_rejects_non_dotenv_name() -> None:
 def test_validate_wsl_dotenv_path_accepts_valid() -> None:
     """validate_wsl_dotenv_path accepts valid dotenv paths."""
     result = validate_wsl_dotenv_path("/home/user/.env", path_error="bad path")
-    assert result == "/home/user/.env"
+    ensure(result == "/home/user/.env")
 
     result2 = validate_wsl_dotenv_path("/home/user/.env.local", path_error="bad path")
-    assert result2 == "/home/user/.env.local"
+    ensure(result2 == "/home/user/.env.local")

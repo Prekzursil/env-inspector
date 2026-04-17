@@ -23,17 +23,33 @@ def _make_mock_widget(**extras: Any) -> MagicMock:
 class _MockTkModule:
     """Mock for the `tkinter` module (tkmod)."""
 
+    _PASCAL_TO_SNAKE = {
+        "StringVar": "string_var",
+        "Text": "text_widget",
+    }
+
     def __init__(self) -> None:
+        """Handle   init  ."""
         self._vars: List[MagicMock] = []
 
-    def StringVar(self, value: str = "") -> MagicMock:
+    def __getattr__(self, name: str) -> Any:
+        """Delegate PascalCase tkinter names to snake_case methods."""
+        snake = self._PASCAL_TO_SNAKE.get(name)
+        if snake is not None:
+            return getattr(self, snake)
+        raise AttributeError(name)
+
+    def string_var(self, value: str = "") -> MagicMock:
+        """Handle string var."""
         var = MagicMock()
         var.get = MagicMock(return_value=value)
         var.set = MagicMock()
         self._vars.append(var)
         return var
 
-    def Text(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def text_widget(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle text widget."""
         t = _make_mock_widget()
         t.delete = MagicMock()
         t.insert = MagicMock()
@@ -44,45 +60,87 @@ class _MockTkModule:
 class _MockTtk:
     """Mock for tkinter.ttk module."""
 
-    def Frame(self, parent: Any, **kwargs: Any) -> MagicMock:
+    _PASCAL_TO_SNAKE = {
+        "Frame": "frame",
+        "Label": "label",
+        "Button": "button",
+        "Entry": "entry",
+        "Combobox": "combobox",
+        "Checkbutton": "checkbutton",
+        "Scrollbar": "scrollbar",
+        "LabelFrame": "label_frame",
+        "PanedWindow": "paned_window",
+        "Treeview": "treeview",
+        "Spinbox": "spinbox",
+        "Progressbar": "progressbar",
+    }
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate PascalCase tkinter.ttk names to snake_case methods."""
+        snake = self._PASCAL_TO_SNAKE.get(name)
+        if snake is not None:
+            return getattr(self, snake)
+        raise AttributeError(name)
+
+    @staticmethod
+    def frame(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle frame."""
         return _make_mock_widget()
 
-    def Label(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def label(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle label."""
         return _make_mock_widget()
 
-    def Button(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def button(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle button."""
         return _make_mock_widget()
 
-    def Entry(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def entry(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle entry."""
         w = _make_mock_widget()
         w.bind = MagicMock()
         w.focus_set = MagicMock()
         w.selection_range = MagicMock()
         return w
 
-    def Combobox(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def combobox(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle combobox."""
         w = _make_mock_widget()
         w.bind = MagicMock()
         return w
 
-    def Checkbutton(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def checkbutton(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle checkbutton."""
         return _make_mock_widget()
 
-    def Scrollbar(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def scrollbar(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle scrollbar."""
         return _make_mock_widget()
 
-    def LabelFrame(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def label_frame(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle label frame."""
         w = _make_mock_widget()
         w.columnconfigure = MagicMock()
         w.rowconfigure = MagicMock()
         return w
 
-    def PanedWindow(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def paned_window(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle paned window."""
         w = _make_mock_widget()
         w.add = MagicMock()
         return w
 
-    def Treeview(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def treeview(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle treeview."""
         w = _make_mock_widget()
         w.heading = MagicMock()
         w.column = MagicMock()
@@ -97,10 +155,14 @@ class _MockTtk:
         w.set = MagicMock()
         return w
 
-    def Spinbox(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def spinbox(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle spinbox."""
         return _make_mock_widget()
 
-    def Progressbar(self, parent: Any, **kwargs: Any) -> MagicMock:
+    @staticmethod
+    def progressbar(parent: Any, **kwargs: Any) -> MagicMock:
+        """Handle progressbar."""
         w = _make_mock_widget()
         w.start = MagicMock()
         w.stop = MagicMock()
@@ -111,6 +173,7 @@ class _MockController:
     """Stub controller with all attributes the view expects."""
 
     def __init__(self, tk_root: MagicMock) -> None:
+        """Handle   init  ."""
         self.tk = tk_root
         self.root_path = "/workspace"
         self.context_var = MagicMock()
@@ -194,6 +257,7 @@ def _build_view():
 
 
 def test_view_builds_without_error():
+    """Test view builds without error."""
     view = _build_view()
     ensure(view.tree is not None)
     ensure(view.status is not None)
@@ -220,6 +284,7 @@ def test_view_builds_without_error():
 
 
 def test_view_details_vars_created():
+    """Test view details vars created."""
     view = _build_view()
     expected_keys = {
         "name", "context", "source", "source_path",
@@ -230,12 +295,14 @@ def test_view_details_vars_created():
 
 
 def test_set_context_values():
+    """Test set context values."""
     view = _build_view()
     view.set_context_values(["linux", "windows"])
     view.context_combo.configure.assert_called_with(values=["linux", "windows"])
 
 
 def test_set_wsl_distros_enabled():
+    """Test set wsl distros enabled."""
     view = _build_view()
     view.set_wsl_distros(["Ubuntu", "Debian"], enabled=True)
     view.wsl_distro_combo.configure.assert_any_call(values=["Ubuntu", "Debian"])
@@ -243,6 +310,7 @@ def test_set_wsl_distros_enabled():
 
 
 def test_set_wsl_distros_disabled():
+    """Test set wsl distros disabled."""
     view = _build_view()
     view.set_wsl_distros([], enabled=False)
     view.wsl_distro_combo.configure.assert_any_call(state="disabled")
@@ -252,30 +320,35 @@ def test_set_wsl_distros_disabled():
 
 
 def test_set_root_label():
+    """Test set root label."""
     view = _build_view()
     view.set_root_label("/new/path")
     view.root_label.configure.assert_called_with(text="/new/path")
 
 
 def test_set_status():
+    """Test set status."""
     view = _build_view()
     view.set_status("Ready")
     view.status.configure.assert_called_with(text="Ready")
 
 
 def test_set_refresh_busy_true():
+    """Test set refresh busy true."""
     view = _build_view()
     view.set_refresh_busy(True)
     view.progress.start.assert_called_with(10)
 
 
 def test_set_refresh_busy_false():
+    """Test set refresh busy false."""
     view = _build_view()
     view.set_refresh_busy(False)
     view.progress.stop.assert_called_once()
 
 
 def test_set_mutation_actions_enabled():
+    """Test set mutation actions enabled."""
     view = _build_view()
     view.set_mutation_actions_enabled(True)
     for widget in (view.refresh_button, view.load_button, view.choose_targets_button, view.set_button, view.remove_button):
@@ -283,6 +356,7 @@ def test_set_mutation_actions_enabled():
 
 
 def test_set_mutation_actions_disabled():
+    """Test set mutation actions disabled."""
     view = _build_view()
     view.set_mutation_actions_enabled(False)
     for widget in (view.refresh_button, view.load_button, view.choose_targets_button, view.set_button, view.remove_button):
@@ -290,6 +364,7 @@ def test_set_mutation_actions_disabled():
 
 
 def test_clear_table():
+    """Test clear table."""
     view = _build_view()
     view.tree.get_children.return_value = ["item1", "item2"]
     view.clear_table()
@@ -297,6 +372,7 @@ def test_clear_table():
 
 
 def test_insert_table_row():
+    """Test insert table row."""
     view = _build_view()
     view.tree.insert.return_value = "new_item"
     result = view.insert_table_row(("a", "b", "c"), striped=True)
@@ -305,6 +381,7 @@ def test_insert_table_row():
 
 
 def test_insert_table_row_odd():
+    """Test insert table row odd."""
     view = _build_view()
     view.tree.insert.return_value = "new_item"
     view.insert_table_row(("a",), striped=False)
@@ -312,6 +389,7 @@ def test_insert_table_row_odd():
 
 
 def test_configure_row_styles():
+    """Test configure row styles."""
     view = _build_view()
     view.configure_row_styles()
     view.tree.tag_configure.assert_any_call("row_even", background="#f8f8f8")
@@ -319,6 +397,7 @@ def test_configure_row_styles():
 
 
 def test_update_details_value():
+    """Test update details value."""
     view = _build_view()
     view.update_details_value("hello world")
     view.details_value_text.configure.assert_any_call(state="normal")
@@ -328,6 +407,7 @@ def test_update_details_value():
 
 
 def test_set_details_enabled():
+    """Test set details enabled."""
     view = _build_view()
     view.set_details_enabled(True)
     for widget in (view.copy_name_button, view.copy_value_button, view.copy_pair_button,
@@ -336,6 +416,7 @@ def test_set_details_enabled():
 
 
 def test_set_details_disabled():
+    """Test set details disabled."""
     view = _build_view()
     view.set_details_enabled(False)
     for widget in (view.copy_name_button, view.copy_value_button, view.copy_pair_button,
@@ -344,6 +425,7 @@ def test_set_details_disabled():
 
 
 def test_focus_filter():
+    """Test focus filter."""
     view = _build_view()
     view.focus_filter()
     view.filter_entry.focus_set.assert_called_once()

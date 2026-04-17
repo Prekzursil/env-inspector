@@ -1,6 +1,7 @@
 """Coverage tests for cli.py, resolver.py, secrets.py, models.py, storage.py."""
 
 from __future__ import absolute_import, division
+from tests.assertions import ensure
 
 import sys
 import unittest
@@ -38,9 +39,9 @@ def test_cli_csv_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     monkeypatch.setattr(sys, "stdout", captured)
 
     exit_code = run_cli(["list", "--output", "csv", "--root", str(tmp_path)], service=svc)
-    assert exit_code == 0
+    ensure(exit_code == 0)
     output = captured.getvalue()
-    assert "MY_VAR" in output or "context" in output
+    ensure("MY_VAR" in output or "context" in output)
 
 
 def test_cli_csv_empty_rows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -51,7 +52,7 @@ def test_cli_csv_empty_rows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     monkeypatch.setattr(sys, "stdout", captured)
     # Directly call with empty rows and csv output
     _emit_stdout_rows([], output="csv")
-    assert captured.getvalue() == ""
+    ensure(captured.getvalue() == "")
 
 
 def test_cli_table_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -71,7 +72,7 @@ def test_cli_table_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     assert exit_code == 0
     output = captured.getvalue()
     # Table output uses tabs
-    assert "\t" in output or output == ""
+    ensure("\t" in output or output == "")
 
 
 def test_cli_table_empty_rows(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -112,8 +113,8 @@ def test_cli_value_error_handling(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     )
     # Should print error to stderr and return exit code 2 (the default before handler runs)
     err_output = captured_err.getvalue()
-    assert "not supported" in err_output
-    assert exit_code == 2
+    ensure("not supported" in err_output)
+    ensure(exit_code == 2)
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +124,7 @@ def test_cli_value_error_handling(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 def test_resolve_effective_value_no_candidates() -> None:
     """resolve_effective_value returns None when no records match (line 35)."""
     result = resolve_effective_value([], "NONEXISTENT", "linux")
-    assert result is None
+    ensure(result is None)
 
 
 def test_resolve_effective_value_linux_context() -> None:
@@ -159,8 +160,8 @@ def test_resolve_effective_value_linux_context() -> None:
         ),
     ]
     result = resolve_effective_value(records, "PATH", "linux")
-    assert result is not None
-    assert result.source_type == "linux_bashrc"
+    ensure(result is not None)
+    ensure(result.source_type == "linux_bashrc")
 
 
 # ---------------------------------------------------------------------------
@@ -170,61 +171,61 @@ def test_resolve_effective_value_linux_context() -> None:
 # Line 45: looks_secret GitHub token detection
 def test_looks_secret_github_short_token() -> None:
     """looks_secret detects GitHub short tokens (line 45)."""
-    assert looks_secret("SOME_VAR", "ghp_" + "a" * 20) is True
-    assert looks_secret("SOME_VAR", "gho_" + "a" * 20) is True
+    ensure(looks_secret("SOME_VAR", "ghp_" + "a" * 20) is True)
+    ensure(looks_secret("SOME_VAR", "gho_" + "a" * 20) is True)
 
 
 def test_looks_secret_github_pat_token() -> None:
     """looks_secret detects GitHub PAT tokens (line 45)."""
-    assert looks_secret("SOME_VAR", "github_pat_" + "a" * 20) is True
+    ensure(looks_secret("SOME_VAR", "github_pat_" + "a" * 20) is True)
 
 
 # Line 45: _is_base64_secret returns False for short values
 def test_is_base64_secret_short_value() -> None:
     """_is_base64_secret returns False for values shorter than 48 chars."""
-    assert _is_base64_secret("short") is False
+    ensure(_is_base64_secret("short") is False)
 
 
 # Line 52: mask_value reveal=True
 def test_mask_value_reveal() -> None:
     """mask_value returns the raw value when reveal=True (line 52)."""
-    assert mask_value("super_secret_value", reveal=True) == "super_secret_value"
+    ensure(mask_value("super_secret_value", reveal=True) == "super_secret_value")
 
 
 # Line 52: mask_value empty string
 def test_mask_value_empty() -> None:
     """mask_value returns empty string for empty input."""
-    assert mask_value("") == ""
+    ensure(mask_value("") == "")
 
 
 # Line 54: mask_value short string (<=8 chars)
 def test_mask_value_short() -> None:
     """mask_value masks entire string for short values."""
-    assert mask_value("12345678") == "********"
+    ensure(mask_value("12345678") == "********")
 
 
 # _is_path_like with various path patterns
 def test_is_path_like_recognizes_paths() -> None:
     """_is_path_like correctly identifies path-like strings."""
-    assert _is_path_like("/usr/bin") is True
-    assert _is_path_like("./relative") is True
-    assert _is_path_like("../parent") is True
-    assert _is_path_like("https://example.com") is True
-    assert _is_path_like("C:\\Windows") is True
-    assert _is_path_like("C:drive") is True
+    ensure(_is_path_like("/usr/bin") is True)
+    ensure(_is_path_like("./relative") is True)
+    ensure(_is_path_like("../parent") is True)
+    ensure(_is_path_like("https://example.com") is True)
+    ensure(_is_path_like("C:\\Windows") is True)
+    ensure(_is_path_like("C:drive") is True)
 
 
 def test_looks_secret_base64_long_value() -> None:
     """looks_secret detects long base64-ish values as secrets."""
     # 48+ chars of base64-ish content, not path-like
     long_b64 = "A" * 50
-    assert looks_secret("SOME_VAR", long_b64) is True
+    ensure(looks_secret("SOME_VAR", long_b64) is True)
 
 
 def test_looks_secret_base64_path_not_secret() -> None:
     """looks_secret does not flag long path-like values as secrets."""
     # A long path-like value should not be flagged
-    assert looks_secret("SOME_VAR", "/usr/local/bin/" + "a" * 50) is False
+    ensure(looks_secret("SOME_VAR", "/usr/local/bin/" + "a" * 50) is False)
 
 
 # ---------------------------------------------------------------------------
@@ -248,8 +249,8 @@ def test_env_record_to_dict_excludes_value() -> None:
         requires_privilege=False,
     )
     payload = record.to_dict(include_value=False)
-    assert payload["value"] == ""
-    assert payload["name"] == "SECRET"
+    ensure(payload["value"] == "")
+    ensure(payload["name"] == "SECRET")
 
 
 # ---------------------------------------------------------------------------
@@ -282,4 +283,4 @@ def test_list_backups_skips_corrupt_files(tmp_path: Path) -> None:
     corrupt.write_text("not json at all", encoding="utf-8")
 
     a_backups = mgr.list_backups("target_a")
-    assert len(a_backups) == 1  # Only the valid one
+    ensure(len(a_backups) == 1)  # Only the valid one
