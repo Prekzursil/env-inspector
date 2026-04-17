@@ -327,9 +327,7 @@ def test_linux_etc_environment_write_uses_sudo_fallback_on_oserror(
 
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
 
-    def fake_write_text_file(
-        path: Path, text: str, *, ensure_parent: bool
-    ) -> None:
+    def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
         """Raise `FileNotFoundError` for the redirected target write."""
         ensure(path == target)
         ensure(text == "A=2\n")
@@ -373,9 +371,7 @@ def test_linux_etc_environment_write_reports_oserror_with_failing_sudo(
 
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
 
-    def fake_write_text_file(
-        path: Path, _text: str, *, ensure_parent: bool
-    ) -> None:
+    def fake_write_text_file(path: Path, _text: str, *, ensure_parent: bool) -> None:
         """Raise an OSError for the redirected target write."""
         ensure(path == target)
         ensure(ensure_parent is False)

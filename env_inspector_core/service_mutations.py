@@ -224,9 +224,7 @@ def update_wsl_file(
 
     if apply_changes:
         writer = (
-            self.wsl.write_file_with_privilege
-            if requires_priv
-            else self.wsl.write_file
+            self.wsl.write_file_with_privilege if requires_priv else self.wsl.write_file
         )
         writer(distro, path, after)
 

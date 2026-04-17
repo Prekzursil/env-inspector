@@ -18,7 +18,9 @@ def _fixture_token() -> str:
 def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch):
     captured: Dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs: object) -> Tuple[Dict[str, int], Dict[str, str]]:
+    def _fake_request_json_https(
+        **kwargs: object,
+    ) -> Tuple[Dict[str, int], Dict[str, str]]:
         captured.update(kwargs)
         return {"total": 0}, {}
 
@@ -34,7 +36,10 @@ def test_codacy_request_json_uses_fixed_host_and_validated_segments(monkeypatch)
 
     ensure(payload == {"total": 0})
     ensure(captured["host"] == "api.codacy.com")
-    ensure(captured["path"] == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search")
+    ensure(
+        captured["path"]
+        == "/api/v3/analysis/organizations/gh/Prekzursil/repositories/env-inspector/issues/search"
+    )
     ensure(captured["query"] == {"limit": "1"})
 
 
@@ -53,7 +58,9 @@ def test_codacy_request_json_rejects_unsafe_identifier():
 def test_deepscan_request_json_uses_fixed_host(monkeypatch):
     captured: Dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs: object) -> Tuple[Dict[str, int], Dict[str, str]]:
+    def _fake_request_json_https(
+        **kwargs: object,
+    ) -> Tuple[Dict[str, int], Dict[str, str]]:
         captured.update(kwargs)
         return {"open_issues": 0}, {}
 
@@ -74,12 +81,16 @@ def test_deepscan_request_json_uses_fixed_host(monkeypatch):
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
     captured: Dict[str, object] = {}
 
-    def _fake_request_json_https(**kwargs: object) -> Tuple[List[object], Dict[str, str]]:
+    def _fake_request_json_https(
+        **kwargs: object,
+    ) -> Tuple[List[object], Dict[str, str]]:
         captured.update(kwargs)
         return [], {"x-hits": "0"}
 
     monkeypatch.setattr(sentry_mod, "request_json_https", _fake_request_json_https)
-    issues, headers = sentry_mod._request_project_issues("my-org", "my-project", "token")
+    issues, headers = sentry_mod._request_project_issues(
+        "my-org", "my-project", "token"
+    )
 
     ensure(issues == [])
     ensure(headers["x-hits"] == "0")

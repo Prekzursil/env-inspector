@@ -20,13 +20,16 @@ def test_security_imports_reloads_and_exposes_helpers():
     case.assertTrue(callable(reloaded.safe_output_path_in_workspace))
 
 
-
 def test_security_imports_fallback_loader_inserts_helper_root(monkeypatch):
     import types
 
     case = _case()
     helper_root = str(Path(security_imports.__file__).resolve().parent.parent)
-    monkeypatch.setattr(security_imports.sys, "path", [entry for entry in security_imports.sys.path if entry != helper_root])
+    monkeypatch.setattr(
+        security_imports.sys,
+        "path",
+        [entry for entry in security_imports.sys.path if entry != helper_root],
+    )
 
     def _fake_import_module(name: str):
         if name == "scripts.security_helpers":
@@ -40,7 +43,9 @@ def test_security_imports_fallback_loader_inserts_helper_root(monkeypatch):
             split_validated_https_url=lambda *args, **kwargs: ("host", "/", {}),
         )
 
-    monkeypatch.setattr(security_imports.importlib, "import_module", _fake_import_module)
+    monkeypatch.setattr(
+        security_imports.importlib, "import_module", _fake_import_module
+    )
 
     loaded = security_imports._load_helpers_module()
 

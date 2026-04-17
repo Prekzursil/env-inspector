@@ -26,7 +26,9 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
 
         def __init__(self, *args, **kwargs):  # pragma: no cover - should not be reached
             """Init."""
-            raise AssertionError("EnvInspectorService should not be created for invalid --root")
+            raise AssertionError(
+                "EnvInspectorService should not be created for invalid --root"
+            )
 
     monkeypatch.setattr(env_inspector, "EnvInspectorService", _ForbiddenService)
     monkeypatch.setattr(
@@ -43,7 +45,9 @@ def test_main_print_secrets_rejects_invalid_root(tmp_path: Path, monkeypatch, ca
     case.assertIn("Invalid --root", err)
 
 
-def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, monkeypatch, capsys):
+def test_legacy_print_secrets_uses_workspace_root_for_listing(
+    tmp_path: Path, monkeypatch, capsys
+):
     """Legacy print-secrets should list secrets from the validated workspace root."""
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -56,7 +60,14 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
         """List records."""
         secret_flag = bool(1)
         captured.update(kwargs)
-        return [{"is_secret": secret_flag, "source_type": "dotenv", "source_id": ".env", "name": "API_TOKEN"}]
+        return [
+            {
+                "is_secret": secret_flag,
+                "source_type": "dotenv",
+                "source_id": ".env",
+                "name": "API_TOKEN",
+            }
+        ]
 
     class _Service:
         """Minimal service stub that returns the captured secret rows."""
@@ -75,7 +86,9 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(tmp_path: Path, mo
     case.assertIn("API_TOKEN", out)
 
 
-def test_legacy_print_secrets_skips_non_secret_rows(tmp_path: Path, monkeypatch, capsys):
+def test_legacy_print_secrets_skips_non_secret_rows(
+    tmp_path: Path, monkeypatch, capsys
+):
     """Legacy print-secrets should not emit rows that are not marked as secrets."""
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -84,7 +97,14 @@ def test_legacy_print_secrets_skips_non_secret_rows(tmp_path: Path, monkeypatch,
 
     def _list_records(**_kwargs):
         """List records."""
-        return [{"is_secret": False, "source_type": "dotenv", "source_id": ".env", "name": "PUBLIC_VAR"}]
+        return [
+            {
+                "is_secret": False,
+                "source_type": "dotenv",
+                "source_id": ".env",
+                "name": "PUBLIC_VAR",
+            }
+        ]
 
     class _Service:
         """Minimal service stub that only yields non-secret rows."""
@@ -100,7 +120,9 @@ def test_legacy_print_secrets_skips_non_secret_rows(tmp_path: Path, monkeypatch,
     case.assertEqual(capsys.readouterr().out, "")
 
 
-def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, monkeypatch, capsys):
+def test_legacy_print_secrets_rejects_nested_subdirectory_root(
+    tmp_path: Path, monkeypatch, capsys
+):
     """Legacy print-secrets should reject nested roots even when they are under the workspace."""
     workspace = tmp_path / "workspace"
     nested = workspace / "nested"
@@ -113,7 +135,9 @@ def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, m
 
         def __init__(self, *args, **kwargs):  # pragma: no cover - should not be reached
             """Init."""
-            raise AssertionError("EnvInspectorService should not be created for unsupported nested root")
+            raise AssertionError(
+                "EnvInspectorService should not be created for unsupported nested root"
+            )
 
     monkeypatch.setattr(env_inspector, "EnvInspectorService", _ForbiddenService)
 
@@ -122,10 +146,14 @@ def test_legacy_print_secrets_rejects_nested_subdirectory_root(tmp_path: Path, m
     case = _case()
     case.assertEqual(code, 2)
     err = capsys.readouterr().err
-    case.assertIn("Legacy --print-secrets only supports the current working directory.", err)
+    case.assertIn(
+        "Legacy --print-secrets only supports the current working directory.", err
+    )
 
 
-def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(tmp_path: Path, monkeypatch):
+def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(
+    tmp_path: Path, monkeypatch
+):
     """Validated roots should round-trip through the legacy resolver without drift."""
     workspace = (tmp_path / "workspace").resolve()
     workspace.mkdir()
@@ -141,11 +169,15 @@ def test_resolve_legacy_print_secrets_root_does_not_renormalize_validated_root(t
     monkeypatch.setattr(env_inspector, "resolve_scan_root", _validated_root)
 
     case = _case()
-    case.assertEqual(env_inspector._resolve_legacy_print_secrets_root(str(workspace)), workspace)
+    case.assertEqual(
+        env_inspector._resolve_legacy_print_secrets_root(str(workspace)), workspace
+    )
     case.assertEqual(len(calls), 2)
 
 
-def test_resolve_legacy_print_secrets_root_rejects_missing_directory(tmp_path: Path, monkeypatch):
+def test_resolve_legacy_print_secrets_root_rejects_missing_directory(
+    tmp_path: Path, monkeypatch
+):
     """Legacy secret-root resolution should fail when the requested directory is missing."""
     workspace = (tmp_path / "workspace").resolve()
     missing = workspace / "missing"

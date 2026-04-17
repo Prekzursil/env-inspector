@@ -12,7 +12,12 @@ import pytest
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.resolver import resolve_effective_value
-from env_inspector_core.secrets import looks_secret, mask_value, _is_path_like, _is_base64_secret
+from env_inspector_core.secrets import (
+    looks_secret,
+    mask_value,
+    _is_path_like,
+    _is_base64_secret,
+)
 from env_inspector_core.storage import BackupManager
 
 
@@ -23,6 +28,7 @@ def _case() -> unittest.TestCase:
 # ---------------------------------------------------------------------------
 # cli.py coverage
 # ---------------------------------------------------------------------------
+
 
 def test_cli_csv_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """CLI list command with csv output exercises the CSV rendering path (line 156)."""
@@ -38,7 +44,9 @@ def test_cli_csv_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None
     captured = StringIO()
     monkeypatch.setattr(sys, "stdout", captured)
 
-    exit_code = run_cli(["list", "--output", "csv", "--root", str(tmp_path)], service=svc)
+    exit_code = run_cli(
+        ["list", "--output", "csv", "--root", str(tmp_path)], service=svc
+    )
     ensure(exit_code == 0)
     output = captured.getvalue()
     ensure("MY_VAR" in output or "context" in output)
@@ -68,7 +76,9 @@ def test_cli_table_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     captured = StringIO()
     monkeypatch.setattr(sys, "stdout", captured)
 
-    exit_code = run_cli(["list", "--output", "table", "--root", str(tmp_path)], service=svc)
+    exit_code = run_cli(
+        ["list", "--output", "table", "--root", str(tmp_path)], service=svc
+    )
     assert exit_code == 0
     output = captured.getvalue()
     # Table output uses tabs
@@ -95,7 +105,9 @@ def test_cli_no_command_prints_help(monkeypatch: pytest.MonkeyPatch) -> None:
     assert exit_code == 0
 
 
-def test_cli_value_error_handling(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_cli_value_error_handling(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """CLI catches ValueError and prints to stderr (lines 254-255)."""
     from env_inspector_core.cli import run_cli
     from env_inspector_core.service import EnvInspectorService
@@ -120,6 +132,7 @@ def test_cli_value_error_handling(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 # ---------------------------------------------------------------------------
 # resolver.py coverage — line 35: linux context
 # ---------------------------------------------------------------------------
+
 
 def test_resolve_effective_value_no_candidates() -> None:
     """resolve_effective_value returns None when no records match (line 35)."""
@@ -167,6 +180,7 @@ def test_resolve_effective_value_linux_context() -> None:
 # ---------------------------------------------------------------------------
 # secrets.py coverage
 # ---------------------------------------------------------------------------
+
 
 # Line 45: looks_secret GitHub token detection
 def test_looks_secret_github_short_token() -> None:
@@ -232,6 +246,7 @@ def test_looks_secret_base64_path_not_secret() -> None:
 # models.py coverage — line 26: to_dict with include_value=False
 # ---------------------------------------------------------------------------
 
+
 def test_env_record_to_dict_excludes_value() -> None:
     """EnvRecord.to_dict(include_value=False) sets value to empty string."""
     record = EnvRecord(
@@ -256,6 +271,7 @@ def test_env_record_to_dict_excludes_value() -> None:
 # ---------------------------------------------------------------------------
 # storage.py coverage — line 75->73 branch: list_backups with non-matching target
 # ---------------------------------------------------------------------------
+
 
 def test_list_backups_filters_by_target(tmp_path: Path) -> None:
     """list_backups only returns backups matching the requested target."""

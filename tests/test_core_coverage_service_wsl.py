@@ -72,7 +72,8 @@ def test_resolve_wsl_target_rejects_extra_args() -> None:
     """resolve_wsl_target raises TypeError with more than one positional arg."""
     with pytest.raises(TypeError, match="single positional target argument only"):
         resolve_wsl_target(
-            "wsl:Ubuntu:bashrc", "extra",
+            "wsl:Ubuntu:bashrc",
+            "extra",
             dotenv_prefix="wsl_dotenv:",
             validate_distro_name_fn=validate_wsl_distro_name,
             parse_wsl_dotenv_target_fn=lambda t: ("d", "/p"),

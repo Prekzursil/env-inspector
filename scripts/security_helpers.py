@@ -73,8 +73,7 @@ def _normalized_hosts(values: Optional[Set[str]]) -> Set[str]:
 def _hostname_matches_suffix(hostname: str, suffixes: Set[str]) -> bool:
     """Return whether the hostname matches any allowed suffix entry."""
     return any(
-        hostname == suffix or hostname.endswith(f".{suffix}")
-        for suffix in suffixes
+        hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes
     )
 
 
@@ -242,9 +241,7 @@ def _read_https_error(
 ) -> Tuple[int, str, str, Dict[str, str]]:
     """Read an HTTPS error response into normalized primitives."""
     raw_body = (
-        exc.read().decode("utf-8", errors="replace")
-        if exc.fp is not None
-        else ""
+        exc.read().decode("utf-8", errors="replace") if exc.fp is not None else ""
     )
     error_headers = tuple(exc.headers.items()) if exc.headers else ()
     response_headers = {str(k).lower(): str(v) for k, v in error_headers}

@@ -12,6 +12,7 @@ from env_inspector_core.service import EnvInspectorService
 
 from tests.assertions import ensure
 
+
 def test_backup_manager_retention_and_restore(tmp_path: Path):
     mgr = BackupManager(tmp_path, retention=2)
     target = "dotenv:/tmp/.env"
@@ -29,7 +30,10 @@ def test_backup_manager_retention_and_restore(tmp_path: Path):
     restored = mgr.restore_text(p2)
     ensure(restored == "A=2\n")
 
-def test_backup_manager_uses_unique_path_when_timestamp_collides(tmp_path: Path, monkeypatch):
+
+def test_backup_manager_uses_unique_path_when_timestamp_collides(
+    tmp_path: Path, monkeypatch
+):
     fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     class _FixedDateTime(datetime):
@@ -53,7 +57,10 @@ def test_backup_manager_uses_unique_path_when_timestamp_collides(tmp_path: Path,
     ensure(p2.name.endswith("-0001.backup.json"))
     ensure(p3.name.endswith("-0002.backup.json"))
 
-def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Path, monkeypatch):
+
+def test_next_backup_path_raises_when_timestamp_sequence_exhausted(
+    tmp_path: Path, monkeypatch
+):
     fixed_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     class _FixedDateTime(datetime):
@@ -76,8 +83,11 @@ def test_next_backup_path_raises_when_timestamp_sequence_exhausted(tmp_path: Pat
     monkeypatch.setattr(storage_mod, "_path_exists", _always_exists)
     ensure(storage_mod._path_exists(tmp_path))
 
-    with pytest.raises(RuntimeError, match="Could not allocate unique backup file name"):
+    with pytest.raises(
+        RuntimeError, match="Could not allocate unique backup file name"
+    ):
         mgr._next_backup_path()
+
 
 def test_normalize_backup_path_rejects_escape(tmp_path: Path):
     mgr = BackupManager(tmp_path / "backups", retention=5)
@@ -86,12 +96,14 @@ def test_normalize_backup_path_rejects_escape(tmp_path: Path):
     with pytest.raises(ValueError, match="escapes backup root"):
         mgr._normalize_backup_path(outside)
 
+
 def test_load_backup_payload_returns_none_for_invalid_json(tmp_path: Path):
     mgr = BackupManager(tmp_path, retention=5)
     bad = tmp_path / "bad.backup.json"
     bad.write_text("{not valid json", encoding="utf-8")
 
     ensure(mgr._load_backup_payload(bad) is None)
+
 
 def test_audit_logger_writes_masked_values(tmp_path: Path):
     logger = AuditLogger(tmp_path)
@@ -112,16 +124,23 @@ def test_audit_logger_writes_masked_values(tmp_path: Path):
     ensure("op-1" in text)
     ensure("abc********xyz" in text)
 
-def test_restore_rejects_backup_file_outside_state_directory(tmp_path: Path, monkeypatch):
+
+def test_restore_rejects_backup_file_outside_state_directory(
+    tmp_path: Path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     external_backup = tmp_path / "external.backup.json"
-    external_backup.write_text(json.dumps({"target": "linux:bashrc", "text": "export A='1'\n"}), encoding="utf-8")
+    external_backup.write_text(
+        json.dumps({"target": "linux:bashrc", "text": "export A='1'\n"}),
+        encoding="utf-8",
+    )
 
     result = svc.restore_backup(backup=str(external_backup))
 
     ensure(result["success"] is False)
     ensure("outside managed backup directory" in (result["error_message"] or ""))
+
 
 def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -136,6 +155,7 @@ def test_restore_dotenv_backup_in_scope_writes_file(tmp_path: Path, monkeypatch)
 
     ensure(result["success"] is True)
     ensure(env_file.read_text(encoding="utf-8") == "A=1\n")
+
 
 def test_restore_dotenv_backup_rejects_outside_scope(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)

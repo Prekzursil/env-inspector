@@ -23,7 +23,9 @@ def test_as_raw_text_rejects_empty() -> None:
 
 
 # Line 46: normalize_scope_roots outside cwd
-def test_normalize_scope_roots_rejects_outside_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_normalize_scope_roots_rejects_outside_cwd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """normalize_scope_roots raises when root is outside cwd."""
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -35,7 +37,9 @@ def test_normalize_scope_roots_rejects_outside_cwd(monkeypatch: pytest.MonkeyPat
 
 
 # Line 48: normalize_scope_roots non-existent directory
-def test_normalize_scope_roots_rejects_nonexistent(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_normalize_scope_roots_rejects_nonexistent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """normalize_scope_roots raises when root does not exist."""
     monkeypatch.chdir(tmp_path)
     with pytest.raises(PathPolicyError, match="must exist as a directory"):
@@ -57,7 +61,9 @@ def test_parse_scoped_dotenv_target_rejects_non_dotenv_prefix(tmp_path: Path) ->
 
 
 # parse_scoped_dotenv_target outside scope
-def test_parse_scoped_dotenv_target_rejects_outside_roots(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_parse_scoped_dotenv_target_rejects_outside_roots(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """parse_scoped_dotenv_target raises when path is outside approved roots."""
     monkeypatch.chdir(tmp_path)
     allowed = tmp_path / "allowed"
@@ -72,7 +78,9 @@ def test_parse_scoped_dotenv_target_rejects_outside_roots(monkeypatch: pytest.Mo
 
 
 # Line 108: validate_backup_path non-existent file
-def test_validate_backup_path_rejects_nonexistent(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_validate_backup_path_rejects_nonexistent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """validate_backup_path raises when backup file does not exist."""
     monkeypatch.chdir(tmp_path)
     backups_dir = tmp_path / "backups"

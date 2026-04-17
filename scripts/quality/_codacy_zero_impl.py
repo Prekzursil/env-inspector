@@ -36,14 +36,28 @@ def _public_codacy_module() -> Any | None:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert Codacy has zero total open issues.")
-    parser.add_argument("--provider", default="gh", help="Organization provider, for example gh")
+    parser = argparse.ArgumentParser(
+        description="Assert Codacy has zero total open issues."
+    )
+    parser.add_argument(
+        "--provider", default="gh", help="Organization provider, for example gh"
+    )
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
-    parser.add_argument("--branch", default="", help="Optional branch name to scope issue totals")
-    parser.add_argument("--token", default="", help="Codacy API token (falls back to CODACY_API_TOKEN env)")
-    parser.add_argument("--out-json", default="codacy-zero/codacy.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="codacy-zero/codacy.md", help="Output markdown path")
+    parser.add_argument(
+        "--branch", default="", help="Optional branch name to scope issue totals"
+    )
+    parser.add_argument(
+        "--token",
+        default="",
+        help="Codacy API token (falls back to CODACY_API_TOKEN env)",
+    )
+    parser.add_argument(
+        "--out-json", default="codacy-zero/codacy.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="codacy-zero/codacy.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
@@ -88,9 +102,17 @@ def _fetch_open_issues_for_provider(
 
     public = _public_codacy_module()
     request_json_fn = getattr(public, "_request_json", _request_json)
-    sample_findings_fn = getattr(public, "_sample_issue_findings", _sample_issue_findings)
-    handled, open_issues, findings, error = _attempt_issue_total(request, request_json_fn)
-    findings.extend(_issue_total_findings(request, open_issues, handled, request_json_fn, sample_findings_fn))
+    sample_findings_fn = getattr(
+        public, "_sample_issue_findings", _sample_issue_findings
+    )
+    handled, open_issues, findings, error = _attempt_issue_total(
+        request, request_json_fn
+    )
+    findings.extend(
+        _issue_total_findings(
+            request, open_issues, handled, request_json_fn, sample_findings_fn
+        )
+    )
     return handled, open_issues, findings, error
 
 
@@ -105,12 +127,16 @@ def _attempt_issue_total(
     except urllib.error.HTTPError as exc:
         handled, error = _handle_http_error(exc, findings)
         return handled, None, findings, error
-    except CODACY_REQUEST_EXCEPTIONS as exc:  # pragma: no cover - network/runtime surface
+    except (
+        CODACY_REQUEST_EXCEPTIONS
+    ) as exc:  # pragma: no cover - network/runtime surface
         findings.append(f"Codacy API request failed: {exc}")
         return True, None, findings, exc
 
 
-def _resolve_codacy_request(request: CodacyRequest | None, kwargs: Any) -> CodacyRequest:
+def _resolve_codacy_request(
+    request: CodacyRequest | None, kwargs: Any
+) -> CodacyRequest:
     if request is None:
         return CodacyRequest(**kwargs)
     if kwargs:
@@ -123,7 +149,9 @@ def _request_issue_total(request: CodacyRequest, request_json_fn: Any) -> int | 
     return extract_total_open(payload)
 
 
-def _handle_http_error(exc: urllib.error.HTTPError, findings: List[str]) -> Tuple[bool, Exception]:
+def _handle_http_error(
+    exc: urllib.error.HTTPError, findings: List[str]
+) -> Tuple[bool, Exception]:
     if exc.code == 404:
         return False, exc
     findings.append(f"Codacy API request failed: HTTP {exc.code}")
@@ -137,7 +165,9 @@ def _non_zero_issue_findings(
     sample_findings_fn: Any,
 ) -> List[str]:
     findings = [f"Codacy reports {open_issues} open issues (expected 0)."]
-    sample_payload = request_json_fn(request=replace(request, limit=20, method="POST", data={}))
+    sample_payload = request_json_fn(
+        request=replace(request, limit=20, method="POST", data={})
+    )
     findings.extend(sample_findings_fn(sample_payload))
     return findings
 
@@ -155,10 +185,14 @@ def _issue_total_findings(
         return ["Codacy response did not include a parseable total issue count."]
     if open_issues == 0:
         return []
-    return _non_zero_issue_findings(request, open_issues, request_json_fn, sample_findings_fn)
+    return _non_zero_issue_findings(
+        request, open_issues, request_json_fn, sample_findings_fn
+    )
 
 
-def _query_open_issues(request: CodacyRequest | None = None, **kwargs: Any) -> Tuple[int | None, List[str]]:
+def _query_open_issues(
+    request: CodacyRequest | None = None, **kwargs: Any
+) -> Tuple[int | None, List[str]]:
     if request is None:
         request = CodacyRequest(**kwargs)
     elif kwargs:
@@ -167,11 +201,17 @@ def _query_open_issues(request: CodacyRequest | None = None, **kwargs: Any) -> T
     last_exc: Exception | None = None
 
     public = _public_codacy_module()
-    provider_candidates_fn = getattr(public, "_provider_candidates", _provider_candidates)
-    fetch_fn = getattr(public, "_fetch_open_issues_for_provider", _fetch_open_issues_for_provider)
+    provider_candidates_fn = getattr(
+        public, "_provider_candidates", _provider_candidates
+    )
+    fetch_fn = getattr(
+        public, "_fetch_open_issues_for_provider", _fetch_open_issues_for_provider
+    )
 
     for candidate in provider_candidates_fn(request.provider):
-        handled, open_issues, findings, error = fetch_fn(request=replace(request, provider=candidate))
+        handled, open_issues, findings, error = fetch_fn(
+            request=replace(request, provider=candidate)
+        )
         if handled:
             return open_issues, findings
         last_exc = error

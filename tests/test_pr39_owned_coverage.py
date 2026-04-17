@@ -203,9 +203,7 @@ def _assert_service_target_helpers(
     ensure(resolved is not None)
     ensure(resolved.name == "API_TOKEN")
     ensure(
-        svc._powershell_target_for_path(
-            r"C:\Program Files\PowerShell\7\profile.ps1"
-        )
+        svc._powershell_target_for_path(r"C:\Program Files\PowerShell\7\profile.ps1")
         == "powershell:all_users"
     )
     with pytest.raises(RuntimeError, match="Unsupported PowerShell target"):
@@ -408,8 +406,7 @@ def test_coverage_helpers_cover_source_normalization_and_fallback_xml(
         coverage_mod._normalize_source_path(str(outside_file)).endswith("outside.py")
     )
     ensure(
-        coverage_mod._normalize_source_path("./env_inspector.py")
-        == "env_inspector.py"
+        coverage_mod._normalize_source_path("./env_inspector.py") == "env_inspector.py"
     )
 
     bad_xml = tmp_path / "bad.xml"

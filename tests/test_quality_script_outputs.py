@@ -14,14 +14,18 @@ from tests.assertions import ensure
 def _empty_token() -> str:
     return str()
 
+
 def test_parse_coverage_xml_reads_standard_attributes(tmp_path: Path):
     xml_path = tmp_path / "coverage.xml"
-    xml_path.write_text('<coverage lines-valid="2" lines-covered="1"/>\n', encoding="utf-8")
+    xml_path.write_text(
+        '<coverage lines-valid="2" lines-covered="1"/>\n', encoding="utf-8"
+    )
 
     stats = coverage_mod.parse_coverage_xml("python", xml_path)
 
     ensure(stats.total == 2)
     ensure(stats.covered == 1)
+
 
 def test_parse_lcov_reads_totals(tmp_path: Path):
     lcov_path = tmp_path / "coverage.lcov"
@@ -31,6 +35,7 @@ def test_parse_lcov_reads_totals(tmp_path: Path):
 
     ensure(stats.total == 2)
     ensure(stats.covered == 1)
+
 
 def test_assert_coverage_main_writes_outputs(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -94,6 +99,7 @@ def test_assert_coverage_main_rejects_tests_only_report(tmp_path: Path, monkeypa
     ensure("tests/" in report_text)
     ensure("missing required source path" in report_text)
 
+
 def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("CODACY_API_TOKEN", raising=False)
@@ -113,6 +119,7 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
     ensure((tmp_path / "reports" / "codacy.json").exists())
     ensure((tmp_path / "reports" / "codacy.md").exists())
 
+
 def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DEEPSCAN_API_TOKEN", raising=False)
@@ -129,6 +136,7 @@ def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch
     ensure(rc == 1)
     ensure((tmp_path / "reports" / "deepscan.json").exists())
     ensure((tmp_path / "reports" / "deepscan.md").exists())
+
 
 def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)

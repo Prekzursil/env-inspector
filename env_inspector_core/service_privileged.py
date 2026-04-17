@@ -6,7 +6,9 @@ from subprocess import PIPE, CompletedProcess, run  # nosec B404
 from typing import Callable, Optional
 
 
-def _try_direct_write(path: Path, text: str, write_text_file: Callable[[Path, str], None]) -> bool:
+def _try_direct_write(
+    path: Path, text: str, write_text_file: Callable[[Path, str], None]
+) -> bool:
     try:
         write_text_file(path, text)
         return True
@@ -57,7 +59,9 @@ def _write_with_sudo(
 
 def write_linux_etc_environment_with_privilege(*args, **kwargs) -> None:
     if args:
-        raise TypeError("write_linux_etc_environment_with_privilege accepts keyword arguments only.")
+        raise TypeError(
+            "write_linux_etc_environment_with_privilege accepts keyword arguments only."
+        )
 
     fixed_path = kwargs.pop("fixed_path")
     expected_path = kwargs.pop("expected_path")

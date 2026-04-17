@@ -72,7 +72,9 @@ __all__ = [
 ]
 
 
-def _request_json(request: CodacyRequest | None = None, **kwargs: Any) -> Dict[str, Any]:
+def _request_json(
+    request: CodacyRequest | None = None, **kwargs: Any
+) -> Dict[str, Any]:
     if request is None:
         request = CodacyRequest(**kwargs)
     elif kwargs:
@@ -87,8 +89,12 @@ def _request_json(request: CodacyRequest | None = None, **kwargs: Any) -> Dict[s
         headers["Content-Type"] = "application/json"
 
     public = _public_codacy_module()
-    request_json_fn = cast(RequestJsonHttps, getattr(public, "request_json_https", request_json_https))
-    encode_identifier_fn = cast(EncodeIdentifier, getattr(public, "encode_identifier", encode_identifier))
+    request_json_fn = cast(
+        RequestJsonHttps, getattr(public, "request_json_https", request_json_https)
+    )
+    encode_identifier_fn = cast(
+        EncodeIdentifier, getattr(public, "encode_identifier", encode_identifier)
+    )
 
     provider_slug = encode_identifier_fn(request.provider, field_name="Codacy provider")
     owner_slug = encode_identifier_fn(request.owner, field_name="Codacy owner")

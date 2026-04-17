@@ -7,6 +7,7 @@ from env_inspector_gui.path_actions import is_openable_local_path, open_source_p
 
 from tests.assertions import ensure
 
+
 def test_is_openable_local_path_handles_real_and_pseudo_paths(tmp_path: Path):
     local_file = tmp_path / ".env"
     local_file.write_text("A=1\n", encoding="utf-8")
@@ -14,6 +15,7 @@ def test_is_openable_local_path_handles_real_and_pseudo_paths(tmp_path: Path):
     ensure(is_openable_local_path(str(local_file)) is True)
     ensure(is_openable_local_path("wsl:Ubuntu:/etc/environment") is False)
     ensure(is_openable_local_path("registry:HKCU\\Environment") is False)
+
 
 def test_open_source_path_uses_resolved_file_uri(tmp_path: Path):
     local_file = tmp_path / "a.env"
@@ -31,7 +33,10 @@ def test_open_source_path_uses_resolved_file_uri(tmp_path: Path):
     ensure(err is None)
     ensure(calls == [local_file.resolve().as_uri()])
 
+
 def test_open_source_path_rejects_non_local_path():
-    ok, err = open_source_path("wsl:Ubuntu:/etc/environment", open_uri=lambda _uri: True)
+    ok, err = open_source_path(
+        "wsl:Ubuntu:/etc/environment", open_uri=lambda _uri: True
+    )
     ensure(ok is False)
     ensure("Cannot open" in (err or ""))

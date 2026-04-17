@@ -54,10 +54,14 @@ safe_output_path_in_workspace = _http.safe_output_path_in_workspace
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Wait for required GitHub check contexts and assert they are successful.")
+    parser = argparse.ArgumentParser(
+        description="Wait for required GitHub check contexts and assert they are successful."
+    )
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--sha", required=True, help="commit SHA")
-    parser.add_argument("--required-context", action="append", default=[], help="Required context name")
+    parser.add_argument(
+        "--required-context", action="append", default=[], help="Required context name"
+    )
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--poll-seconds", type=int, default=20)
     parser.add_argument("--out-json", default="quality-zero-gate/required-checks.json")
@@ -100,7 +104,9 @@ def _required_contexts(args: argparse.Namespace) -> List[str]:
 
 
 def _github_token() -> str:
-    token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
+    token = (
+        os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")
+    ).strip()
     if not token:
         raise SystemExit("GITHUB_TOKEN or GH_TOKEN is required")
     return token
@@ -146,11 +152,26 @@ def _collect_until_settled(request: SettledChecksRequest) -> Dict[str, Any]:
     final_payload: Optional[Dict[str, Any]] = None
 
     while time.time() <= deadline:
-        check_runs = _api_get_check_runs(owner=request.owner_slug, repo=request.repo_slug, sha=request.sha, token=request.token)
-        statuses = _api_get_status(owner=request.owner_slug, repo=request.repo_slug, sha=request.sha, token=request.token)
+        check_runs = _api_get_check_runs(
+            owner=request.owner_slug,
+            repo=request.repo_slug,
+            sha=request.sha,
+            token=request.token,
+        )
+        statuses = _api_get_status(
+            owner=request.owner_slug,
+            repo=request.repo_slug,
+            sha=request.sha,
+            token=request.token,
+        )
         contexts = _collect_contexts(check_runs, statuses)
 
-        final_payload = _snapshot(repo_arg=request.repo_arg, sha=request.sha, required=request.required, contexts=contexts)
+        final_payload = _snapshot(
+            repo_arg=request.repo_arg,
+            sha=request.sha,
+            required=request.required,
+            contexts=contexts,
+        )
         if not _should_wait(final_payload):
             break
         time.sleep(max(request.poll_seconds, 1))

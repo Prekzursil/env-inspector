@@ -30,7 +30,9 @@ def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
     source_type = str(payload["source_type"])
     source_path = str(payload["source_path"])
     raw_rank = payload["precedence_rank"]
-    precedence_rank = raw_rank if isinstance(raw_rank, int) and not isinstance(raw_rank, bool) else 50
+    precedence_rank = (
+        raw_rank if isinstance(raw_rank, int) and not isinstance(raw_rank, bool) else 50
+    )
     return EnvRecord(
         source_type=source_type,
         source_id=f"{source_type}:{source_path}",
@@ -69,7 +71,9 @@ def test_sort_by_precedence_rank():
             show_secrets=True,
         )
     )
-    ordered = sort_display_rows(rows, SortState(column="precedence_rank", descending=False))
+    ordered = sort_display_rows(
+        rows, SortState(column="precedence_rank", descending=False)
+    )
     ensure(ordered[0].record.name == "B")
     ensure(ordered[1].record.name == "A")
 
@@ -88,6 +92,8 @@ def test_sort_by_unknown_column_falls_back_to_name():
             show_secrets=True,
         )
     )
-    ordered = sort_display_rows(rows, SortState(column="nonexistent_column", descending=False))
+    ordered = sort_display_rows(
+        rows, SortState(column="nonexistent_column", descending=False)
+    )
     ensure(ordered[0].record.name == "A")
     ensure(ordered[1].record.name == "B")

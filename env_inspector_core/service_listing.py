@@ -78,9 +78,15 @@ def collect_host_rows(
         rows.extend(registry_rows)
 
     if request.runtime_context == "windows":
-        rows.extend(collectors.collect_powershell_profile_records_fn(request.powershell_profile_paths))
+        rows.extend(
+            collectors.collect_powershell_profile_records_fn(
+                request.powershell_profile_paths
+            )
+        )
     else:
-        rows.extend(collectors.collect_linux_records_fn(context=request.runtime_context))
+        rows.extend(
+            collectors.collect_linux_records_fn(context=request.runtime_context)
+        )
 
     return rows
 
@@ -112,7 +118,9 @@ def collect_wsl_rows(*args: Any, **kwargs: Any) -> List[EnvRecord]:
     )
     rows.extend(
         _wsl_dotenv_rows(
-            request=_WslDotenvRequest(distro=distro, wsl_path=wsl_path, scan_depth=scan_depth),
+            request=_WslDotenvRequest(
+                distro=distro, wsl_path=wsl_path, scan_depth=scan_depth
+            ),
             wsl=wsl,
             collect_wsl_dotenv_records_fn=collect_wsl_dotenv_records_fn,
         )
@@ -120,17 +128,27 @@ def collect_wsl_rows(*args: Any, **kwargs: Any) -> List[EnvRecord]:
     return rows
 
 
-def _bridge_rows(*, runtime_context: str, current_wsl_distro: str | None, wsl: Any, collect_wsl_records_fn) -> List[EnvRecord]:
+def _bridge_rows(
+    *,
+    runtime_context: str,
+    current_wsl_distro: str | None,
+    wsl: Any,
+    collect_wsl_records_fn,
+) -> List[EnvRecord]:
     try:
         exclude_distros: Optional[Set[str]] = None
         if runtime_context == "linux" and current_wsl_distro:
             exclude_distros = {current_wsl_distro}
-        return collect_wsl_records_fn(wsl, include_etc=True, exclude_distros=exclude_distros)
+        return collect_wsl_records_fn(
+            wsl, include_etc=True, exclude_distros=exclude_distros
+        )
     except (OSError, RuntimeError, ValueError):
         return []
 
 
-def _wsl_dotenv_rows(*, request: _WslDotenvRequest, wsl: Any, collect_wsl_dotenv_records_fn) -> List[EnvRecord]:
+def _wsl_dotenv_rows(
+    *, request: _WslDotenvRequest, wsl: Any, collect_wsl_dotenv_records_fn
+) -> List[EnvRecord]:
     if not (request.distro and request.wsl_path):
         return []
     try:
@@ -159,7 +177,11 @@ def apply_row_filters(
 
 
 def powershell_target_for_path(source_path: str) -> str:
-    return TARGET_POWERSHELL_ALL_USERS if "Program Files" in source_path else TARGET_POWERSHELL_CURRENT_USER
+    return (
+        TARGET_POWERSHELL_ALL_USERS
+        if "Program Files" in source_path
+        else TARGET_POWERSHELL_CURRENT_USER
+    )
 
 
 def record_target(record: EnvRecord) -> Optional[str]:
@@ -172,7 +194,9 @@ def record_target(record: EnvRecord) -> Optional[str]:
         SOURCE_WSL_DOTENV: lambda rec: f"wsl_dotenv:{rec.source_path}",
         SOURCE_WSL_BASHRC: lambda rec: f"wsl:{rec.source_id}:bashrc",
         SOURCE_WSL_ETC_ENV: lambda rec: f"wsl:{rec.source_id}:etc_environment",
-        SOURCE_POWERSHELL_PROFILE: lambda rec: powershell_target_for_path(rec.source_path),
+        SOURCE_POWERSHELL_PROFILE: lambda rec: powershell_target_for_path(
+            rec.source_path
+        ),
     }
 
     static_target = static_targets.get(record.source_type)
@@ -204,7 +228,9 @@ def available_targets(
     return sorted(targets)
 
 
-def rows_to_payload(rows: List[EnvRecord], *, include_raw_secrets: bool) -> List[Dict[str, Any]]:
+def rows_to_payload(
+    rows: List[EnvRecord], *, include_raw_secrets: bool
+) -> List[Dict[str, Any]]:
     payload: List[Dict[str, Any]] = []
     for record in rows:
         item = record.to_dict(include_value=True)

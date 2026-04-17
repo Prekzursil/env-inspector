@@ -138,10 +138,7 @@ def test_collect_wsl_records_includes_bashrc_and_etc_pairs() -> None:
 
     case = _case()
     case.assertTrue(
-        any(
-            r.source_type == SOURCE_WSL_BASHRC and r.name == "API_TOKEN"
-            for r in rows
-        )
+        any(r.source_type == SOURCE_WSL_BASHRC and r.name == "API_TOKEN" for r in rows)
     )
     case.assertTrue(
         any(r.source_type == SOURCE_WSL_ETC_ENV and r.name == "LANG" for r in rows)

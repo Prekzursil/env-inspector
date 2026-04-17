@@ -22,14 +22,18 @@ from env_inspector_core.service_ops_request import (
 # Line 7: _raise_mixed_request_usage
 def test_raise_mixed_request_usage() -> None:
     """_raise_mixed_request_usage raises TypeError."""
-    with pytest.raises(TypeError, match="Pass either a request object or legacy arguments"):
+    with pytest.raises(
+        TypeError, match="Pass either a request object or legacy arguments"
+    ):
         _raise_mixed_request_usage()
 
 
 # Line 19: mixed usage — request kwarg with extra kwargs
 def test_extract_request_object_raises_on_mixed_kwargs() -> None:
     """_extract_request_object raises when request kwarg is mixed with other kwargs."""
-    with pytest.raises(TypeError, match="Pass either a request object or legacy arguments"):
+    with pytest.raises(
+        TypeError, match="Pass either a request object or legacy arguments"
+    ):
         _extract_request_object(
             args=(),
             kwargs={"request": object(), "extra": "bad"},
@@ -40,7 +44,9 @@ def test_extract_request_object_raises_on_mixed_kwargs() -> None:
 # Line 19: mixed usage — request kwarg with extra positional args
 def test_extract_request_object_raises_on_mixed_args() -> None:
     """_extract_request_object raises when request kwarg is mixed with positional args."""
-    with pytest.raises(TypeError, match="Pass either a request object or legacy arguments"):
+    with pytest.raises(
+        TypeError, match="Pass either a request object or legacy arguments"
+    ):
         _extract_request_object(
             args=("extra",),
             kwargs={"request": object()},
@@ -63,7 +69,11 @@ def test_extract_request_object_returns_none_for_non_request() -> None:
 def test_target_operation_batch_payload() -> None:
     """_target_operation_batch_payload extracts correct fields."""
     req = types.SimpleNamespace(
-        action="set", key="A", value="1", targets=["t1"], scope_roots=None,
+        action="set",
+        key="A",
+        value="1",
+        targets=["t1"],
+        scope_roots=None,
     )
     result = _target_operation_batch_payload(req)
     ensure(result["action"] == "set")
@@ -74,7 +84,11 @@ def test_target_operation_batch_payload() -> None:
 def test_target_operation_batch_payload_with_scope_roots() -> None:
     """_target_operation_batch_payload converts scope_roots to list."""
     req = types.SimpleNamespace(
-        action="set", key="A", value="1", targets=["t1"], scope_roots=("/root",),
+        action="set",
+        key="A",
+        value="1",
+        targets=["t1"],
+        scope_roots=("/root",),
     )
     result = _target_operation_batch_payload(req)
     ensure(result["scope_roots"] == ["/root"])
@@ -101,7 +115,10 @@ def test_normalize_target_operation_request_unexpected_kwargs() -> None:
     """normalize_target_operation_request raises on unexpected keyword arguments."""
     with pytest.raises(TypeError, match="Unexpected keyword arguments"):
         normalize_target_operation_request(
-            target="t", key="k", action="set", bogus="bad",
+            target="t",
+            key="k",
+            action="set",
+            bogus="bad",
         )
 
 
@@ -109,7 +126,11 @@ def test_normalize_target_operation_request_unexpected_kwargs() -> None:
 def test_normalize_target_operation_batch_with_request() -> None:
     """normalize_target_operation_batch accepts a request object."""
     req = types.SimpleNamespace(
-        action="set", key="A", value="1", targets=["t1"], scope_roots=None,
+        action="set",
+        key="A",
+        value="1",
+        targets=["t1"],
+        scope_roots=None,
     )
     result = normalize_target_operation_batch(req)
     assert result["action"] == "set"
@@ -121,7 +142,10 @@ def test_normalize_target_operation_batch_unexpected_kwargs() -> None:
     """normalize_target_operation_batch raises on unexpected keyword arguments."""
     with pytest.raises(TypeError, match="Unexpected keyword arguments"):
         normalize_target_operation_batch(
-            action="set", key="k", targets=["t"], bogus="bad",
+            action="set",
+            key="k",
+            targets=["t"],
+            bogus="bad",
         )
 
 

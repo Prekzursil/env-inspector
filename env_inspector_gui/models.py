@@ -145,7 +145,9 @@ def resolve_context_selection(
     current_wsl_distro: str,
     runtime_context: str,
 ) -> ContextSelection:
-    distros = [context.split(":", 1)[1] for context in contexts if context.startswith("wsl:")]
+    distros = [
+        context.split(":", 1)[1] for context in contexts if context.startswith("wsl:")
+    ]
     if current_context in contexts:
         context = current_context
     elif contexts:
@@ -162,7 +164,9 @@ def resolve_context_selection(
     return ContextSelection(context=context, wsl_distro=wsl_distro, distros=distros)
 
 
-def reconcile_selected_targets(selected_targets: Sequence[str], available_targets: Sequence[str]) -> List[str]:
+def reconcile_selected_targets(
+    selected_targets: Sequence[str], available_targets: Sequence[str]
+) -> List[str]:
     if not selected_targets:
         return list(available_targets)
     remaining = [target for target in selected_targets if target in available_targets]
@@ -181,7 +185,9 @@ def has_multiple_dotenv_matches(records: Iterable[EnvRecord], key: str) -> bool:
 
 def build_status_line(shown: int, total: int, context: str, last_refresh_at) -> str:
     when = "-" if last_refresh_at is None else last_refresh_at.strftime("%H:%M:%S")
-    return f"Showing {shown} / {total} entries | Context: {context} | Last refresh: {when}"
+    return (
+        f"Showing {shown} / {total} entries | Context: {context} | Last refresh: {when}"
+    )
 
 
 def resolve_selected_targets(
@@ -201,13 +207,16 @@ def resolve_selected_targets(
     return scoped_targets
 
 
-def summarize_operation_result(action: str, result: Mapping[str, Any]) -> OperationResultSummary:
+def summarize_operation_result(
+    action: str, result: Mapping[str, Any]
+) -> OperationResultSummary:
     if isinstance(result, dict) and "results" in result:
         failures = _batch_failures(result["results"])
         if failures:
             return OperationResultSummary(
                 status_message=None,
-                error_message=f"{action.title()} had failures:\n" + "\n".join(str(item.get("error_message", "")) for item in failures),
+                error_message=f"{action.title()} had failures:\n"
+                + "\n".join(str(item.get("error_message", "")) for item in failures),
             )
         return OperationResultSummary(
             status_message=f"{action.title()} succeeded for {len(result['results'])} targets",
@@ -226,10 +235,14 @@ def summarize_operation_result(action: str, result: Mapping[str, Any]) -> Operat
 
 
 def _batch_failures(results: Any) -> List[Mapping[str, Any]]:
-    return [item for item in results if isinstance(item, dict) and not item.get("success")]
+    return [
+        item for item in results if isinstance(item, dict) and not item.get("success")
+    ]
 
 
-def select_target_dialog_result(result: List[str] | None, *, messagebox: Any, app_name: str) -> List[str] | None:
+def select_target_dialog_result(
+    result: List[str] | None, *, messagebox: Any, app_name: str
+) -> List[str] | None:
     if result is None:
         return None
     if not result:

@@ -79,7 +79,9 @@ def sanitize_loaded_state(
     clean = PersistedUiState.from_dict(state.to_dict())
     clean.root_path = str(_sanitize_root(clean.root_path, fallback_root))
     clean.context = _sanitize_context(clean.context, available_contexts)
-    clean.selected_targets = _sanitize_targets(clean.selected_targets, available_targets)
+    clean.selected_targets = _sanitize_targets(
+        clean.selected_targets, available_targets
+    )
     clean.sort_column = _sanitize_sort_column(clean.sort_column)
     clean.scan_depth = _sanitize_scan_depth(clean.scan_depth)
     return clean
@@ -108,7 +110,9 @@ def _sanitize_context(context: str, available_contexts: List[str]) -> str:
     return available_contexts[0]
 
 
-def _sanitize_targets(selected_targets: List[str], available_targets: List[str]) -> List[str]:
+def _sanitize_targets(
+    selected_targets: List[str], available_targets: List[str]
+) -> List[str]:
     available_set = set(available_targets)
     return [target for target in selected_targets if target in available_set]
 

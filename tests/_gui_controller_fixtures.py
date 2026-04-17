@@ -210,7 +210,9 @@ class _Harness(EnvInspectorController):
         """Handle  load boot state."""
         return PersistedUiState(context="linux"), Path.cwd()
 
-    def _initialize_view(self, _tk: Any, _ttk: Any, _boot_state: PersistedUiState) -> None:
+    def _initialize_view(
+        self, _tk: Any, _ttk: Any, _boot_state: PersistedUiState
+    ) -> None:
         """Handle  initialize view."""
         self.view = cast(Any, _MockView())
 

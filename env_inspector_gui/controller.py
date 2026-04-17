@@ -27,7 +27,12 @@ from .models import (
 )
 from .path_actions import is_openable_local_path
 from .state_store import load_ui_state, sanitize_loaded_state, save_ui_state
-from .table_logic import DisplayRowsRequest, build_display_rows, sort_display_rows, toggle_sort
+from .table_logic import (
+    DisplayRowsRequest,
+    build_display_rows,
+    sort_display_rows,
+    toggle_sort,
+)
 from .view import EnvInspectorView
 
 
@@ -68,7 +73,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
 
         boot_state, fallback_root = self._load_boot_state(root_path)
         self._initialize_runtime_state(tk, boot_state, fallback_root)
-        self.sort_state = SortState(column=boot_state.sort_column, descending=boot_state.sort_descending)
+        self.sort_state = SortState(
+            column=boot_state.sort_column, descending=boot_state.sort_descending
+        )
         self._initialize_view(tk, ttk, boot_state)
         self._bind_shortcuts()
         # _init_root_window assigned a real Tk instance; the runtime tk root is non-optional from here on.
@@ -89,7 +96,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             ) from exc
         return tk, filedialog, messagebox, ttk
 
-    def _assign_tk_modules(self, tk: Any, filedialog: Any, messagebox: Any, ttk: Any) -> None:
+    def _assign_tk_modules(
+        self, tk: Any, filedialog: Any, messagebox: Any, ttk: Any
+    ) -> None:
         self.tkmod = tk
         self.ttk = ttk
         self.filedialog = filedialog
@@ -110,7 +119,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
         return boot_state, fallback_root
 
-    def _initialize_runtime_state(self, tk: Any, boot_state: PersistedUiState, fallback_root: Path) -> None:
+    def _initialize_runtime_state(
+        self, tk: Any, boot_state: PersistedUiState, fallback_root: Path
+    ) -> None:
         self.root_path = self._resolve_root_path(boot_state, fallback_root)
         self.records_raw = []
         self.displayed_rows = []
@@ -257,7 +268,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
         self.view.update_details_value(row.visible_value)
         self.view.set_details_enabled(True)
-        self.view.detail_open_button.configure(state=("normal" if is_openable_local_path(rec.source_path) else "disabled"))
+        self.view.detail_open_button.configure(
+            state=("normal" if is_openable_local_path(rec.source_path) else "disabled")
+        )
 
     @staticmethod
     def _record_flag(record: EnvRecord, name: str) -> bool:
@@ -315,8 +328,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.records_raw = self.service.list_records_raw(**kwargs)
 
     def _reconcile_targets(self) -> None:
-        available = self.service.available_targets(self.records_raw, context=self.context_var.get())
-        self.selected_targets = reconcile_selected_targets(self.selected_targets, available)
+        available = self.service.available_targets(
+            self.records_raw, context=self.context_var.get()
+        )
+        self.selected_targets = reconcile_selected_targets(
+            self.selected_targets, available
+        )
 
         self.targets_summary_var.set(f"Targets: {len(self.selected_targets)} selected")
 
@@ -402,14 +419,22 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
 
     def choose_targets(self) -> List[str] | None:
-        available = self.service.available_targets(self.records_raw, context=self.context_var.get())
+        available = self.service.available_targets(
+            self.records_raw, context=self.context_var.get()
+        )
         if not available:
-            self.messagebox.showinfo(APP_NAME, "No writable targets found in current context.")
+            self.messagebox.showinfo(
+                APP_NAME, "No writable targets found in current context."
+            )
             return None
 
-        dialog = TargetPickerDialog(self.tk, targets=available, selected=self.selected_targets)
+        dialog = TargetPickerDialog(
+            self.tk, targets=available, selected=self.selected_targets
+        )
         self.tk.wait_window(dialog.win)
-        selected = select_target_dialog_result(dialog.result, messagebox=self.messagebox, app_name=APP_NAME)
+        selected = select_target_dialog_result(
+            dialog.result, messagebox=self.messagebox, app_name=APP_NAME
+        )
         if selected is None:
             return None
 
@@ -418,7 +443,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._persist_state()
         return list(self.selected_targets)
 
-    def _maybe_choose_dotenv_targets(self, key: str, targets: List[str]) -> List[str] | None:
+    def _maybe_choose_dotenv_targets(
+        self, key: str, targets: List[str]
+    ) -> List[str] | None:
         dotenv_targets = self._collect_dotenv_targets(targets)
         if len(dotenv_targets) <= 1 or not self._has_multiple_dotenv_matches(key):
             return targets
@@ -429,29 +456,53 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return None
 
         keep = set(dialog.result)
-        return [target for target in targets if target not in dotenv_targets or target in keep]
+        return [
+            target
+            for target in targets
+            if target not in dotenv_targets or target in keep
+        ]
 
     @staticmethod
     def _collect_dotenv_targets(targets: List[str]) -> List[str]:
-        return [target for target in targets if target.startswith(("dotenv:", "wsl_dotenv:"))]
+        return [
+            target
+            for target in targets
+            if target.startswith(("dotenv:", "wsl_dotenv:"))
+        ]
 
     def _has_multiple_dotenv_matches(self, key: str) -> bool:
         return has_multiple_dotenv_matches(self.records_raw, key)
 
-    def _preview_operation(self, action: str, key: str, value: str, targets: List[str]) -> List[Dict[str, Any]]:
+    def _preview_operation(
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> List[Dict[str, Any]]:
         if action == "set":
-            return self.service.preview_set(key=key, value=value, targets=targets, scope_roots=[self.root_path])
-        return self.service.preview_remove(key=key, targets=targets, scope_roots=[self.root_path])
+            return self.service.preview_set(
+                key=key, value=value, targets=targets, scope_roots=[self.root_path]
+            )
+        return self.service.preview_remove(
+            key=key, targets=targets, scope_roots=[self.root_path]
+        )
 
-    def _confirm_diff(self, action: str, previews: List[Dict[str, Any]], preview_only: bool = False) -> bool:
-        dialog = DiffPreviewDialog(self.tk, action=action, previews=previews, preview_only=preview_only)
+    def _confirm_diff(
+        self, action: str, previews: List[Dict[str, Any]], preview_only: bool = False
+    ) -> bool:
+        dialog = DiffPreviewDialog(
+            self.tk, action=action, previews=previews, preview_only=preview_only
+        )
         self.tk.wait_window(dialog.win)
         return bool(dialog.confirmed)
 
-    def _apply_operation(self, action: str, key: str, value: str, targets: List[str]) -> Dict[str, Any]:
+    def _apply_operation(
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> Dict[str, Any]:
         if action == "set":
-            return self.service.set_key(key=key, value=value, targets=targets, scope_roots=[self.root_path])
-        return self.service.remove_key(key=key, targets=targets, scope_roots=[self.root_path])
+            return self.service.set_key(
+                key=key, value=value, targets=targets, scope_roots=[self.root_path]
+            )
+        return self.service.remove_key(
+            key=key, targets=targets, scope_roots=[self.root_path]
+        )
 
     def _run_operation(self, action: str) -> None:
         resolved = self._resolve_operation_inputs()
@@ -490,14 +541,18 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return None
         return key, value, scoped_targets
 
-    def _safe_preview(self, action: str, key: str, value: str, targets: List[str]) -> List[Dict[str, Any]] | None:
+    def _safe_preview(
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> List[Dict[str, Any]] | None:
         try:
             return self._preview_operation(action, key, value, targets)
         except (OSError, PathPolicyError, RuntimeError) as exc:
             self.messagebox.showerror(APP_NAME, f"Failed to compute preview: {exc}")
             return None
 
-    def _safe_apply(self, action: str, key: str, value: str, targets: List[str]) -> Dict[str, Any] | None:
+    def _safe_apply(
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> Dict[str, Any] | None:
         try:
             return self._apply_operation(action, key, value, targets)
         except (OSError, PathPolicyError, RuntimeError) as exc:

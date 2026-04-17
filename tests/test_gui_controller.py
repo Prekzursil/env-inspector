@@ -136,7 +136,9 @@ class _ControllerHarness(EnvInspectorController):
         """Provide a deterministic boot state for controller tests."""
         return PersistedUiState(context="linux"), Path.cwd()
 
-    def _initialize_view(self, _tk: Any, _ttk: Any, _boot_state: PersistedUiState) -> None:
+    def _initialize_view(
+        self, _tk: Any, _ttk: Any, _boot_state: PersistedUiState
+    ) -> None:
         """Install a stub view for controller bootstrap."""
         self.view = cast(Any, _BootstrapView())
 

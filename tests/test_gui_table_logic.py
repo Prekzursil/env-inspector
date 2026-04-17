@@ -4,7 +4,12 @@ from typing import Dict
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.models import SortState
-from env_inspector_gui.table_logic import DisplayRowsRequest, build_display_rows, sort_display_rows, toggle_sort
+from env_inspector_gui.table_logic import (
+    DisplayRowsRequest,
+    build_display_rows,
+    sort_display_rows,
+    toggle_sort,
+)
 
 from tests.assertions import ensure
 
@@ -23,7 +28,9 @@ def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
     source_type = str(payload["source_type"])
     source_path = str(payload["source_path"])
     raw_rank = payload["precedence_rank"]
-    precedence_rank = raw_rank if isinstance(raw_rank, int) and not isinstance(raw_rank, bool) else 50
+    precedence_rank = (
+        raw_rank if isinstance(raw_rank, int) and not isinstance(raw_rank, bool) else 50
+    )
     return EnvRecord(
         source_type=source_type,
         source_id=f"{source_type}:{source_path}",
@@ -46,7 +53,9 @@ def test_build_display_rows_filters_context_and_only_secrets():
             records=[
                 _rec("PUBLIC", "abc", context="windows", is_secret=False),
                 _rec("TOKEN", "supersecretvalue", context="windows", is_secret=True),
-                _rec("WSL_SECRET", "anothersecret", context="wsl:Ubuntu", is_secret=True),
+                _rec(
+                    "WSL_SECRET", "anothersecret", context="wsl:Ubuntu", is_secret=True
+                ),
             ],
             context="windows",
             query="",
@@ -102,7 +111,10 @@ def test_sort_toggle_and_stable_sort_behavior():
 
     state = SortState(column="name", descending=False)
     ordered = sort_display_rows(rows, state)
-    ensure([row.record.source_path for row in ordered[:2]] == ["/workspace/2.env", "/workspace/1.env"])
+    ensure(
+        [row.record.source_path for row in ordered[:2]]
+        == ["/workspace/2.env", "/workspace/1.env"]
+    )
 
     toggled = toggle_sort(state, "name")
     ensure(toggled.column == "name")

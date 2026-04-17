@@ -3,9 +3,14 @@ from __future__ import absolute_import, division
 from pathlib import Path
 
 from env_inspector_gui.models import PersistedUiState
-from env_inspector_gui.state_store import load_ui_state, save_ui_state, sanitize_loaded_state
+from env_inspector_gui.state_store import (
+    load_ui_state,
+    save_ui_state,
+    sanitize_loaded_state,
+)
 
 from tests.assertions import ensure
+
 
 def test_state_store_roundtrip(tmp_path: Path):
     state_dir = tmp_path / ".env-inspector-state"
@@ -31,6 +36,7 @@ def test_state_store_roundtrip(tmp_path: Path):
     ensure(loaded.selected_targets == ["windows:user", "dotenv:/tmp/.env"])
     ensure(loaded.sort_descending is True)
 
+
 def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
     state_dir = tmp_path / ".env-inspector-state"
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -41,6 +47,7 @@ def test_invalid_json_falls_back_to_defaults(tmp_path: Path):
     ensure(isinstance(loaded, PersistedUiState))
     ensure(loaded.filter_text == "")
     ensure(loaded.selected_targets == [])
+
 
 def test_sanitize_loaded_state_prunes_context_and_targets(tmp_path: Path):
     state = PersistedUiState(

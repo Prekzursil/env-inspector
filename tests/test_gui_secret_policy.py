@@ -1,9 +1,14 @@
 from __future__ import absolute_import, division
 
 from env_inspector_core.models import EnvRecord
-from env_inspector_gui.secret_policy import build_search_value, resolve_copy_payload, resolve_load_value
+from env_inspector_gui.secret_policy import (
+    build_search_value,
+    resolve_copy_payload,
+    resolve_load_value,
+)
 
 from tests.assertions import ensure
+
 
 def _secret_record() -> EnvRecord:
     return EnvRecord(
@@ -21,6 +26,7 @@ def _secret_record() -> EnvRecord:
         requires_privilege=False,
     )
 
+
 def test_search_value_uses_masked_representation_when_hidden():
     rec = _secret_record()
     hidden = build_search_value(rec, show_secrets=False)
@@ -29,22 +35,32 @@ def test_search_value_uses_masked_representation_when_hidden():
     ensure("supersecretvalue" not in hidden)
     ensure("supersecretvalue" in shown)
 
+
 def test_copy_payload_confirms_raw_secret_or_falls_back_to_masked():
     rec = _secret_record()
 
-    masked, masked_raw = resolve_copy_payload(rec, show_secrets=False, confirm_raw=lambda: False, as_pair=False)
-    raw, raw_used = resolve_copy_payload(rec, show_secrets=False, confirm_raw=lambda: True, as_pair=False)
+    masked, masked_raw = resolve_copy_payload(
+        rec, show_secrets=False, confirm_raw=lambda: False, as_pair=False
+    )
+    raw, raw_used = resolve_copy_payload(
+        rec, show_secrets=False, confirm_raw=lambda: True, as_pair=False
+    )
 
     ensure(masked_raw is False)
     ensure("supersecretvalue" not in masked)
     ensure(raw_used is True)
     ensure(raw == "supersecretvalue")
 
+
 def test_load_value_blocks_hidden_secret_without_confirmation():
     rec = _secret_record()
 
-    blocked, blocked_raw = resolve_load_value(rec, show_secrets=False, confirm_raw=lambda: False)
-    allowed, allowed_raw = resolve_load_value(rec, show_secrets=False, confirm_raw=lambda: True)
+    blocked, blocked_raw = resolve_load_value(
+        rec, show_secrets=False, confirm_raw=lambda: False
+    )
+    allowed, allowed_raw = resolve_load_value(
+        rec, show_secrets=False, confirm_raw=lambda: True
+    )
 
     ensure(blocked is None)
     ensure(blocked_raw is False)

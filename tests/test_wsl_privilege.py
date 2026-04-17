@@ -1,4 +1,5 @@
 """Tests for privileged WSL file writes and availability probing."""
+
 from __future__ import absolute_import, division
 from subprocess import CompletedProcess  # nosec B404
 from pathlib import Path
@@ -11,9 +12,13 @@ from env_inspector_core.providers import WslProvider
 from tests.assertions import ensure
 
 
-def _proc(returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> CompletedProcess:
+def _proc(
+    returncode: int, stdout: bytes = b"", stderr: bytes = b""
+) -> CompletedProcess:
     """Build a lightweight completed-process stub for WSL runner tests."""
-    return CompletedProcess(args=["wsl"], returncode=returncode, stdout=stdout, stderr=stderr)
+    return CompletedProcess(
+        args=["wsl"], returncode=returncode, stdout=stdout, stderr=stderr
+    )
 
 
 def test_write_file_with_privilege_root_success() -> None:
@@ -62,6 +67,7 @@ def test_write_file_with_privilege_falls_back_to_sudo() -> None:
 
 def test_write_file_with_privilege_raises_when_root_and_sudo_fail() -> None:
     """Raise when both privileged write strategies fail."""
+
     def runner(_cmd, **_kwargs) -> CompletedProcess:
         """Return a failed process result for every privileged attempt."""
         return _proc(1, stderr=b"fail")
@@ -76,7 +82,9 @@ def test_write_file_with_privilege_raises_when_root_and_sudo_fail() -> None:
     ensure("root and sudo fallback" in str(exc.value))
 
 
-def test_available_probes_command_and_returns_false_when_probe_fails(tmp_path: Path) -> None:
+def test_available_probes_command_and_returns_false_when_probe_fails(
+    tmp_path: Path,
+) -> None:
     """Return false when the WSL availability probe exits unsuccessfully."""
     calls: List[List[str]] = []
     fake_wsl = tmp_path / "wsl.exe"

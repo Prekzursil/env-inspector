@@ -66,7 +66,9 @@ def test_on_row_selected_update_details_none():
 def test_on_row_selected_update_details_with_row():
     """Test on row selected update details with row."""
     ctrl = _Harness()
-    rec = _make_record(name="MY_VAR", is_secret=True, is_persistent=True, is_mutable=False)
+    rec = _make_record(
+        name="MY_VAR", is_secret=True, is_persistent=True, is_mutable=False
+    )
     row = _make_row(rec)
     ctrl._on_row_selected_update_details(row)
     ensure(True in ctrl.view.details_enabled)
@@ -89,7 +91,9 @@ def test_clear_details():
 def test_set_detail_values():
     """Test set detail values."""
     ctrl = _Harness()
-    ctrl._set_detail_values({"name": "X", "context": "linux", "nonexistent_key": "ignored"})
+    ctrl._set_detail_values(
+        {"name": "X", "context": "linux", "nonexistent_key": "ignored"}
+    )
     ensure(ctrl.view.details_vars["name"].get() == "X")
     ensure(ctrl.view.details_vars["context"].get() == "linux")
 
@@ -98,7 +102,9 @@ def test_set_detail_values():
 def test_set_detail_pairs():
     """Test set detail pairs."""
     ctrl = _Harness()
-    ctrl._set_detail_pairs((("name", "A"), ("source", "dotenv"), ("bad_key", "ignored")))
+    ctrl._set_detail_pairs(
+        (("name", "A"), ("source", "dotenv"), ("bad_key", "ignored"))
+    )
     ensure(ctrl.view.details_vars["name"].get() == "A")
     ensure(ctrl.view.details_vars["source"].get() == "dotenv")
 
@@ -211,8 +217,10 @@ def test_choose_folder_selected(tmp_path: Path):
     ctrl.service.list_records_raw = MagicMock(return_value=[])
     ctrl.service.resolve_effective = MagicMock(return_value=None)
     ctrl.state_dir = Path("/var/state-fixture")
-    with patch("env_inspector_gui.controller.resolve_scan_root", return_value=tmp_path), \
-         patch("env_inspector_gui.controller.save_ui_state"):
+    with (
+        patch("env_inspector_gui.controller.resolve_scan_root", return_value=tmp_path),
+        patch("env_inspector_gui.controller.save_ui_state"),
+    ):
         ctrl.choose_folder()
     ensure(str(ctrl.root_path) == str(tmp_path))
 
@@ -395,7 +403,9 @@ def test_maybe_choose_dotenv_targets_multiple_selected():
         instance.win = MagicMock()
         MockDialog.return_value = instance
         ctrl.tk = MagicMock()
-        result = ctrl._maybe_choose_dotenv_targets("KEY", ["dotenv:/a", "dotenv:/b", "windows:user"])
+        result = ctrl._maybe_choose_dotenv_targets(
+            "KEY", ["dotenv:/a", "dotenv:/b", "windows:user"]
+        )
 
     ensure(result is not None)
     ensure("dotenv:/a" in result)

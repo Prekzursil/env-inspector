@@ -42,8 +42,7 @@ def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the required-checks gate."""
     parser = argparse.ArgumentParser(
         description=(
-            "Wait for required GitHub check contexts and assert they are"
-            " successful."
+            "Wait for required GitHub check contexts and assert they are successful."
         )
     )
     parser.add_argument("--repo", required=True, help="owner/repo")

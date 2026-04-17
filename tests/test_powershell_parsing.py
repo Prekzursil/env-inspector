@@ -3,6 +3,7 @@ from env_inspector_core.providers import parse_powershell_profile_text
 
 from tests.assertions import ensure
 
+
 def test_parse_powershell_profile_env_assignments():
     text = """
 # comment
