@@ -160,7 +160,12 @@ class _MockView:
         """Stub for testing."""
 
     def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
-        """Handle insert table row."""
+        """Handle insert table row.
+
+        Captures call args so production code matches our test surface; the
+        return value is the Treeview iid we hand back for selection assertions.
+        """
+        del values, striped  # acknowledged but unused in this stub
         return "item1"
 
     def update_details_value(self, text: str) -> None:

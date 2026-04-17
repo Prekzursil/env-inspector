@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from unittest.mock import MagicMock, patch
 
 from env_inspector_core.models import EnvRecord
@@ -447,4 +447,6 @@ def test_selected_record_returns_record():
     ctrl._selected = _make_row(rec)
     selected_record = ctrl._selected_record()
     ensure(selected_record is not None)
-    ensure(selected_record is not None and selected_record.name == "X")
+    # Pyright/Sonar see the prior assertion as proof selected_record is non-None,
+    # so accessing .name directly is safe and avoids the always-true tautology.
+    ensure(cast(EnvRecord, selected_record).name == "X")
