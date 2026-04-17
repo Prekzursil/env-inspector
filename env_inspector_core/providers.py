@@ -5,7 +5,7 @@ import os
 import re
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, cast
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple, cast
 from collections.abc import Callable
 
 from .constants import (

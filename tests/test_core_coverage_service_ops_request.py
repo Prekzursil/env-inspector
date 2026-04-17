@@ -131,7 +131,7 @@ def test_normalize_target_operation_batch_with_request() -> None:
         scope_roots=None,
     )
     result = normalize_target_operation_batch(req)
-    assert result["action"] == "set"
+    ensure(result["action"] == "set")
     ensure(result["key"] == "A")
 
 

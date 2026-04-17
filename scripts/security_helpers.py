@@ -10,7 +10,7 @@ import urllib.request
 from dataclasses import dataclass
 from email.message import Message
 from pathlib import Path
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9._-]+$")

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Tuple, cast
 
 from env_inspector_core.models import EnvRecord
 from env_inspector_gui.controller import EnvInspectorController

@@ -5,7 +5,7 @@ import re
 import time
 import urllib.error
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 try:
     from ._security_imports import (

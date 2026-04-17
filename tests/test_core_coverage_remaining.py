@@ -78,7 +78,7 @@ def test_cli_table_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     exit_code = run_cli(
         ["list", "--output", "table", "--root", str(tmp_path)], service=svc
     )
-    assert exit_code == 0
+    ensure(exit_code == 0)
     output = captured.getvalue()
     # Table output uses tabs
     ensure("\t" in output or output == "")
@@ -91,7 +91,7 @@ def test_cli_table_empty_rows(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = StringIO()
     monkeypatch.setattr(sys, "stdout", captured)
     _emit_stdout_rows([], output="table")
-    assert captured.getvalue() == ""
+    ensure(captured.getvalue() == "")
 
 
 def test_cli_no_command_prints_help(monkeypatch: pytest.MonkeyPatch) -> None:

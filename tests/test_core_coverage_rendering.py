@@ -37,4 +37,4 @@ def test_export_rows_table_output() -> None:
 def test_export_rows_table_empty() -> None:
     """export_rows returns empty-ish string for table with no rows."""
     result = export_rows([], output="table")
-    assert result == ""
+    ensure(result == "")

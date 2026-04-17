@@ -1,7 +1,7 @@
 """Coverage tests for env_inspector_gui.controller_actions."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, cast
 from unittest.mock import MagicMock, patch
 
 from env_inspector_core.models import EnvRecord
