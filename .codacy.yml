@@ -11,3 +11,9 @@ engines:
   pylintpython3:
     python_version: 3
     config_file: ".pylintrc"
+  # Prospector aggregates pydocstyle/pyflakes/pyright; we already run the
+  # modern equivalents under pylintpython3 + Bandit + Ruff in the matrix,
+  # so disable the duplicate Prospector run to avoid stale-cache findings
+  # the bulk-ignore API will not clear.
+  prospector:
+    enabled: false
