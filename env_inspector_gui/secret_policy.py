@@ -1,6 +1,6 @@
 """Secret policy module."""
 
-from typing import Optional, Tuple
+from typing import Tuple
 from collections.abc import Callable
 
 from env_inspector_core.models import EnvRecord

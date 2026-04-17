@@ -5,7 +5,7 @@ import sys
 import unittest
 import urllib.error
 from email.message import Message
-from typing import List, NoReturn, Optional, Tuple
+from typing import List, NoReturn, Tuple
 
 import pytest
 

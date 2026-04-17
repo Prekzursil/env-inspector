@@ -3,7 +3,6 @@
 from pathlib import Path
 from shutil import which
 from subprocess import PIPE, CompletedProcess, run  # nosec B404
-from typing import Optional
 from collections.abc import Callable
 
 

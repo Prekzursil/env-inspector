@@ -50,7 +50,7 @@ def test_parse_etc_environment_skips_non_matching_lines() -> None:
     """parse_etc_environment skips lines that don't match KEY=value pattern."""
     text = "VALID=1\nnot a valid line\n# comment\n\n"
     result = parse_etc_environment(text)
-    assert len(result) == 1
+    ensure(len(result) == 1)
     ensure(result["VALID"] == "1")
 
 
@@ -68,7 +68,7 @@ def test_render_remove_trailing_newline_empty_lines() -> None:
     result = _render_remove([], True)
     # "\n".join([]) = "", had_trailing_newline=True, lines=[] (falsy)
     # condition: True and [] -> falsy -> no newline
-    assert result == ""
+    ensure(result == "")
 
 
 # Branch 76->79: _replace_first_match with duplicate matching lines

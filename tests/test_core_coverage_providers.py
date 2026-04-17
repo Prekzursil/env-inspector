@@ -132,8 +132,8 @@ def test_scope_to_key_returns_root_and_path(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
 
     root, path = providers.WindowsRegistryProvider._scope_to_key("User")
-    assert root == "HKCU"
-    assert path == r"Environment"
+    ensure(root == "HKCU")
+    ensure(path == r"Environment")
 
 
 # ---------------------------------------------------------------------------
@@ -377,4 +377,4 @@ def test_collect_linux_records_handles_missing_files(tmp_path: Path) -> None:
         bashrc_path=tmp_path / "missing_bashrc",
         etc_environment_path=tmp_path / "missing_etc",
     )
-    assert not records
+    ensure(not records)
