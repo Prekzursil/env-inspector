@@ -85,28 +85,18 @@ jobs:
 
           # Use the bulkIgnoreIssues endpoint:
           #   POST /analysis/organizations/{provider}/{org}/repositories/{repo}/issues/bulk-ignore
-          # Body: {"issues": [{"id": "...", "reason": "false_positive", ...}, ...]}
+          # Body: {"issueIds": [...]} — verified empirically (Codacy's
+          # OpenAPI doc shows {"issues": [...]} but the live API rejects that).
           bulk_url = (
               f"{base}/analysis/organizations/gh/{owner}/repositories/{repo}/issues/bulk-ignore"
           )
           ignored = 0
           failures = 0
           batch_size = 50
-          payload_items = [
-              {
-                  "id": i.get("issueId"),
-                  "reason": "false_positive",
-                  "reasonDetails": (
-                      "Codacy deprecated PyLint or PEP 585 false positive — "
-                      "see Quality Zero PR #78/#79 history."
-                  ),
-              }
-              for i in target_issues
-              if i.get("issueId")
-          ]
-          for i in range(0, len(payload_items), batch_size):
-              batch = payload_items[i : i + batch_size]
-              body = json.dumps({"issues": batch}).encode("utf-8")
+          issue_ids = [i.get("issueId") for i in target_issues if i.get("issueId")]
+          for i in range(0, len(issue_ids), batch_size):
+              batch = issue_ids[i : i + batch_size]
+              body = json.dumps({"issueIds": batch}).encode("utf-8")
               req = urllib.request.Request(
                   bulk_url, headers=headers, method="POST", data=body
               )
@@ -119,6 +109,6 @@ jobs:
                   print(f"Batch {i}-{i + len(batch)} failed: {exc}")
 
           print(
-              f"\nBulk-ignored {ignored}/{len(payload_items)} issues; failures={failures}"
+              f"\nBulk-ignored {ignored}/{len(issue_ids)} issues; failures={failures}"
           )
           PY
