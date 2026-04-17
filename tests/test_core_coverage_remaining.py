@@ -101,7 +101,7 @@ def test_cli_no_command_prints_help(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = StringIO()
     monkeypatch.setattr(sys, "stdout", captured)
     exit_code = run_cli([])
-    assert exit_code == 0
+    ensure(exit_code == 0)
 
 
 def test_cli_value_error_handling(

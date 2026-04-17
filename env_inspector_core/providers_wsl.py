@@ -162,7 +162,8 @@ class WslProvider:
             except RuntimeError as exc:
                 root_error = exc
         raise RuntimeError(
-            "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
+            "Failed to write with both root and sudo fallback. "
+            "Run app as admin or configure sudo/root access."
         ) from root_error
 
     def scan_dotenv_files(

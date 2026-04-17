@@ -78,7 +78,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
         self._initialize_view(tk, ttk, boot_state)
         self._bind_shortcuts()
-        # _init_root_window assigned a real Tk instance; the runtime tk root is non-optional from here on.
+        # _init_root_window assigned a real Tk instance;
+        # the runtime tk root is non-optional from here on.
         root_tk = self.tk
         root_tk.protocol("WM_DELETE_WINDOW", self.on_close)
 

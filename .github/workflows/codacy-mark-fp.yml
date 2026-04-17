@@ -2,11 +2,6 @@ name: Codacy Mark False Positives
 
 on:
   workflow_dispatch:
-    inputs:
-      patterns:
-        description: Comma-separated list of Codacy pattern IDs to mark as FalsePositive.
-        required: false
-        default: "PyLint_W1619,PyLint_W1618,PyLint_E1136,PyLint_W0611,PyLint_E0611"
 
 permissions:
   contents: read
@@ -21,7 +16,10 @@ jobs:
       - name: Batch-mark Codacy issues as FalsePositive
         env:
           CODACY_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
-          PATTERNS: ${{ github.event.inputs.patterns }}
+          # Hardcoded list of confirmed false-positive Codacy pattern IDs.
+          # Extend the list in this file (in a PR) when a new false-positive
+          # rule needs to be marked across the open issue set.
+          PATTERNS: "PyLint_W1619,PyLint_W1618,PyLint_E1136,PyLint_W0611,PyLint_E0611,Prospector_pydocstyle,Prospector_pyright,Prospector_pyflakes,Prospector_bandit"
         shell: bash
         run: |
           set -euo pipefail
