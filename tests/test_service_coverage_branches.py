@@ -187,7 +187,7 @@ def test_collect_wsl_rows_swallows_collection_errors(
 
     rows = svc._collect_wsl_rows(scan_depth=2, distro="Ubuntu", wsl_path="/home/user")
 
-    ensure(rows == [])
+    ensure(not rows)
 
 
 def test_list_records_accepts_request_without_kwargs(
@@ -461,7 +461,7 @@ def test_restore_helpers_cover_powershell_and_registry(
             self.sets: List[Tuple[str, str, str]] = []
 
         @staticmethod
-        def list_scope(scope: str) -> Dict[str, str]:
+        def list_scope(_scope: str) -> Dict[str, str]:
             """List scope."""
             return {"KEEP": "1", "DROP": "2"}
 
@@ -631,7 +631,7 @@ def test_registry_write_noop_and_preview_remove_paths(tmp_path: Path):
         )
     )
     ensure('"A": "1"' not in after_remove)
-    ensure(remove_calls == [])
+    ensure(not remove_calls)
 
 
 def test_powershell_profile_path_returns_expected_target_paths(

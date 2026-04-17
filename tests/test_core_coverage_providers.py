@@ -341,7 +341,7 @@ def test_collect_powershell_profile_records_skips_missing_files(tmp_path: Path) 
     """collect_powershell_profile_records skips paths that don't exist."""
     missing = tmp_path / "nonexistent.ps1"
     records = providers.collect_powershell_profile_records([missing])
-    ensure(records == [])
+    ensure(not records)
 
 
 # ---------------------------------------------------------------------------
@@ -377,4 +377,4 @@ def test_collect_linux_records_handles_missing_files(tmp_path: Path) -> None:
         bashrc_path=tmp_path / "missing_bashrc",
         etc_environment_path=tmp_path / "missing_etc",
     )
-    assert records == []
+    assert not records

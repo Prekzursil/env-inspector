@@ -184,7 +184,7 @@ def test_resolve_context_selection_current_in_contexts():
     )
     ensure(result.context == "windows")
     ensure(result.wsl_distro == "")
-    ensure(result.distros == [])
+    ensure(not result.distros)
 
 
 def test_resolve_context_selection_fallback_to_first():

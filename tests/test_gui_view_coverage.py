@@ -46,7 +46,7 @@ class _MockTkModule:
         return var
 
     @staticmethod
-    def text_widget(parent: Any, **kwargs: Any) -> MagicMock:
+    def text_widget(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle text widget."""
         t = _make_mock_widget()
         t.delete = MagicMock()
@@ -81,22 +81,22 @@ class _MockTtk:
         raise AttributeError(name)
 
     @staticmethod
-    def frame(parent: Any, **kwargs: Any) -> MagicMock:
+    def frame(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle frame."""
         return _make_mock_widget()
 
     @staticmethod
-    def label(parent: Any, **kwargs: Any) -> MagicMock:
+    def label(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle label."""
         return _make_mock_widget()
 
     @staticmethod
-    def button(parent: Any, **kwargs: Any) -> MagicMock:
+    def button(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle button."""
         return _make_mock_widget()
 
     @staticmethod
-    def entry(parent: Any, **kwargs: Any) -> MagicMock:
+    def entry(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle entry."""
         w = _make_mock_widget()
         w.bind = MagicMock()
@@ -105,24 +105,24 @@ class _MockTtk:
         return w
 
     @staticmethod
-    def combobox(parent: Any, **kwargs: Any) -> MagicMock:
+    def combobox(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle combobox."""
         w = _make_mock_widget()
         w.bind = MagicMock()
         return w
 
     @staticmethod
-    def checkbutton(parent: Any, **kwargs: Any) -> MagicMock:
+    def checkbutton(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle checkbutton."""
         return _make_mock_widget()
 
     @staticmethod
-    def scrollbar(parent: Any, **kwargs: Any) -> MagicMock:
+    def scrollbar(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle scrollbar."""
         return _make_mock_widget()
 
     @staticmethod
-    def label_frame(parent: Any, **kwargs: Any) -> MagicMock:
+    def label_frame(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle label frame."""
         w = _make_mock_widget()
         w.columnconfigure = MagicMock()
@@ -130,14 +130,14 @@ class _MockTtk:
         return w
 
     @staticmethod
-    def paned_window(parent: Any, **kwargs: Any) -> MagicMock:
+    def paned_window(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle paned window."""
         w = _make_mock_widget()
         w.add = MagicMock()
         return w
 
     @staticmethod
-    def treeview(parent: Any, **kwargs: Any) -> MagicMock:
+    def treeview(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle treeview."""
         w = _make_mock_widget()
         w.heading = MagicMock()
@@ -154,12 +154,12 @@ class _MockTtk:
         return w
 
     @staticmethod
-    def spinbox(parent: Any, **kwargs: Any) -> MagicMock:
+    def spinbox(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle spinbox."""
         return _make_mock_widget()
 
     @staticmethod
-    def progressbar(parent: Any, **kwargs: Any) -> MagicMock:
+    def progressbar(_parent: Any, **kwargs: Any) -> MagicMock:
         """Handle progressbar."""
         w = _make_mock_widget()
         w.start = MagicMock()

@@ -99,7 +99,7 @@ def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
         "my-org", "my-project", "token"
     )
 
-    ensure(issues == [])
+    ensure(not issues)
     ensure(headers["x-hits"] == "0")
     ensure(captured["host"] == "sentry.io")
     ensure(captured["path"] == "/api/0/projects/my-org/my-project/issues/")

@@ -205,7 +205,7 @@ def test_restore_wsl_dotenv_backup_rejects_path_traversal(tmp_path: Path, monkey
 
     ensure(result["success"] is False)
     ensure("Unsupported WSL dotenv target path" in (result["error_message"] or ""))
-    ensure(calls == [])
+    ensure(not calls)
 
 
 def test_validate_target_for_operation_rejects_unknown_target(tmp_path: Path):

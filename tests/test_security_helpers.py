@@ -120,7 +120,7 @@ def test_request_json_https_http_error(monkeypatch):
         """Opener stub that always raises an HTTP error."""
 
         @staticmethod
-        def open(request, timeout=0):
+        def open(request, _timeout=0):
             """Raise a deterministic HTTP error for the request."""
             headers = Message()
             raise urllib.error.HTTPError(

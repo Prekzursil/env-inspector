@@ -82,7 +82,7 @@ def test_hidden_secret_search_uses_masked_value_not_raw_secret():
             show_secrets=False,
         )
     )
-    ensure(hidden_rows == [])
+    ensure(not hidden_rows)
 
     shown_rows = build_display_rows(
         DisplayRowsRequest(

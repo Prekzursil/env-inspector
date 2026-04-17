@@ -85,7 +85,7 @@ def test_sentry_collect_projects_prefers_args_and_env_fallback():
 def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
     """Test sentry scan projects covers header fallback and failures."""
 
-    def _fake_request_project_issues(org: str, project: str, token: str):
+    def _fake_request_project_issues(_org: str, project: str, token: str):
         """Fake request project issues."""
         return [{"id": "1"}], {}
 
@@ -99,7 +99,7 @@ def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
 
     ensure(mode == "strict")
     ensure(project_results == [{"project": "proj", "unresolved": 1}])
-    ensure(findings == [])
+    ensure(not findings)
     ensure(any("no X-Hits" in item for item in failures))
     ensure(any("expected 0" in item for item in failures))
 
@@ -117,8 +117,8 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     )
 
     ensure(mode_404 == "skipped")
-    ensure(project_results_404 == [])
-    ensure(failures_404 == [])
+    ensure(not project_results_404)
+    ensure(not failures_404)
     ensure(findings_404 and "HTTP 404" in findings_404[0])
 
     def _raise_500(org: str, project: str, token: str):
@@ -131,8 +131,8 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
     )
 
     ensure(mode_500 == "error")
-    ensure(project_results_500 == [])
-    ensure(findings_500 == [])
+    ensure(not project_results_500)
+    ensure(not findings_500)
     ensure(failures_500 and "HTTP 500" in failures_500[0])
 
 

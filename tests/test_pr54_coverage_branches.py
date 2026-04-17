@@ -62,8 +62,8 @@ def test_wsl_dotenv_rows_returns_empty_when_request_is_incomplete() -> None:
         collect_wsl_dotenv_records_fn=lambda *_args, **_kwargs: calls.append("called"),
     )
 
-    ensure(rows == [])
-    ensure(calls == [])
+    ensure(not rows)
+    ensure(not calls)
 
 
 def test_bridge_rows_without_current_linux_distro_uses_no_exclusions() -> None:
@@ -82,7 +82,7 @@ def test_bridge_rows_without_current_linux_distro_uses_no_exclusions() -> None:
         collect_wsl_records_fn=_fake_collect,
     )
 
-    ensure(rows == [])
+    ensure(not rows)
     ensure(calls == [(True, None)])
 
 
@@ -154,7 +154,7 @@ def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(
         )
 
 
-def test_restore_helpers_reject_positional_arguments(tmp_path: Path) -> None:
+def test_restore_helpers_reject_positional_arguments(_tmp_path: Path) -> None:
     """Test restore helpers reject positional arguments."""
     with pytest.raises(
         TypeError, match="restore_dotenv_target accepts keyword arguments only"
@@ -324,7 +324,7 @@ def test_resolve_unresolved_count_without_hits_header_and_without_issues() -> No
     unresolved = sentry_mod._resolve_unresolved_count([], {}, "proj", failures)
 
     ensure(unresolved == 0)
-    ensure(failures == [])
+    ensure(not failures)
 
 
 def test_check_sentry_zero_script_does_not_duplicate_helper_root(monkeypatch) -> None:
@@ -378,8 +378,8 @@ def test_scan_projects_covers_request_object_and_keyword_request_paths(
     mode, results, findings, failures = sentry_mod._scan_projects(request)
     ensure(mode == "strict")
     ensure(results == [{"project": "proj", "unresolved": 0}])
-    ensure(findings == [])
-    ensure(failures == [])
+    ensure(not findings)
+    ensure(not failures)
 
     mode, results, findings, failures = sentry_mod._scan_projects(
         org="my-org",
@@ -388,5 +388,5 @@ def test_scan_projects_covers_request_object_and_keyword_request_paths(
     )
     ensure(mode == "strict")
     ensure(results == [{"project": "proj", "unresolved": 0}])
-    ensure(findings == [])
-    ensure(failures == [])
+    ensure(not findings)
+    ensure(not failures)
