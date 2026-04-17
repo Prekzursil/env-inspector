@@ -22,9 +22,9 @@ from scripts.quality._coverage_assert_support import (
     parse_named_path as parse_named_path_impl,
 )
 
-_matches_required_source = getattr(_support, "_matches_required_source")
-_normalize_source_path = getattr(_support, "_normalize_source_path")
-_render_md = getattr(_support, "_render_md")
+_matches_required_source = _support.matches_required_source
+_normalize_source_path = _support.normalize_source_path_public
+_render_md = _support.render_md
 normalize_source_path = _support.normalize_source_path
 posixpath = _support.posixpath
 
