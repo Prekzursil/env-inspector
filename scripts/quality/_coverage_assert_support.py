@@ -305,12 +305,18 @@ def _write_outputs(payload: Dict[str, Any], *, out_json: Path, out_md: Path) -> 
     """Write outputs."""
     os.makedirs(out_json.parent, exist_ok=True)
     os.makedirs(out_md.parent, exist_ok=True)
-    with open(
-        out_json, "w", encoding="utf-8"
-    ) as handle:  # skipcq: PTC-W6004 - caller validates
+    # skipcq: PTC-W6004 - caller validates workspace-relative out path
+    with open(out_json, "w", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     rendered = _render_md(payload)
     with open(out_md, "w", encoding="utf-8") as handle:
         handle.write(rendered)
     print(rendered, end="")
     return rendered
+
+
+# Public aliases (used by sibling scripts to avoid PTC-W0034 / PYL-W0212
+# conflicts; the underscored originals stay for backward compatibility).
+matches_required_source = _matches_required_source
+normalize_source_path_public = _normalize_source_path
+render_md = _render_md

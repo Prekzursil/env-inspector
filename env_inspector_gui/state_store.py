@@ -30,15 +30,15 @@ def _path_exists(path: Path) -> bool:
 
 def _read_text(path: Path) -> str:
     """Read text."""
-    with open(path, encoding="utf-8") as handle:  # skipcq: PTC-W6004 - private helper
+    # skipcq: PTC-W6004 - private helper; caller controls path via state_dir
+    with open(path, encoding="utf-8") as handle:
         return handle.read()
 
 
 def _write_text(path: Path, text: str) -> None:
     """Write text."""
-    with open(
-        path, "w", encoding="utf-8"
-    ) as handle:  # skipcq: PTC-W6004 - private helper
+    # skipcq: PTC-W6004 - private helper; caller controls path via state_dir
+    with open(path, "w", encoding="utf-8") as handle:
         handle.write(text)
 
 
