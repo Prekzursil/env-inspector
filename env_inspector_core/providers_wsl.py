@@ -86,7 +86,7 @@ class WslProvider:
                 return data.decode(errors="ignore")
         return data.decode(errors="ignore")
 
-    def _run(self, args: list[str], input_text: str | None = None) -> str:
+    def _run(self, args: List[str], input_text: str | None = None) -> str:
         """Run."""
         if not self.available():
             raise RuntimeError("wsl.exe not available")
@@ -107,7 +107,7 @@ class WslProvider:
             )
         return out
 
-    def list_distros(self) -> list[str]:
+    def list_distros(self) -> List[str]:
         """List distros."""
         text = self._run(["-l", "-q"])
         return list(
@@ -121,7 +121,7 @@ class WslProvider:
             )
         )
 
-    def list_distros_for_ui(self) -> list[str]:
+    def list_distros_for_ui(self) -> List[str]:
         """List distros for ui."""
         return [d for d in self.list_distros() if not _HELPER_DISTRO_RE.match(d)]
 
@@ -167,7 +167,7 @@ class WslProvider:
 
     def scan_dotenv_files(
         self, distro: str, root_path: str, max_depth: int
-    ) -> list[str]:
+    ) -> List[str]:
         """Scan dotenv files."""
         quoted_root = shlex.quote(root_path)
         command = (
@@ -186,12 +186,12 @@ class _WslRecordBatch:
     context: str
     source_type: str
     source_path: str
-    pairs: dict[str, str]
+    pairs: Dict[str, str]
     precedence_rank: int
     requires_privilege: bool
 
 
-def _append_wsl_records(rows: list[EnvRecord], batch: _WslRecordBatch) -> None:
+def _append_wsl_records(rows: List[EnvRecord], batch: _WslRecordBatch) -> None:
     """Append wsl records."""
     for key, value in batch.pairs.items():
         rows.append(
@@ -216,10 +216,10 @@ def _append_wsl_records(rows: list[EnvRecord], batch: _WslRecordBatch) -> None:
 def collect_wsl_records(
     wsl: WslProvider,
     include_etc: bool = True,
-    exclude_distros: set[str] | None = None,
-) -> list[EnvRecord]:
+    exclude_distros: Set[str] | None = None,
+) -> List[EnvRecord]:
     """Collect wsl records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     if not wsl.available():
         return rows
 
@@ -255,9 +255,9 @@ def collect_wsl_records(
 
 def collect_wsl_dotenv_records(
     wsl: WslProvider, distro: str, root_path: str, max_depth: int
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Collect wsl dotenv records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     if not wsl.available():
         return rows
     for path in wsl.scan_dotenv_files(distro, root_path, max_depth):

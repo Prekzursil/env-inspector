@@ -88,11 +88,11 @@ def _patch_linux_etc_environment_reads(
 
 def _patch_linux_etc_environment_denied(
     monkeypatch: pytest.MonkeyPatch, etc_env: Path
-) -> list[str]:
+) -> List[str]:
     """Force direct `/etc/environment` writes to raise `PermissionError`."""
     target = _patch_linux_etc_environment_reads(monkeypatch, etc_env)
     real_write_text_file = EnvInspectorService._write_text_file
-    writes: list[str] = []
+    writes: List[str] = []
 
     def fake_write_text_file(path: Path, text: str, *, ensure_parent: bool) -> None:
         """Raise on direct target writes while allowing ordinary fixture writes."""
@@ -175,7 +175,7 @@ def test_service_list_contexts_hides_current_wsl_bridge_distro(
             return True
 
         @staticmethod
-        def list_distros_for_ui() -> list[str]:
+        def list_distros_for_ui() -> List[str]:
             """Return distros for the UI context list."""
             return ["Ubuntu", "Debian"]
 
@@ -223,7 +223,7 @@ def test_service_list_contexts_keeps_all_distros_without_active_linux_bridge(
             return True
 
         @staticmethod
-        def list_distros_for_ui() -> list[str]:
+        def list_distros_for_ui() -> List[str]:
             """Return bridge distros for the context picker."""
             return ["Ubuntu", "Debian"]
 

@@ -21,7 +21,7 @@ def _proc(
 
 def test_write_file_with_privilege_root_success() -> None:
     """Write through the root path when the first privileged attempt succeeds."""
-    calls: list[list[str]] = []
+    calls: List[List[str]] = []
 
     def runner(cmd, **_kwargs) -> CompletedProcess:
         """Capture the command issued by the privileged root write path."""
@@ -41,8 +41,8 @@ def test_write_file_with_privilege_root_success() -> None:
 
 def test_write_file_with_privilege_falls_back_to_sudo() -> None:
     """Retry with `sudo tee` when the direct root write attempt fails."""
-    calls: list[list[str]] = []
-    inputs: list[bytes | None] = []
+    calls: List[List[str]] = []
+    inputs: List[bytes | None] = []
 
     def runner(cmd, **kwargs) -> CompletedProcess:
         """Record write attempts and fail the direct root path once."""
@@ -84,7 +84,7 @@ def test_available_probes_command_and_returns_false_when_probe_fails(
     tmp_path: Path,
 ) -> None:
     """Return false when the WSL availability probe exits unsuccessfully."""
-    calls: list[list[str]] = []
+    calls: List[List[str]] = []
     fake_wsl = tmp_path / "wsl.exe"
     fake_wsl.write_text("", encoding="utf-8")
 

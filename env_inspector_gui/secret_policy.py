@@ -40,7 +40,7 @@ def resolve_copy_payload(
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
     as_pair: bool,
-) -> tuple[str, bool]:
+) -> Tuple[str, bool]:
     """Resolve copy payload."""
     record_is_secret = is_record_secret(record)
     use_raw = show_secrets or not record_is_secret
@@ -57,7 +57,7 @@ def resolve_load_value(
     *,
     show_secrets: bool,
     confirm_raw: Callable[[], bool],
-) -> tuple[str | None, bool]:
+) -> Tuple[str | None, bool]:
     """Resolve load value."""
     record_is_secret = is_record_secret(record)
     if show_secrets or not record_is_secret:

@@ -13,7 +13,7 @@ TOTAL_KEYS = ("total", "totalItems", "total_items", "count", "hits", "open_issue
 CODACY_API_HOST = "api.codacy.com"
 CODACY_REQUEST_EXCEPTIONS = (urllib.error.URLError, ValueError, TypeError, RuntimeError)
 
-RequestJsonHttps = Callable[..., tuple[Any, dict[str, str]]]
+RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
 EncodeIdentifier = Callable[..., str]
 SafeOutputPathInWorkspace = Callable[..., Path]
 
@@ -29,7 +29,7 @@ class CodacyRequest:
     branch: str = ""
     limit: int = 1
     method: str = "GET"
-    data: dict[str, Any] | None = None
+    data: Dict[str, Any] | None = None
 
 
 def _load_security_imports() -> Any:
@@ -77,7 +77,7 @@ __all__ = [
 
 def _request_json(
     request: CodacyRequest | None = None, **kwargs: Any
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Request json."""
     if request is None:
         request = CodacyRequest(**kwargs)
@@ -104,7 +104,7 @@ def _request_json(
     owner_slug = encode_identifier_fn(request.owner, field_name="Codacy owner")
     repo_slug = encode_identifier_fn(request.repo, field_name="Codacy repository")
 
-    payload_data: dict[str, Any] = dict(request.data or {})
+    payload_data: Dict[str, Any] = dict(request.data or {})
     branch_name = str(request.branch or "").strip()
     if branch_name:
         payload_data = {**payload_data, "branchName": branch_name}
@@ -122,13 +122,13 @@ def _request_json(
     return payload
 
 
-def _provider_candidates(preferred: str) -> list[str]:
+def _provider_candidates(preferred: str) -> List[str]:
     """Provider candidates."""
     values = [preferred, "gh", "github"]
     return list(dict.fromkeys(item for item in values if item))
 
 
-def _first_text(issue: dict[str, Any], keys: tuple[str, ...]) -> str:
+def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
     """First text."""
     for key in keys:
         value = str(issue.get(key) or "").strip()
@@ -151,13 +151,13 @@ def _format_issue_sample(issue: dict) -> str | None:
     return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
-def _sample_issue_findings(payload: dict, limit: int = 5) -> list[str]:
+def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
     """Sample issue findings."""
     data = payload.get("data")
     if not isinstance(data, list):
         return []
 
-    findings: list[str] = []
+    findings: List[str] = []
     for item in data:
         if not isinstance(item, dict):
             continue

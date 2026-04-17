@@ -52,7 +52,7 @@ class BackupManager:
         self._enforce_retention(target)
         return path
 
-    def _next_backup_path(self) -> tuple[str, Path]:
+    def _next_backup_path(self) -> Tuple[str, Path]:
         """Next backup path."""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
@@ -80,16 +80,16 @@ class BackupManager:
         for old in files[self.retention :]:
             old.unlink(missing_ok=True)
 
-    def list_backups(self, target: str) -> list[Path]:
+    def list_backups(self, target: str) -> List[Path]:
         """List backups."""
-        backups: list[Path] = []
+        backups: List[Path] = []
         for backup in self.list_all_backups():
             payload = self._load_backup_payload(backup)
             if payload is not None and str(payload.get("target", "")) == target:
                 backups.append(backup)
         return sorted(backups, reverse=True)
 
-    def list_all_backups(self) -> list[Path]:
+    def list_all_backups(self) -> List[Path]:
         """List all backups."""
         return sorted(
             (
@@ -117,7 +117,7 @@ class BackupManager:
         return str(payload["text"])
 
     @staticmethod
-    def read_backup_payload(backup_path: Path) -> dict[str, str]:
+    def read_backup_payload(backup_path: Path) -> Dict[str, str]:
         """Read backup payload."""
         payload = json.loads(_read_text(Path(backup_path)))
         return {"target": str(payload["target"]), "text": str(payload["text"])}

@@ -47,10 +47,10 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.tk: Any = None
         self.view: Any = None
         self.root_path: Path = root_path
-        self.records_raw: list[EnvRecord] = []
-        self.displayed_rows: list[DisplayedRow] = []
-        self.rows_by_item: dict[str, DisplayedRow] = {}
-        self.selected_targets: list[str] = []
+        self.records_raw: List[EnvRecord] = []
+        self.displayed_rows: List[DisplayedRow] = []
+        self.rows_by_item: Dict[str, DisplayedRow] = {}
+        self.selected_targets: List[str] = []
         self.last_refresh_at: datetime | None = None
         self.filter_text: Any = None
         self.show_secrets: Any = None
@@ -111,7 +111,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.tk = tk.Tk()
         self.tk.title(f"{APP_NAME} (Core + GUI)")
 
-    def _load_boot_state(self, root_path: Path) -> tuple[PersistedUiState, Path]:
+    def _load_boot_state(self, root_path: Path) -> Tuple[PersistedUiState, Path]:
         """Load boot state."""
         loaded = load_ui_state(self.state_dir)
         fallback_root = resolve_scan_root(root_path)
@@ -306,13 +306,13 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self.view.update_details_value("")
         self.view.set_details_enabled(False)
 
-    def _set_detail_values(self, values: dict[str, str]) -> None:
+    def _set_detail_values(self, values: Dict[str, str]) -> None:
         """Set detail values."""
         for key, value in values.items():
             if key in self.view.details_vars:
                 self.view.details_vars[key].set(value)
 
-    def _set_detail_pairs(self, pairs: tuple[tuple[str, str], ...]) -> None:
+    def _set_detail_pairs(self, pairs: Tuple[Tuple[str, str], ...]) -> None:
         """Set detail pairs."""
         for key, value in pairs:
             if key in self.view.details_vars:
@@ -455,7 +455,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             )
         )
 
-    def choose_targets(self) -> list[str] | None:
+    def choose_targets(self) -> List[str] | None:
         """Choose targets."""
         available = self.service.available_targets(
             self.records_raw, context=self.context_var.get()
@@ -482,8 +482,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return list(self.selected_targets)
 
     def _maybe_choose_dotenv_targets(
-        self, key: str, targets: list[str]
-    ) -> list[str] | None:
+        self, key: str, targets: List[str]
+    ) -> List[str] | None:
         """Maybe choose dotenv targets."""
         dotenv_targets = self._collect_dotenv_targets(targets)
         if len(dotenv_targets) <= 1 or not self._has_multiple_dotenv_matches(key):
@@ -502,7 +502,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         ]
 
     @staticmethod
-    def _collect_dotenv_targets(targets: list[str]) -> list[str]:
+    def _collect_dotenv_targets(targets: List[str]) -> List[str]:
         """Collect dotenv targets."""
         return [
             target
@@ -515,8 +515,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return has_multiple_dotenv_matches(self.records_raw, key)
 
     def _preview_operation(
-        self, action: str, key: str, value: str, targets: list[str]
-    ) -> list[dict[str, Any]]:
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> List[Dict[str, Any]]:
         """Preview operation."""
         if action == "set":
             return self.service.preview_set(
@@ -527,7 +527,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         )
 
     def _confirm_diff(
-        self, action: str, previews: list[dict[str, Any]], preview_only: bool = False
+        self, action: str, previews: List[Dict[str, Any]], preview_only: bool = False
     ) -> bool:
         """Confirm diff."""
         dialog = DiffPreviewDialog(
@@ -537,8 +537,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return bool(dialog.confirmed)
 
     def _apply_operation(
-        self, action: str, key: str, value: str, targets: list[str]
-    ) -> dict[str, Any]:
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> Dict[str, Any]:
         """Apply operation."""
         if action == "set":
             return self.service.set_key(
@@ -569,7 +569,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._report_operation_result(action, result)
         self.refresh_data()
 
-    def _resolve_operation_inputs(self) -> tuple[str, str, list[str]] | None:
+    def _resolve_operation_inputs(self) -> Tuple[str, str, List[str]] | None:
         """Resolve operation inputs."""
         key = self.key_text.get().strip()
         value = self.value_text.get()
@@ -588,8 +588,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         return key, value, scoped_targets
 
     def _safe_preview(
-        self, action: str, key: str, value: str, targets: list[str]
-    ) -> list[dict[str, Any]] | None:
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> List[Dict[str, Any]] | None:
         """Safe preview."""
         try:
             return self._preview_operation(action, key, value, targets)
@@ -598,8 +598,8 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             return None
 
     def _safe_apply(
-        self, action: str, key: str, value: str, targets: list[str]
-    ) -> dict[str, Any] | None:
+        self, action: str, key: str, value: str, targets: List[str]
+    ) -> Dict[str, Any] | None:
         """Safe apply."""
         try:
             return self._apply_operation(action, key, value, targets)
@@ -607,7 +607,7 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
             self.messagebox.showerror(APP_NAME, f"{action.title()} failed: {exc}")
             return None
 
-    def _report_operation_result(self, action: str, result: dict[str, Any]) -> None:
+    def _report_operation_result(self, action: str, result: Dict[str, Any]) -> None:
         """Report operation result."""
         summary = summarize_operation_result(action, result)
         if summary.error_message is not None:

@@ -17,7 +17,7 @@ class EnvInspectorView:
         self.filter_entry: Any = None
         self.details_value_text: Any = None
         self.details_value_scroll_x: Any = None
-        self.details_vars: dict[str, Any] = {}
+        self.details_vars: Dict[str, Any] = {}
 
         self.context_combo: Any = None
         self.wsl_distro_combo: Any = None
@@ -241,7 +241,7 @@ class EnvInspectorView:
             "<<TreeviewSelect>>", lambda _e: self.controller.on_tree_selected()
         )
 
-    def _create_details_var_map(self) -> dict[str, Any]:
+    def _create_details_var_map(self) -> Dict[str, Any]:
         """Create details var map."""
         self.details_vars = {
             "name": self.tkmod.StringVar(value=""),
@@ -376,11 +376,11 @@ class EnvInspectorView:
         self.status = ttk.Label(bottom, text="")
         self.status.pack(side="right")
 
-    def set_context_values(self, contexts: list[str]) -> None:
+    def set_context_values(self, contexts: List[str]) -> None:
         """Set context values."""
         self.context_combo.configure(values=contexts)
 
-    def set_wsl_distros(self, distros: list[str], *, enabled: bool) -> None:
+    def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
         """Set wsl distros."""
         self.wsl_distro_combo.configure(values=distros)
         self.wsl_distro_combo.configure(state=("readonly" if enabled else "disabled"))
@@ -424,7 +424,7 @@ class EnvInspectorView:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-    def insert_table_row(self, values: tuple[Any, ...], *, striped: bool) -> str:
+    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
         """Insert table row."""
         tag = "row_even" if striped else "row_odd"
         return str(self.tree.insert("", "end", values=values, tags=(tag,)))

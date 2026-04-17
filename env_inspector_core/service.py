@@ -227,7 +227,7 @@ class EnvInspectorService:
         """Resolve `/etc/environment` through the class seam."""
         return _service_aliases.linux_etc_environment_path(cls)
 
-    def bridge_distros(self) -> list[str]:
+    def bridge_distros(self) -> List[str]:
         """Return available WSL bridge distros."""
         return self._bridge_distros()
 
@@ -238,7 +238,7 @@ class EnvInspectorService:
     def validate_path_in_roots(
         self,
         path: Path,
-        roots: list[Path],
+        roots: List[Path],
         *,
         label: str,
     ) -> Path:
@@ -253,7 +253,7 @@ class EnvInspectorService:
         self,
         *,
         candidate_path: Path,
-        allowed_roots: list[Path],
+        allowed_roots: List[Path],
         text: str,
         label: str,
     ) -> Path:
@@ -353,8 +353,8 @@ class EnvInspectorService:
 
     def effective_scope_roots(
         self,
-        scope_roots: list[str | Path] | None = None,
-    ) -> list[Path]:
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[Path]:
         """Resolve scope roots through the bound helper."""
         return self._effective_scope_roots(scope_roots)
 
@@ -384,10 +384,10 @@ class EnvInspectorService:
 
     def _effective_scope_roots(
         self,
-        scope_roots: list[str | Path] | None = None,
-    ) -> list[Path]:
+        scope_roots: List[str | Path] | None = None,
+    ) -> List[Path]:
         """Return the default scope roots plus any validated overrides."""
-        roots: list[Path] = list(self.default_scope_roots)
+        roots: List[Path] = list(self.default_scope_roots)
         if scope_roots:
             roots.extend(normalize_scope_roots(scope_roots))
         return normalize_scope_roots(roots)
@@ -396,12 +396,12 @@ class EnvInspectorService:
     def resolve_effective(
         key: str,
         context: str,
-        records: list[EnvRecord],
+        records: List[EnvRecord],
     ) -> EnvRecord | None:
         """Resolve the effective record for a key within a context."""
         return resolve_effective_value(records, key, context)
 
-    def _collect_host_rows(self, root_path: Path, scan_depth: int) -> list[EnvRecord]:
+    def _collect_host_rows(self, root_path: Path, scan_depth: int) -> List[EnvRecord]:
         """Collect host-visible records for the active runtime context."""
         return _collect_host_rows_helper(
             request=HostCollectionRequest(
@@ -428,7 +428,7 @@ class EnvInspectorService:
         scan_depth: int,
         distro: str | None,
         wsl_path: str | None,
-    ) -> list[EnvRecord]:
+    ) -> List[EnvRecord]:
         """Collect records from the requested WSL distro and optional dotenv path."""
         return _collect_wsl_rows_helper(
             runtime_context=self.runtime_context,
@@ -445,7 +445,7 @@ class EnvInspectorService:
         self,
         request: ListRecordsRequest | None = None,
         **kwargs: Any,
-    ) -> list[dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         """Collect records, apply filters, and serialize the result payload."""
         if request is None:
             request = ListRecordsRequest(**kwargs)
@@ -481,7 +481,7 @@ class EnvInspectorService:
         *,
         target: str,
         text: str,
-        scope_roots: list[Path],
+        scope_roots: List[Path],
     ) -> None:
         """Restore a scoped dotenv target from backup text."""
         _restore_dotenv_target_helper(
@@ -542,7 +542,7 @@ class EnvInspectorService:
         *,
         target: str,
         text: str,
-        scope_roots: list[Path],
+        scope_roots: List[Path],
     ) -> None:
         """Dispatch backup restoration to the target-specific helper."""
         _restore_target_helper(
@@ -560,8 +560,8 @@ class EnvInspectorService:
         self,
         *,
         backup: str,
-        scope_roots: list[str | Path] | None = None,
-    ) -> dict[str, Any]:
+        scope_roots: List[str | Path] | None = None,
+    ) -> Dict[str, Any]:
         """Restore a recorded backup payload to its original target."""
         operation_id = f"restore-{uuid.uuid4().hex[:10]}"
         path = Path(backup)

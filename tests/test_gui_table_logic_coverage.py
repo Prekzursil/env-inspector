@@ -15,7 +15,7 @@ from tests.assertions import ensure
 
 def _rec(name: str, value: str, **overrides: object) -> EnvRecord:
     """Rec."""
-    payload: dict[str, object] = {
+    payload: Dict[str, object] = {
         "source_type": "dotenv",
         "source_path": "/workspace/.env",
         "context": "windows",

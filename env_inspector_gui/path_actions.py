@@ -32,7 +32,7 @@ def open_source_path(
     source_path: str,
     *,
     open_uri: Callable[[str], bool] | None = None,
-) -> tuple[bool, str | None]:
+) -> Tuple[bool, str | None]:
     """Open source path."""
     if not is_openable_local_path(source_path):
         return False, "Cannot open non-local source path"

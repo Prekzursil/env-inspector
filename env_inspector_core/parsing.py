@@ -38,7 +38,7 @@ def shell_single_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
-def _render_upsert(lines: list[str], had_trailing_newline: bool) -> str:
+def _render_upsert(lines: List[str], had_trailing_newline: bool) -> str:
     """Render updated content while preserving a trailing newline."""
     text = "\n".join(lines)
     if had_trailing_newline or lines:
@@ -46,7 +46,7 @@ def _render_upsert(lines: list[str], had_trailing_newline: bool) -> str:
     return text
 
 
-def _render_remove(lines: list[str], had_trailing_newline: bool) -> str:
+def _render_remove(lines: List[str], had_trailing_newline: bool) -> str:
     """Render removed content while preserving trailing-newline semantics."""
     text = "\n".join(lines)
     if had_trailing_newline and lines:
@@ -54,7 +54,7 @@ def _render_remove(lines: list[str], had_trailing_newline: bool) -> str:
     return text
 
 
-def _append_with_optional_blank(lines: list[str], new_line: str) -> None:
+def _append_with_optional_blank(lines: List[str], new_line: str) -> None:
     """Append a line, inserting a blank separator when needed."""
     if lines and lines[-1].strip():
         lines.append("")
@@ -62,13 +62,13 @@ def _append_with_optional_blank(lines: list[str], new_line: str) -> None:
 
 
 def _replace_first_match(
-    lines: list[str],
+    lines: List[str],
     *,
     replacement: str,
     matcher: Callable[[str], bool],
-) -> tuple[list[str], bool]:
+) -> Tuple[List[str], bool]:
     """Replace the first matching line and drop any later duplicates."""
-    out: list[str] = []
+    out: List[str] = []
     replaced = False
     for line in lines:
         if matcher(line):
@@ -111,9 +111,9 @@ def _matches_powershell_key(line: str, key: str) -> bool:
     return bool(match and match.group(1).lower() == key.lower())
 
 
-def parse_dotenv_text(text: str) -> list[tuple[str, str]]:
+def parse_dotenv_text(text: str) -> List[Tuple[str, str]]:
     """Parse dotenv-style text into ordered key/value pairs."""
-    rows: list[tuple[str, str]] = []
+    rows: List[Tuple[str, str]] = []
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
@@ -131,9 +131,9 @@ def parse_dotenv_text(text: str) -> list[tuple[str, str]]:
     return rows
 
 
-def parse_bash_exports(text: str) -> dict[str, str]:
+def parse_bash_exports(text: str) -> Dict[str, str]:
     """Parse `export KEY=value` lines into a mapping."""
-    values: dict[str, str] = {}
+    values: Dict[str, str] = {}
     for line in text.splitlines():
         match = EXPORT_LINE_RE.match(line)
         if not match:
@@ -143,9 +143,9 @@ def parse_bash_exports(text: str) -> dict[str, str]:
     return values
 
 
-def parse_etc_environment(text: str) -> dict[str, str]:
+def parse_etc_environment(text: str) -> Dict[str, str]:
     """Parse `/etc/environment`-style assignments into a mapping."""
-    values: dict[str, str] = {}
+    values: Dict[str, str] = {}
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):

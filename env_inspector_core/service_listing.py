@@ -33,18 +33,18 @@ class HostCollectionRequest:
     root_path: Path
     scan_depth: int
     win_provider: Any
-    powershell_profile_paths: list[Path]
+    powershell_profile_paths: List[Path]
 
 
 @dataclass(frozen=True)
 class HostRowCollectors:
     """Callable references for each host record collection strategy."""
 
-    collect_process_records_fn: Callable[..., list[EnvRecord]]
-    collect_dotenv_records_fn: Callable[..., list[EnvRecord]]
-    build_registry_records_fn: Callable[[Any], list[EnvRecord]]
-    collect_powershell_profile_records_fn: Callable[[list[Path]], list[EnvRecord]]
-    collect_linux_records_fn: Callable[..., list[EnvRecord]]
+    collect_process_records_fn: Callable[..., List[EnvRecord]]
+    collect_dotenv_records_fn: Callable[..., List[EnvRecord]]
+    build_registry_records_fn: Callable[[Any], List[EnvRecord]]
+    collect_powershell_profile_records_fn: Callable[[List[Path]], List[EnvRecord]]
+    collect_linux_records_fn: Callable[..., List[EnvRecord]]
 
 
 @dataclass(frozen=True)
@@ -60,9 +60,9 @@ def collect_host_rows(
     *,
     request: HostCollectionRequest,
     collectors: HostRowCollectors,
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Collect host rows."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     rows.extend(collectors.collect_process_records_fn(context=request.runtime_context))
     rows.extend(
         collectors.collect_dotenv_records_fn(
@@ -93,7 +93,7 @@ def collect_host_rows(
     return rows
 
 
-def collect_wsl_rows(*args: Any, **kwargs: Any) -> list[EnvRecord]:
+def collect_wsl_rows(*args: Any, **kwargs: Any) -> List[EnvRecord]:
     """Collect wsl rows."""
     if args:
         raise TypeError("collect_wsl_rows accepts keyword arguments only.")
@@ -137,10 +137,10 @@ def _bridge_rows(
     current_wsl_distro: str | None,
     wsl: Any,
     collect_wsl_records_fn,
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Bridge rows."""
     try:
-        exclude_distros: set[str] | None = None
+        exclude_distros: Set[str] | None = None
         if runtime_context == "linux" and current_wsl_distro:
             exclude_distros = {current_wsl_distro}
         return collect_wsl_records_fn(
@@ -152,7 +152,7 @@ def _bridge_rows(
 
 def _wsl_dotenv_rows(
     *, request: _WslDotenvRequest, wsl: Any, collect_wsl_dotenv_records_fn
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Wsl dotenv rows."""
     if not (request.distro and request.wsl_path):
         return []
@@ -168,11 +168,11 @@ def _wsl_dotenv_rows(
 
 
 def apply_row_filters(
-    rows: list[EnvRecord],
+    rows: List[EnvRecord],
     *,
-    source: list[str] | None,
+    source: List[str] | None,
     context: str | None,
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Apply row filters."""
     if source:
         source_set = set(source)
@@ -197,7 +197,7 @@ def record_target(record: EnvRecord) -> str | None:
         SOURCE_LINUX_BASHRC: TARGET_LINUX_BASHRC,
         SOURCE_LINUX_ETC_ENV: TARGET_LINUX_ETC_ENV,
     }
-    dynamic_targets: dict[str, Callable[[EnvRecord], str]] = {
+    dynamic_targets: Dict[str, Callable[[EnvRecord], str]] = {
         SOURCE_DOTENV: lambda rec: f"dotenv:{rec.source_path}",
         SOURCE_WSL_DOTENV: lambda rec: f"wsl_dotenv:{rec.source_path}",
         SOURCE_WSL_BASHRC: lambda rec: f"wsl:{rec.source_id}:bashrc",
@@ -215,13 +215,13 @@ def record_target(record: EnvRecord) -> str | None:
 
 
 def available_targets(
-    records: list[EnvRecord],
+    records: List[EnvRecord],
     *,
     context: str | None,
     win_provider_present: bool,
-) -> list[str]:
+) -> List[str]:
     """Available targets."""
-    targets: set[str] = set()
+    targets: Set[str] = set()
     for record in records:
         if context and record.context != context:
             continue
@@ -238,10 +238,10 @@ def available_targets(
 
 
 def rows_to_payload(
-    rows: list[EnvRecord], *, include_raw_secrets: bool
-) -> list[dict[str, Any]]:
+    rows: List[EnvRecord], *, include_raw_secrets: bool
+) -> List[Dict[str, Any]]:
     """Rows to payload."""
-    payload: list[dict[str, Any]] = []
+    payload: List[Dict[str, Any]] = []
     for record in rows:
         item = record.to_dict(include_value=True)
         if bool(item.get("is_secret")) and not include_raw_secrets:

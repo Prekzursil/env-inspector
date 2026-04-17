@@ -6,7 +6,7 @@ from typing import List, Tuple
 from collections.abc import Callable, Sequence
 
 
-def get_powershell_profile_paths() -> list[Path]:
+def get_powershell_profile_paths() -> List[Path]:
     """Get powershell profile paths."""
     docs = Path.home() / "Documents"
     current = docs / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
@@ -60,7 +60,7 @@ def powershell_target_path_and_roots(
     profile_resolver: Callable[[str], Path],
     current_user_target: str,
     all_users_target: str,
-) -> tuple[Path, list[Path], bool]:
+) -> Tuple[Path, List[Path], bool]:
     """Powershell target path and roots."""
     if target == current_user_target:
         profile = profile_resolver(current_user_target).resolve(strict=False)

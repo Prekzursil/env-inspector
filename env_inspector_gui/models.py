@@ -9,18 +9,18 @@ from env_inspector_core.models import EnvRecord
 from .secret_policy import resolve_copy_payload
 
 
-def _coerce_text(payload: dict[str, object], key: str, default: str) -> str:
+def _coerce_text(payload: Dict[str, object], key: str, default: str) -> str:
     """Coerce text."""
     value = payload.get(key, default)
     return str(value or default)
 
 
-def _coerce_flag(payload: dict[str, object], key: str, default: bool = False) -> bool:
+def _coerce_flag(payload: Dict[str, object], key: str, default: bool = False) -> bool:
     """Coerce flag."""
     return bool(payload.get(key, default))
 
 
-def _coerce_items(payload: dict[str, object], key: str) -> list[str]:
+def _coerce_items(payload: Dict[str, object], key: str) -> List[str]:
     """Coerce items."""
     value = payload.get(key) or []
     if not isinstance(value, list):
@@ -28,7 +28,7 @@ def _coerce_items(payload: dict[str, object], key: str) -> list[str]:
     return [str(item) for item in value if isinstance(item, str)]
 
 
-def _coerce_number(payload: dict[str, object], key: str, default: int) -> int:
+def _coerce_number(payload: Dict[str, object], key: str, default: int) -> int:
     """Coerce number."""
     value = payload.get(key, default)
     result = default
@@ -67,19 +67,19 @@ class PersistedUiState:
     show_secrets: bool = False
     only_secrets: bool = False
     filter_text: str = ""
-    selected_targets: list[str] = field(default_factory=list)
+    selected_targets: List[str] = field(default_factory=list)
     sort_column: str = "name"
     sort_descending: bool = False
     wsl_distro: str = ""
     wsl_path: str = ""
     scan_depth: int = 5
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> Dict[str, object]:
         """To dict."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> "PersistedUiState":
+    def from_dict(cls, payload: Dict[str, object]) -> "PersistedUiState":
         """From dict."""
         return cls(
             version=_coerce_number(payload, "version", 1),
@@ -120,7 +120,7 @@ class ContextSelection:
 
     context: str
     wsl_distro: str
-    distros: list[str]
+    distros: List[str]
 
 
 @dataclass(frozen=True)
@@ -175,7 +175,7 @@ def resolve_context_selection(
 
 def reconcile_selected_targets(
     selected_targets: Sequence[str], available_targets: Sequence[str]
-) -> list[str]:
+) -> List[str]:
     """Reconcile selected targets."""
     if not selected_targets:
         return list(available_targets)
@@ -205,10 +205,10 @@ def build_status_line(shown: int, total: int, context: str, last_refresh_at) -> 
 def resolve_selected_targets(
     *,
     selected_targets: Sequence[str],
-    choose_targets: Callable[[], list[str] | None],
+    choose_targets: Callable[[], List[str] | None],
     key: str,
-    maybe_choose_dotenv_targets: Callable[[str, list[str]], list[str] | None],
-) -> list[str] | None:
+    maybe_choose_dotenv_targets: Callable[[str, List[str]], List[str] | None],
+) -> List[str] | None:
     """Resolve selected targets."""
     targets = list(selected_targets)
     if not targets:
@@ -248,7 +248,7 @@ def summarize_operation_result(
     )
 
 
-def _batch_failures(results: Any) -> list[Mapping[str, Any]]:
+def _batch_failures(results: Any) -> List[Mapping[str, Any]]:
     """Batch failures."""
     return [
         item for item in results if isinstance(item, dict) and not item.get("success")
@@ -256,8 +256,8 @@ def _batch_failures(results: Any) -> list[Mapping[str, Any]]:
 
 
 def select_target_dialog_result(
-    result: list[str] | None, *, messagebox: Any, app_name: str
-) -> list[str] | None:
+    result: List[str] | None, *, messagebox: Any, app_name: str
+) -> List[str] | None:
     """Select target dialog result."""
     if result is None:
         return None

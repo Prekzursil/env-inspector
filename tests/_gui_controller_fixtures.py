@@ -99,20 +99,20 @@ class _MockView:
 
     def __init__(self) -> None:
         """Handle   init  ."""
-        self.enabled_states: list[bool] = []
-        self.busy_states: list[bool] = []
-        self.status_texts: list[str] = []
-        self.root_labels: list[str] = []
-        self.details_values: list[str] = []
-        self.details_enabled: list[bool] = []
-        self.context_values: list[list[str]] = []
+        self.enabled_states: List[bool] = []
+        self.busy_states: List[bool] = []
+        self.status_texts: List[str] = []
+        self.root_labels: List[str] = []
+        self.details_values: List[str] = []
+        self.details_enabled: List[bool] = []
+        self.context_values: List[List[str]] = []
         self.tree = MagicMock()
         self.tree.selection = MagicMock(return_value=())
         self.tree.get_children = MagicMock(return_value=[])
         self.tree.insert = MagicMock(return_value="item1")
         self.tree.delete = MagicMock()
         self.tree.tag_configure = MagicMock()
-        self.details_vars: dict[str, _Var] = {
+        self.details_vars: Dict[str, _Var] = {
             "name": _Var(""),
             "context": _Var(""),
             "source": _Var(""),
@@ -143,11 +143,11 @@ class _MockView:
         """Handle set root label."""
         self.root_labels.append(text)
 
-    def set_context_values(self, contexts: list[str]) -> None:
+    def set_context_values(self, contexts: List[str]) -> None:
         """Handle set context values."""
         self.context_values.append(contexts)
 
-    def set_wsl_distros(self, distros: list[str], *, enabled: bool) -> None:
+    def set_wsl_distros(self, distros: List[str], *, enabled: bool) -> None:
         """Stub for testing."""
 
     def configure_row_styles(self) -> None:
@@ -157,7 +157,7 @@ class _MockView:
     def clear_table() -> None:
         """Stub for testing."""
 
-    def insert_table_row(self, values: tuple[Any, ...], *, striped: bool) -> str:
+    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
         """Handle insert table row.
 
         Captures call args so production code matches our test surface; the
@@ -188,7 +188,7 @@ class _Harness(EnvInspectorController):
         self._during_bootstrap = False
 
     @staticmethod
-    def _load_tk_modules() -> tuple[Any, Any, Any, Any]:
+    def _load_tk_modules() -> Tuple[Any, Any, Any, Any]:
         """Handle  load tk modules."""
         return (
             _BOOTSTRAP_TK_MODULE,
@@ -204,7 +204,7 @@ class _Harness(EnvInspectorController):
     def _apply_theme(self) -> None:
         """Stub for testing."""
 
-    def _load_boot_state(self, _root_path: Path) -> tuple[PersistedUiState, Path]:
+    def _load_boot_state(self, _root_path: Path) -> Tuple[PersistedUiState, Path]:
         """Handle  load boot state."""
         return PersistedUiState(context="linux"), Path.cwd()
 
@@ -226,7 +226,7 @@ class _Harness(EnvInspectorController):
 
 def _make_record(**overrides: object) -> EnvRecord:
     """Handle  make record."""
-    defaults: dict[str, Any] = {
+    defaults: Dict[str, Any] = {
         "source_type": "dotenv",
         "source_id": "dotenv:/workspace/.env",
         "source_path": "/workspace/.env",

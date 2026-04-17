@@ -61,7 +61,7 @@ TARGET_POWERSHELL_ALL_USERS = "powershell:all_users"
 DOTENV_TARGET_PREFIX = "dotenv:"
 WSL_DOTENV_TARGET_PREFIX = "wsl_dotenv:"
 LINUX_ETC_ENV_PATH = "/etc/environment"
-PlannedMutation = tuple[str, str, str | None, bool, str | None]
+PlannedMutation = Tuple[str, str, str | None, bool, str | None]
 
 
 def _coerce_target_request(*args: Any, **kwargs: Any) -> TargetOperationRequest:
@@ -198,7 +198,7 @@ def write_linux_etc_environment_with_privilege(self, text: str) -> None:
     )
 
 
-def parse_wsl_dotenv_target(self, target: str) -> tuple[str, str]:
+def parse_wsl_dotenv_target(self, target: str) -> Tuple[str, str]:
     """Parse and validate a WSL dotenv target."""
     return _parse_wsl_dotenv_target_helper(
         target,
@@ -208,7 +208,7 @@ def parse_wsl_dotenv_target(self, target: str) -> tuple[str, str]:
     )
 
 
-def resolve_wsl_target(self, target: str) -> tuple[str, str, str, bool]:
+def resolve_wsl_target(self, target: str) -> Tuple[str, str, str, bool]:
     """Resolve a WSL mutation target into concrete file details."""
     return _resolve_wsl_target_helper(
         target,
@@ -309,7 +309,7 @@ def validate_target_for_operation(
     self,
     target: str,
     *,
-    scope_roots: list[Path],
+    scope_roots: List[Path],
 ) -> None:
     """Validate that a target can participate in a mutation."""
     if target in {
@@ -333,7 +333,7 @@ def validate_target_for_operation(
     raise RuntimeError(f"Unsupported target: {target}")
 
 
-def preview_target_diff(self, *args: Any, **kwargs: Any) -> tuple[str, str]:
+def preview_target_diff(self, *args: Any, **kwargs: Any) -> Tuple[str, str]:
     """Return the original text and preview diff for a target mutation."""
     request = _coerce_target_request(*args, **kwargs)
     validate_target_for_operation(
@@ -411,7 +411,7 @@ def apply(
     *args: Any,
     preview_only: bool = False,
     **kwargs: Any,
-) -> list[OperationResult]:
+) -> List[OperationResult]:
     """Apply a normalized batch of mutations across selected targets."""
     request = _coerce_target_batch(*args, **kwargs)
     validate_env_key(request.key)
@@ -420,7 +420,7 @@ def apply(
 
     secret_operation = looks_secret(request.key, request.value or "")
     resolved_scope_roots = self.effective_scope_roots(request.scope_roots)
-    results: list[OperationResult] = []
+    results: List[OperationResult] = []
     for target in request.targets:
         target_request = TargetOperationRequest(
             target=target,

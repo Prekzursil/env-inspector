@@ -31,7 +31,7 @@ def parse_wsl_dotenv_target(
     prefix: str,
     validate_distro_name_fn,
     validate_dotenv_path_fn,
-) -> tuple[str, str]:
+) -> Tuple[str, str]:
     """Parse wsl dotenv target."""
     raw = target[len(prefix) :]
     try:
@@ -41,7 +41,7 @@ def parse_wsl_dotenv_target(
     return validate_distro_name_fn(distro), validate_dotenv_path_fn(path)
 
 
-def _split_wsl_target(target: str) -> tuple[str, str]:
+def _split_wsl_target(target: str) -> Tuple[str, str]:
     """Split wsl target."""
     parts = target.split(":", 2)
     if len(parts) != 3:
@@ -55,7 +55,7 @@ def _resolve_standard_wsl_target(
     *,
     validate_distro_name_fn,
     linux_etc_env_path: str,
-) -> tuple[str, str, str, bool]:
+) -> Tuple[str, str, str, bool]:
     """Resolve standard wsl target."""
     distro, suffix = _split_wsl_target(target)
     distro_name = validate_distro_name_fn(distro)
@@ -66,7 +66,7 @@ def _resolve_standard_wsl_target(
     raise RuntimeError(f"Unsupported WSL target: {target}")
 
 
-def resolve_wsl_target(*args, **kwargs) -> tuple[str, str, str, bool]:
+def resolve_wsl_target(*args, **kwargs) -> Tuple[str, str, str, bool]:
     """Resolve wsl target."""
     if not args:
         raise TypeError("resolve_wsl_target requires a target argument.")

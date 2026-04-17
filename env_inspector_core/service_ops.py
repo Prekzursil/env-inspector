@@ -69,7 +69,7 @@ def operation_result(payload: OperationResultInput) -> OperationResult:
     return make_operation_result(payload)
 
 
-def operation_error_types() -> tuple[type[BaseException], ...]:
+def operation_error_types() -> Tuple[Type[BaseException], ...]:
     """Operation error types."""
     return (
         RuntimeError,

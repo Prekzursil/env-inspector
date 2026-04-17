@@ -29,7 +29,7 @@ LINUX_PRECEDENCE = {
 
 
 def resolve_effective_value(
-    records: list[EnvRecord], key: str, context: str
+    records: List[EnvRecord], key: str, context: str
 ) -> EnvRecord | None:
     """Resolve effective value."""
     key_norm = key.strip().lower()
@@ -48,7 +48,7 @@ def resolve_effective_value(
     else:
         table = WINDOWS_PRECEDENCE
 
-    def rank(rec: EnvRecord) -> tuple[int, int, str]:
+    def rank(rec: EnvRecord) -> Tuple[int, int, str]:
         """Rank."""
         source_rank = table.get(rec.source_type, rec.precedence_rank)
         return (source_rank, rec.precedence_rank, rec.source_path)

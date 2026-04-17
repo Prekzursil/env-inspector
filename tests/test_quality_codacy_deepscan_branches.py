@@ -252,7 +252,7 @@ def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
         codacy_mod, "_provider_candidates", lambda _preferred: ["gh", "github"]
     )
 
-    responses: list[tuple[bool, int | None, list[str], Exception | None]] = [
+    responses: List[Tuple[bool, int | None, List[str], Exception | None]] = [
         (False, None, [], _http_error(404)),
         (True, 0, [], None),
     ]
@@ -315,7 +315,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
     case.assertEqual(path, "/api/projects/1/issues/open")
     case.assertEqual(query, {"scope": "pull-request"})
 
-    findings: list[str] = []
+    findings: List[str] = []
     monkeypatch.setattr(
         deepscan_mod,
         "_request_json",
@@ -350,7 +350,7 @@ def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
 
 def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
     """Test deepscan fetch open issues handles unparseable total."""
-    findings: list[str] = []
+    findings: List[str] = []
     monkeypatch.setattr(
         deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}}
     )

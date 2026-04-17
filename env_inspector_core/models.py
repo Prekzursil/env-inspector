@@ -22,7 +22,7 @@ class EnvRecord:
     requires_privilege: bool
     last_error: str | None = None
 
-    def to_dict(self, include_value: bool = True) -> dict[str, Any]:
+    def to_dict(self, include_value: bool = True) -> Dict[str, Any]:
         """To dict."""
         payload = asdict(self)
         if not include_value:
@@ -43,6 +43,6 @@ class OperationResult:
     error_message: str | None
     value_masked: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """To dict."""
         return asdict(self)

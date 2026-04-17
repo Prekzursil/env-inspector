@@ -54,8 +54,8 @@ def _auth_header(token: str) -> str:
 
 
 def _request_json(
-    *, path: str, query: dict[str, str], auth_header: str
-) -> dict[str, Any]:
+    *, path: str, query: Dict[str, str], auth_header: str
+) -> Dict[str, Any]:
     """Request json."""
     payload, _headers = request_json_https(
         host=SONAR_API_HOST,
@@ -75,7 +75,7 @@ def _request_json(
 
 def _build_issue_query(
     project_key: str, *, branch: str, pull_request: str
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """Build issue query."""
     query = {
         "componentKeys": project_key,
@@ -103,7 +103,7 @@ def _build_quality_gate_query(
 
 def _build_hotspot_query(
     project_key: str, *, branch: str, pull_request: str
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """Build hotspot query."""
     query = {
         "projectKey": project_key,
@@ -123,7 +123,7 @@ def _fetch_sonar_status(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int, str, int]:
+) -> Tuple[int, str, int]:
     """Fetch sonar status."""
     issues_payload = _request_json(
         path="/api/issues/search",
@@ -163,7 +163,7 @@ def _evaluate_sonar(
     pull_request: str,
 ) -> tuple:
     """Evaluate sonar."""
-    findings: list[str] = []
+    findings: List[str] = []
     open_issues: int | None = None
     quality_gate: str | None = None
     open_hotspots: int | None = None

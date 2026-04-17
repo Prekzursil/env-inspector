@@ -5,7 +5,7 @@ import os
 import re
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, cast
 from collections.abc import Callable
 
 from .constants import (
@@ -41,8 +41,8 @@ if TYPE_CHECKING:
         REG_EXPAND_SZ: int
         REG_SZ: int
         OpenKey: Callable[[Any, str, int, int], Any]
-        EnumValue: Callable[[Any, int], tuple[str, Any, Any]]
-        QueryInfoKey: Callable[[Any], tuple[int, int, int]]
+        EnumValue: Callable[[Any, int], Tuple[str, Any, Any]]
+        QueryInfoKey: Callable[[Any], Tuple[int, int, int]]
         SetValueEx: Callable[[Any, str, int, int, str], None]
         DeleteValue: Callable[[Any, str], None]
 
@@ -50,9 +50,9 @@ if TYPE_CHECKING:
         """Protocol for the WSL interop client."""
 
         available: Callable[[], bool]
-        list_distros: Callable[[], list[str]]
+        list_distros: Callable[[], List[str]]
         read_file: Callable[[str, str], str]
-        scan_dotenv_files: Callable[[str, str, int], list[str]]
+        scan_dotenv_files: Callable[[str, str, int], List[str]]
 else:
     WinregModule = Any
     WslClient = Any
@@ -121,9 +121,9 @@ def _dotenv_matches(filename: str) -> bool:
     return filename == ".env" or filename.startswith(".env.")
 
 
-def _iter_dotenv_candidates(root: Path, max_depth: int) -> list[Path]:
+def _iter_dotenv_candidates(root: Path, max_depth: int) -> List[Path]:
     """Iter dotenv candidates."""
-    files: list[Path] = []
+    files: List[Path] = []
     for current, dirs, filenames in os.walk(
         root
     ):  # codeql[py/path-injection] root constrained to workspace scope
@@ -141,7 +141,7 @@ def _iter_dotenv_candidates(root: Path, max_depth: int) -> list[Path]:
     return files
 
 
-def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
+def discover_dotenv_files(root: Path, max_depth: int = 5) -> List[Path]:
     """Discover dotenv files."""
     try:
         safe_root = resolve_scan_root(root)
@@ -150,9 +150,9 @@ def discover_dotenv_files(root: Path, max_depth: int = 5) -> list[Path]:
     return sorted(_iter_dotenv_candidates(safe_root, max_depth=max_depth))
 
 
-def collect_process_records(context: str = "windows") -> list[EnvRecord]:
+def collect_process_records(context: str = "windows") -> List[EnvRecord]:
     """Collect process records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     for key, value in sorted(os.environ.items(), key=lambda kv: kv[0].lower()):
         rows.append(
             EnvRecord(
@@ -185,7 +185,7 @@ class WindowsRegistryProvider:
             raise RuntimeError("Windows registry provider only available on Windows.")
 
     @staticmethod
-    def _scope_details(scope: str, access: int) -> tuple[Any, str, int]:
+    def _scope_details(scope: str, access: int) -> Tuple[Any, str, int]:
         """Scope details."""
         if scope not in {
             WindowsRegistryProvider.USER_SCOPE,
@@ -209,12 +209,12 @@ class WindowsRegistryProvider:
         return root, path, scoped_access
 
     @staticmethod
-    def _scope_to_key(scope: str) -> tuple[Any, str]:
+    def _scope_to_key(scope: str) -> Tuple[Any, str]:
         """Scope to key."""
         root, path, _ = WindowsRegistryProvider._scope_details(scope, 0)
         return root, path
 
-    def list_scope(self, scope: str) -> dict[str, str]:
+    def list_scope(self, scope: str) -> Dict[str, str]:
         """List scope."""
         registry = _require_winreg()
         root, path, access = self._scope_details(scope, registry.KEY_READ)
@@ -245,9 +245,9 @@ class WindowsRegistryProvider:
             registry.DeleteValue(regkey, key)
 
 
-def build_registry_records(provider: WindowsRegistryProvider) -> list[EnvRecord]:
+def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]:
     """Build registry records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     for (
         source_type,
         source_id,
@@ -309,7 +309,7 @@ def _is_valid_powershell_env_key(key: str) -> bool:
     return re.fullmatch(r"[A-Za-z_]\w*", key) is not None
 
 
-def _parse_powershell_assignment(line: str) -> tuple[str, str] | None:
+def _parse_powershell_assignment(line: str) -> Tuple[str, str] | None:
     """Parse powershell assignment."""
     stripped = line.lstrip()
     if not stripped or stripped.startswith("#") or not stripped.startswith("$env:"):
@@ -325,9 +325,9 @@ def _parse_powershell_assignment(line: str) -> tuple[str, str] | None:
     return key, _normalize_powershell_assignment_value(value)
 
 
-def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
+def parse_powershell_profile_text(text: str) -> List[Tuple[str, str]]:
     """Parse powershell profile text."""
-    rows: list[tuple[str, str]] = []
+    rows: List[Tuple[str, str]] = []
     for line in text.splitlines():
         entry = _parse_powershell_assignment(line)
         if entry:
@@ -337,9 +337,9 @@ def parse_powershell_profile_text(text: str) -> list[tuple[str, str]]:
 
 def collect_dotenv_records(
     root: Path, max_depth: int = 5, context: str = "windows"
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Collect dotenv records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     for path in discover_dotenv_files(root, max_depth=max_depth):
         try:
             text = path.read_text(encoding="utf-8")
@@ -366,9 +366,9 @@ def collect_dotenv_records(
     return rows
 
 
-def collect_powershell_profile_records(profile_paths: list[Path]) -> list[EnvRecord]:
+def collect_powershell_profile_records(profile_paths: List[Path]) -> List[EnvRecord]:
     """Collect powershell profile records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
     for path in profile_paths:
         if not path.exists():
             continue
@@ -400,9 +400,9 @@ def collect_linux_records(
     bashrc_path: Path | None = None,
     etc_environment_path: Path | None = None,
     context: str = "linux",
-) -> list[EnvRecord]:
+) -> List[EnvRecord]:
     """Collect linux records."""
-    rows: list[EnvRecord] = []
+    rows: List[EnvRecord] = []
 
     bashrc = bashrc_path or (Path.home() / ".bashrc")
     etc_env = etc_environment_path or Path("/etc/environment")

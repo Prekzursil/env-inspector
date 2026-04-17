@@ -16,7 +16,7 @@ class ScopedPath:
     """A filesystem path constrained to approved scope roots."""
 
     path: Path
-    roots: tuple[Path, ...]
+    roots: Tuple[Path, ...]
 
 
 def _contains_null(raw: str) -> bool:
@@ -40,10 +40,10 @@ def _normalize_path_text(value: str | Path, *, field_name: str) -> str:
     return os.path.normpath(os.path.abspath(os.path.expanduser(raw)))
 
 
-def normalize_scope_roots(roots: Iterable[str | Path]) -> list[Path]:
+def normalize_scope_roots(roots: Iterable[str | Path]) -> List[Path]:
     """Normalize scope roots."""
-    normalized: list[Path] = []
-    seen: set[str] = set()
+    normalized: List[Path] = []
+    seen: Set[str] = set()
     workspace_root = Path.cwd()
     workspace_text = str(workspace_root)
     for root in roots:
@@ -98,7 +98,7 @@ def _validate_dotenv_name(path: Path) -> None:
     )
 
 
-def parse_scoped_dotenv_target(target: str, *, roots: list[Path]) -> ScopedPath:
+def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
     """Parse scoped dotenv target."""
     if not target.startswith("dotenv:"):
         raise PathPolicyError("Expected target with 'dotenv:' prefix.")
