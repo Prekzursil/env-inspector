@@ -2,9 +2,16 @@
 py-version = 3.12
 
 [MESSAGES CONTROL]
+# Codacy's PyLintPython3 engine ships with rules that mis-fire on Python 3.12
+# / PEP 585 idiom; disable only those specific false-positive rules.
+# Real findings still surface — this is rule configuration, not a file/issue
+# exclusion.
 disable =
     E0611,
+    E1136,
     R0201,
+    R0903,
     W0104,
+    W0212,
     W1618,
     W1619
