@@ -81,7 +81,15 @@ class BackupManager:
         return sorted(backups, reverse=True)
 
     def list_all_backups(self) -> List[Path]:
-        return sorted((Path(path) for path in glob.glob(str(self.base_dir / "**" / "*.backup.json"), recursive=True)), reverse=True)
+        return sorted(
+            (
+                Path(path)
+                for path in glob.glob(
+                    str(self.base_dir / "**" / "*.backup.json"), recursive=True
+                )
+            ),
+            reverse=True,
+        )
 
     @staticmethod
     def _load_backup_payload(backup_path: Path) -> dict | None:

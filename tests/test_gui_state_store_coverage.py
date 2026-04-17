@@ -111,7 +111,9 @@ def test_sanitize_root_fallback(tmp_path: Path):
     ensure(str(result) == str(tmp_path))
 
 
-def test_sanitize_root_double_failure_returns_fallback_path(tmp_path: Path, monkeypatch):
+def test_sanitize_root_double_failure_returns_fallback_path(
+    tmp_path: Path, monkeypatch
+):
     """Lines 97-100: when both resolve attempts raise, return Path(fallback_root) verbatim.
 
     Mocking the resolver isolates this branch from pytest tmp layout —

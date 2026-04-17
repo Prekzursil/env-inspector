@@ -13,7 +13,9 @@ _PAIR_RE = re.compile(r"^(?P<name>[^=]+)=(?P<path>.+)$")
 _XML_LINES_VALID_RE = re.compile(r'lines-valid="(\d+(?:\.\d+)?)"')
 _XML_LINES_COVERED_RE = re.compile(r'lines-covered="(\d+(?:\.\d+)?)"')
 _XML_LINE_HITS_RE = re.compile(r'<line\b[^>]*\bhits="(\d+(?:\.\d+)?)"')
-_XML_FILENAME_RE = re.compile(r'''<[^>]+\bfilename=(?P<quote>["'])(?P<value>.*?)(?P=quote)''')
+_XML_FILENAME_RE = re.compile(
+    r"""<[^>]+\bfilename=(?P<quote>["'])(?P<value>.*?)(?P=quote)"""
+)
 _NONE_LIST_ITEM = "- None"
 
 
@@ -96,7 +98,9 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     total = 0
     covered = 0
 
-    for raw in path.read_text(encoding="utf-8").splitlines():  # lgtm [py/path-injection]
+    for raw in path.read_text(
+        encoding="utf-8"
+    ).splitlines():  # lgtm [py/path-injection]
         line = raw.strip()
         if line.startswith("LF:"):
             total += int(line.split(":", 1)[1])
@@ -108,7 +112,9 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
 
 def coverage_sources_from_lcov(path: Path) -> Set[str]:
     covered_sources: Set[str] = set()
-    for raw in path.read_text(encoding="utf-8").splitlines():  # lgtm [py/path-injection]
+    for raw in path.read_text(
+        encoding="utf-8"
+    ).splitlines():  # lgtm [py/path-injection]
         line = raw.strip()
         if not line.startswith("SF:"):
             continue
@@ -122,16 +128,23 @@ def _matches_required_source(source_path: str, required_source: str) -> bool:
     normalized_required = _normalize_source_path(required_source).rstrip("/")
     if not normalized_required:
         return False
-    return source_path == normalized_required or source_path.startswith(f"{normalized_required}/")
+    return source_path == normalized_required or source_path.startswith(
+        f"{normalized_required}/"
+    )
 
 
-def _find_missing_required_sources(reported_sources: Set[str], required_sources: List[str]) -> List[str]:
+def _find_missing_required_sources(
+    reported_sources: Set[str], required_sources: List[str]
+) -> List[str]:
     missing: List[str] = []
     for required_source in required_sources:
         normalized_required = _normalize_source_path(required_source).rstrip("/")
         if not normalized_required:
             continue
-        if any(_matches_required_source(source_path, normalized_required) for source_path in reported_sources):
+        if any(
+            _matches_required_source(source_path, normalized_required)
+            for source_path in reported_sources
+        ):
             continue
         missing.append(normalized_required)
     return missing
@@ -139,7 +152,8 @@ def _find_missing_required_sources(reported_sources: Set[str], required_sources:
 
 def _is_tests_only_report(reported_sources: Set[str]) -> bool:
     return bool(reported_sources) and all(
-        source_path == "tests" or source_path.startswith("tests/") for source_path in reported_sources
+        source_path == "tests" or source_path.startswith("tests/")
+        for source_path in reported_sources
     )
 
 
@@ -153,7 +167,9 @@ def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[s
 
     combined_total = sum(item.total for item in stats)
     combined_covered = sum(item.covered for item in stats)
-    combined = 100.0 if combined_total <= 0 else (combined_covered / combined_total) * 100.0
+    combined = (
+        100.0 if combined_total <= 0 else (combined_covered / combined_total) * 100.0
+    )
     if combined < min_percent:
         findings.append(
             f"combined coverage below {min_percent:.2f}%: {combined:.2f}% ({combined_covered}/{combined_total})"
@@ -161,12 +177,18 @@ def _coverage_findings(stats: List[CoverageStats], min_percent: float) -> List[s
     return findings
 
 
-def _source_findings(reported_sources: Set[str], required_sources: List[str]) -> List[str]:
+def _source_findings(
+    reported_sources: Set[str], required_sources: List[str]
+) -> List[str]:
     findings: List[str] = []
     if _is_tests_only_report(reported_sources):
-        findings.append("coverage inputs only reference tests/ paths; first-party sources are missing.")
+        findings.append(
+            "coverage inputs only reference tests/ paths; first-party sources are missing."
+        )
 
-    for required_source in _find_missing_required_sources(reported_sources, required_sources):
+    for required_source in _find_missing_required_sources(
+        reported_sources, required_sources
+    ):
         findings.append(f"missing required source path: {required_source}")
     return findings
 
@@ -227,7 +249,7 @@ def _render_md(payload: Dict[str, Any]) -> str:
     _append_covered_source_lines(lines, payload)
     lines.extend(["", "## Findings"])
     _append_finding_lines(lines, payload)
-    return "`n".replace('`n','\n').join(lines) + "\n"
+    return "`n".replace("`n", "\n").join(lines) + "\n"
 
 
 def _build_payload(

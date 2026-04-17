@@ -21,7 +21,13 @@ import env_inspector_core.service as service_module
 from tests.assertions import ensure
 
 
-def _record(source_type: str, source_path: str, *, context: str = "linux", source_id: str = "Ubuntu") -> EnvRecord:
+def _record(
+    source_type: str,
+    source_path: str,
+    *,
+    context: str = "linux",
+    source_id: str = "Ubuntu",
+) -> EnvRecord:
     """Record."""
     return EnvRecord(
         source_type=source_type,
@@ -114,7 +120,9 @@ def _assert_powershell_preview_skips_writes(
     ensure(requires_priv is False)
 
 
-def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path: Path) -> None:
+def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
+    monkeypatch, tmp_path: Path
+) -> None:
     """Test collect wsl rows uses linux exclusion and dotenv."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     svc.runtime_context = "linux"
@@ -123,18 +131,37 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
 
     calls: Dict[str, object] = {}
 
-    def _fake_collect_wsl_records(wsl, include_etc: bool, exclude_distros) -> List[EnvRecord]:
+    def _fake_collect_wsl_records(
+        wsl, include_etc: bool, exclude_distros
+    ) -> List[EnvRecord]:
         """Fake collect wsl records."""
         calls["exclude"] = exclude_distros
-        return [_record(SOURCE_WSL_BASHRC, "~/.bashrc", context="wsl:Debian", source_id="Debian")]
+        return [
+            _record(
+                SOURCE_WSL_BASHRC, "~/.bashrc", context="wsl:Debian", source_id="Debian"
+            )
+        ]
 
-    def _fake_collect_wsl_dotenv_records(wsl, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
+    def _fake_collect_wsl_dotenv_records(
+        wsl, distro: str, root_path: str, max_depth: int
+    ) -> List[EnvRecord]:
         """Fake collect wsl dotenv records."""
         calls["dotenv"] = (distro, root_path, max_depth)
-        return [_record(SOURCE_WSL_DOTENV, "Debian:/home/user/.env", context="wsl:Debian", source_id="Debian")]
+        return [
+            _record(
+                SOURCE_WSL_DOTENV,
+                "Debian:/home/user/.env",
+                context="wsl:Debian",
+                source_id="Debian",
+            )
+        ]
 
-    monkeypatch.setattr(service_module, "collect_wsl_records", _fake_collect_wsl_records)
-    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", _fake_collect_wsl_dotenv_records)
+    monkeypatch.setattr(
+        service_module, "collect_wsl_records", _fake_collect_wsl_records
+    )
+    monkeypatch.setattr(
+        service_module, "collect_wsl_dotenv_records", _fake_collect_wsl_dotenv_records
+    )
 
     rows = svc._collect_wsl_rows(scan_depth=3, distro="Debian", wsl_path="/home/user")
 
@@ -143,7 +170,9 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(monkeypatch, tmp_path:
     ensure(len(rows) == 2)
 
 
-def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path) -> None:
+def test_collect_wsl_rows_swallows_collection_errors(
+    monkeypatch, tmp_path: Path
+) -> None:
     """Test collect wsl rows swallows collection errors."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(svc.wsl, "available", lambda: True)
@@ -153,14 +182,18 @@ def test_collect_wsl_rows_swallows_collection_errors(monkeypatch, tmp_path: Path
         raise RuntimeError("boom")
 
     monkeypatch.setattr(service_module, "collect_wsl_records", _raise_runtime_error)
-    monkeypatch.setattr(service_module, "collect_wsl_dotenv_records", _raise_runtime_error)
+    monkeypatch.setattr(
+        service_module, "collect_wsl_dotenv_records", _raise_runtime_error
+    )
 
     rows = svc._collect_wsl_rows(scan_depth=2, distro="Ubuntu", wsl_path="/home/user")
 
     ensure(rows == [])
 
 
-def test_list_records_accepts_request_without_kwargs(monkeypatch, tmp_path: Path) -> None:
+def test_list_records_accepts_request_without_kwargs(
+    monkeypatch, tmp_path: Path
+) -> None:
     """Test list records accepts request without kwargs."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     request = service_module.ListRecordsRequest(root=tmp_path, include_raw_secrets=True)
@@ -192,11 +225,26 @@ def test_available_targets_maps_all_known_sources_and_filters_context(tmp_path: 
         _record(SOURCE_DOTENV, str(tmp_path / ".env"), context="linux"),
         _record(SOURCE_LINUX_BASHRC, str(tmp_path / ".bashrc"), context="linux"),
         _record(SOURCE_LINUX_ETC_ENV, "/etc/environment", context="linux"),
-        _record(SOURCE_WSL_DOTENV, "Ubuntu:/home/u/.env", context="linux", source_id="Ubuntu"),
+        _record(
+            SOURCE_WSL_DOTENV,
+            "Ubuntu:/home/u/.env",
+            context="linux",
+            source_id="Ubuntu",
+        ),
         _record(SOURCE_WSL_BASHRC, "~/.bashrc", context="linux", source_id="Ubuntu"),
-        _record(SOURCE_WSL_ETC_ENV, "/etc/environment", context="linux", source_id="Ubuntu"),
-        _record(SOURCE_POWERSHELL_PROFILE, r"C:\Program Files\PowerShell\7\profile.ps1", context="linux"),
-        _record(SOURCE_POWERSHELL_PROFILE, r"C:\Users\me\Documents\PowerShell\profile.ps1", context="linux"),
+        _record(
+            SOURCE_WSL_ETC_ENV, "/etc/environment", context="linux", source_id="Ubuntu"
+        ),
+        _record(
+            SOURCE_POWERSHELL_PROFILE,
+            r"C:\Program Files\PowerShell\7\profile.ps1",
+            context="linux",
+        ),
+        _record(
+            SOURCE_POWERSHELL_PROFILE,
+            r"C:\Users\me\Documents\PowerShell\profile.ps1",
+            context="linux",
+        ),
         _record(SOURCE_DOTENV, "ignored.env", context="wsl:Ubuntu"),
     ]
 
@@ -229,7 +277,13 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
     svc = EnvInspectorService(state_dir=tmp_path / "state")
 
     with pytest.raises(RuntimeError, match="Unsupported Linux target"):
-        svc._update_linux_file(target="linux:unknown", key="A", value="1", action="set", apply_changes=False)
+        svc._update_linux_file(
+            target="linux:unknown",
+            key="A",
+            value="1",
+            action="set",
+            apply_changes=False,
+        )
 
     wsl_writes: List[Tuple[str, str, str]] = []
     monkeypatch.setattr(svc.wsl, "read_file", lambda distro, path: "")
@@ -238,11 +292,23 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         "write_file_with_privilege",
         lambda distro, path, text: wsl_writes.append((distro, path, text)),
     )
-    svc._update_wsl_file(target="wsl:Ubuntu:etc_environment", key="A", value="1", action="set", apply_changes=True)
+    svc._update_wsl_file(
+        target="wsl:Ubuntu:etc_environment",
+        key="A",
+        value="1",
+        action="set",
+        apply_changes=True,
+    )
     ensure(wsl_writes and wsl_writes[0][0] == "Ubuntu")
 
     with pytest.raises(RuntimeError, match="Unsupported WSL target"):
-        svc._update_wsl_file(target="wsl:Ubuntu:profile", key="A", value="1", action="set", apply_changes=False)
+        svc._update_wsl_file(
+            target="wsl:Ubuntu:profile",
+            key="A",
+            value="1",
+            action="set",
+            apply_changes=False,
+        )
 
     with pytest.raises(RuntimeError, match="Unsupported WSL dotenv target path"):
         svc._update_wsl_file(
@@ -254,7 +320,11 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         )
 
     profile = tmp_path / "profile.ps1"
-    monkeypatch.setattr(EnvInspectorService, "_powershell_target_path_and_roots", lambda _self, _target: (profile, [tmp_path], False))
+    monkeypatch.setattr(
+        EnvInspectorService,
+        "_powershell_target_path_and_roots",
+        lambda _self, _target: (profile, [tmp_path], False),
+    )
     _before, _after, out_path, _requires_priv, _ = svc._update_powershell_file(
         target="powershell:current_user",
         key="A",
@@ -275,8 +345,23 @@ def test_update_helpers_cover_dispatch_and_error_branches(monkeypatch, tmp_path:
         "_update_powershell_file",
         lambda **kwargs: ("before", "after", "ps", False, None),
     )
-    ensure(svc._file_update("wsl:Ubuntu:bashrc", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "wsl")
-    ensure(svc._file_update("powershell:current_user", "A", "1", "set", apply_changes=False, scope_roots=[])[2] == "ps")
+    ensure(
+        svc._file_update(
+            "wsl:Ubuntu:bashrc", "A", "1", "set", apply_changes=False, scope_roots=[]
+        )[2]
+        == "wsl"
+    )
+    ensure(
+        svc._file_update(
+            "powershell:current_user",
+            "A",
+            "1",
+            "set",
+            apply_changes=False,
+            scope_roots=[],
+        )[2]
+        == "ps"
+    )
 
 
 def test_update_wsl_preview_skips_writes_when_apply_changes_is_false(
@@ -310,7 +395,9 @@ def test_mutate_shell_content_preview_remove_keeps_other_keys(
     ensure("B=2" in removed)
 
 
-def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch) -> None:
+def test_restore_helpers_cover_linux_and_wsl_targets(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Test restore helpers cover linux and wsl targets."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
@@ -321,7 +408,9 @@ def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch
     ensure((fake_home / ".bashrc").read_text(encoding="utf-8") == "export A=1\n")
 
     etc_calls: List[str] = []
-    monkeypatch.setattr(svc, "_write_linux_etc_environment_with_privilege", etc_calls.append)
+    monkeypatch.setattr(
+        svc, "_write_linux_etc_environment_with_privilege", etc_calls.append
+    )
     svc._restore_linux_target(target="linux:etc_environment", text="A=1\n")
     ensure(etc_calls == ["A=1\n"])
 
@@ -341,16 +430,24 @@ def test_restore_helpers_cover_linux_and_wsl_targets(tmp_path: Path, monkeypatch
         svc._restore_wsl_target(target="wsl:Ubuntu:unknown", text="x")
 
 
-def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypatch) -> None:
+def test_restore_helpers_cover_powershell_and_registry(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Test restore helpers cover powershell and registry."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     fake_home = tmp_path / "home"
     fake_home.mkdir(parents=True, exist_ok=True)
     profile = fake_home / "Documents" / "PowerShell" / "ps-profile.ps1"
     monkeypatch.setattr(service_module.Path, "home", lambda: fake_home)
-    monkeypatch.setattr(EnvInspectorService, "_validated_powershell_restore_path", lambda _self, _target: profile)
-    svc._restore_powershell_target(target="powershell:current_user", text="$env:A=\"1\"\n")
-    ensure(profile.read_text(encoding="utf-8") == "$env:A=\"1\"\n")
+    monkeypatch.setattr(
+        EnvInspectorService,
+        "_validated_powershell_restore_path",
+        lambda _self, _target: profile,
+    )
+    svc._restore_powershell_target(
+        target="powershell:current_user", text='$env:A="1"\n'
+    )
+    ensure(profile.read_text(encoding="utf-8") == '$env:A="1"\n')
 
     svc.win_provider = None
     with pytest.raises(RuntimeError, match="provider unavailable"):
@@ -379,7 +476,9 @@ def test_restore_helpers_cover_powershell_and_registry(tmp_path: Path, monkeypat
 
     fake = _FakeWinProvider()
     svc.win_provider = fake
-    svc._restore_windows_registry_target(target="windows:user", text="{\"KEEP\":\"1\",\"NEW\":\"3\"}")
+    svc._restore_windows_registry_target(
+        target="windows:user", text='{"KEEP":"1","NEW":"3"}'
+    )
     ensure(fake.removed and fake.removed[0][1] == "DROP")
     ensure(any(key == "NEW" for _scope, key, _value in fake.sets))
 
@@ -388,9 +487,17 @@ def test_restore_helpers_cover_dispatch(tmp_path: Path, monkeypatch) -> None:
     """Test restore helpers cover dispatch."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     calls: List[str] = []
-    monkeypatch.setattr(svc, "_restore_linux_target", lambda **kwargs: calls.append("linux"))
-    monkeypatch.setattr(svc, "_restore_powershell_target", lambda **kwargs: calls.append("powershell"))
-    monkeypatch.setattr(svc, "_restore_windows_registry_target", lambda **kwargs: calls.append("windows"))
+    monkeypatch.setattr(
+        svc, "_restore_linux_target", lambda **kwargs: calls.append("linux")
+    )
+    monkeypatch.setattr(
+        svc, "_restore_powershell_target", lambda **kwargs: calls.append("powershell")
+    )
+    monkeypatch.setattr(
+        svc,
+        "_restore_windows_registry_target",
+        lambda **kwargs: calls.append("windows"),
+    )
     svc._restore_target(target="linux:bashrc", text="x", scope_roots=[])
     svc._restore_target(target="powershell:current_user", text="x", scope_roots=[])
     svc._restore_target(target="windows:user", text="x", scope_roots=[])
@@ -400,7 +507,9 @@ def test_restore_helpers_cover_dispatch(tmp_path: Path, monkeypatch) -> None:
         svc._restore_target(target="custom:target", text="x", scope_roots=[])
 
 
-def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch) -> None:
+def test_restore_dotenv_target_rejects_outside_scope(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Test restore dotenv target rejects outside scope."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     allowed = tmp_path / "allowed"
@@ -417,7 +526,11 @@ def test_restore_dotenv_target_rejects_outside_scope(tmp_path: Path, monkeypatch
             self.path = path
             self.roots = [allowed]
 
-    monkeypatch.setattr(service_module, "parse_scoped_dotenv_target", lambda target, roots: _Scoped(env_path))
+    monkeypatch.setattr(
+        service_module,
+        "parse_scoped_dotenv_target",
+        lambda target, roots: _Scoped(env_path),
+    )
 
     with pytest.raises(RuntimeError, match="outside approved roots"):
         svc._restore_dotenv_target(
@@ -450,12 +563,14 @@ def test_registry_write_machine_requires_privilege_and_user_scope(tmp_path: Path
         "set",
         apply_changes=False,
     )
-    _before_machine, _after_machine, _path_machine, machine_requires_priv, _ = svc._registry_write(
-        "windows:machine",
-        "A",
-        "2",
-        "set",
-        apply_changes=False,
+    _before_machine, _after_machine, _path_machine, machine_requires_priv, _ = (
+        svc._registry_write(
+            "windows:machine",
+            "A",
+            "2",
+            "set",
+            apply_changes=False,
+        )
     )
 
     import unittest
@@ -507,23 +622,31 @@ def test_registry_write_noop_and_preview_remove_paths(tmp_path: Path):
     ensure(before == after)
     ensure(requires_priv is False)
 
-    _before_remove, after_remove, _path_remove, _requires_priv_remove, _ = svc._registry_write(
-        "windows:user",
-        "A",
-        None,
-        "remove",
-        apply_changes=False,
+    _before_remove, after_remove, _path_remove, _requires_priv_remove, _ = (
+        svc._registry_write(
+            "windows:user",
+            "A",
+            None,
+            "remove",
+            apply_changes=False,
+        )
     )
     ensure('"A": "1"' not in after_remove)
     ensure(remove_calls == [])
 
 
-def test_powershell_profile_path_returns_expected_target_paths(tmp_path: Path, monkeypatch):
+def test_powershell_profile_path_returns_expected_target_paths(
+    tmp_path: Path, monkeypatch
+):
     """Test powershell profile path returns expected target paths."""
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     current = tmp_path / "current.ps1"
     all_users = tmp_path / "all.ps1"
-    monkeypatch.setattr(EnvInspectorService, "get_powershell_profile_paths", staticmethod(lambda: [current, all_users]))
+    monkeypatch.setattr(
+        EnvInspectorService,
+        "get_powershell_profile_paths",
+        staticmethod(lambda: [current, all_users]),
+    )
 
     import unittest
 

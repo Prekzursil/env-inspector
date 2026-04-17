@@ -73,11 +73,17 @@ def test_request_json_https_success(monkeypatch):
             recorded["timeout"] = timeout
             recorded["method"] = request.get_method()
             recorded["headers"] = dict(request.header_items())
-            recorded["body"] = request.data.decode("utf-8") if request.data is not None else None
+            recorded["body"] = (
+                request.data.decode("utf-8") if request.data is not None else None
+            )
             return _Response()
 
-    monkeypatch.setattr(sec.urllib.request, "build_opener", lambda _handler: _FakeOpener())
-    monkeypatch.setattr(sec.urllib.request, "HTTPSHandler", lambda context=None: context)
+    monkeypatch.setattr(
+        sec.urllib.request, "build_opener", lambda _handler: _FakeOpener()
+    )
+    monkeypatch.setattr(
+        sec.urllib.request, "HTTPSHandler", lambda context=None: context
+    )
     real_secure_context = sec._secure_ssl_context
 
     def _fake_secure_context():
@@ -105,11 +111,14 @@ def test_request_json_https_success(monkeypatch):
     ensure(recorded["body"] == '{"x": 1}')
     ensure(recorded["closed"] is True)
     ensure("value" in captured_context)
-    ensure(getattr(captured_context["value"], "protocol", None) == sec.ssl.PROTOCOL_TLSv1_2)
+    ensure(
+        getattr(captured_context["value"], "protocol", None) == sec.ssl.PROTOCOL_TLSv1_2
+    )
 
 
 def test_request_json_https_http_error(monkeypatch):
     """Re-raise HTTP errors emitted by the HTTPS request helper."""
+
     class _FakeOpener:
         """Opener stub that always raises an HTTP error."""
 
@@ -125,8 +134,12 @@ def test_request_json_https_http_error(monkeypatch):
                 fp=io.BytesIO(b'{"error":"denied"}'),
             )
 
-    monkeypatch.setattr(sec.urllib.request, "build_opener", lambda _handler: _FakeOpener())
-    monkeypatch.setattr(sec.urllib.request, "HTTPSHandler", lambda context=None: context)
+    monkeypatch.setattr(
+        sec.urllib.request, "build_opener", lambda _handler: _FakeOpener()
+    )
+    monkeypatch.setattr(
+        sec.urllib.request, "HTTPSHandler", lambda context=None: context
+    )
 
     with pytest.raises(urllib.error.HTTPError, match="Forbidden") as exc_info:
         sec.request_json_https(
@@ -172,4 +185,6 @@ def test_validate_hostname_allowlists_accepts_none_suffixes():
 def test_validate_hostname_allowlists_rejects_mismatched_suffix():
     """Reject hostnames that do not match the configured suffix allowlist."""
     with pytest.raises(ValueError, match="suffix allowlist"):
-        sec._validate_hostname_allowlists("api.codacy.com", allowed_host_suffixes={"example.com"})
+        sec._validate_hostname_allowlists(
+            "api.codacy.com", allowed_host_suffixes={"example.com"}
+        )

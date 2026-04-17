@@ -28,9 +28,15 @@ LINUX_PRECEDENCE = {
 }
 
 
-def resolve_effective_value(records: List[EnvRecord], key: str, context: str) -> EnvRecord | None:
+def resolve_effective_value(
+    records: List[EnvRecord], key: str, context: str
+) -> EnvRecord | None:
     key_norm = key.strip().lower()
-    candidates = [r for r in records if r.name.lower() == key_norm and r.context in (context, "global")]
+    candidates = [
+        r
+        for r in records
+        if r.name.lower() == key_norm and r.context in (context, "global")
+    ]
     if not candidates:
         return None
 
@@ -45,4 +51,4 @@ def resolve_effective_value(records: List[EnvRecord], key: str, context: str) ->
         source_rank = table.get(rec.source_type, rec.precedence_rank)
         return (source_rank, rec.precedence_rank, rec.source_path)
 
-    return sorted(candidates, key=rank)[0]
+    return min(candidates, key=rank)

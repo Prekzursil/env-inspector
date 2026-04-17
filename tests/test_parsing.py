@@ -49,7 +49,9 @@ PATH="/usr/local/bin:/usr/bin"
 
 """
     parsed = parsing.parse_etc_environment(text)
-    _case().assertEqual(parsed, {"LANG": "en_US.UTF-8", "PATH": "/usr/local/bin:/usr/bin"})
+    _case().assertEqual(
+        parsed, {"LANG": "en_US.UTF-8", "PATH": "/usr/local/bin:/usr/bin"}
+    )
 
 
 def test_upsert_and_remove_export_roundtrip():

@@ -192,12 +192,16 @@ class EnvInspectorControllerActionsMixin:
         if not dialog.result:
             return
 
-        result = self.service.restore_backup(backup=dialog.result, scope_roots=[self.root_path])
+        result = self.service.restore_backup(
+            backup=dialog.result, scope_roots=[self.root_path]
+        )
         if result.get("success"):
             self._set_status(f"Restored backup ({result.get('operation_id')})")
             self.refresh_data()
         else:
-            self.messagebox.showerror(APP_NAME, f"Restore failed: {result.get('error_message')}")
+            self.messagebox.showerror(
+                APP_NAME, f"Restore failed: {result.get('error_message')}"
+            )
 
     def _show_select_row_required(self) -> None:
         self.messagebox.showinfo(APP_NAME, MSG_SELECT_ROW_FIRST)

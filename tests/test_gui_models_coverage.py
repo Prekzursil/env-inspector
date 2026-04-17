@@ -18,7 +18,12 @@ from env_inspector_gui.models import (
     select_theme_name,
     summarize_operation_result,
 )
-from env_inspector_gui.models import _coerce_text, _coerce_flag, _coerce_items, _coerce_number
+from env_inspector_gui.models import (
+    _coerce_text,
+    _coerce_flag,
+    _coerce_items,
+    _coerce_number,
+)
 
 from tests.assertions import ensure
 
@@ -329,28 +334,36 @@ def test_resolve_selected_targets_dotenv_scoping():
 
 # --- summarize_operation_result ---
 def test_summarize_batch_success():
-    result = summarize_operation_result("set", {"results": [{"success": True}, {"success": True}]})
+    result = summarize_operation_result(
+        "set", {"results": [{"success": True}, {"success": True}]}
+    )
     ensure(result.status_message is not None)
     ensure("2 targets" in result.status_message)
     ensure(result.error_message is None)
 
 
 def test_summarize_batch_failures():
-    result = summarize_operation_result("set", {"results": [{"success": False, "error_message": "oops"}]})
+    result = summarize_operation_result(
+        "set", {"results": [{"success": False, "error_message": "oops"}]}
+    )
     ensure(result.error_message is not None)
     ensure("oops" in result.error_message)
     ensure(result.status_message is None)
 
 
 def test_summarize_single_success():
-    result = summarize_operation_result("set", {"success": True, "operation_id": "op-1"})
+    result = summarize_operation_result(
+        "set", {"success": True, "operation_id": "op-1"}
+    )
     ensure(result.status_message is not None)
     ensure("op-1" in result.status_message)
     ensure(result.error_message is None)
 
 
 def test_summarize_single_failure():
-    result = summarize_operation_result("set", {"success": False, "error_message": "fail"})
+    result = summarize_operation_result(
+        "set", {"success": False, "error_message": "fail"}
+    )
     ensure(result.error_message is not None)
     ensure("fail" in result.error_message)
 
@@ -380,18 +393,24 @@ def test_select_target_dialog_result_with_values():
 
 # --- build_effective_value_text ---
 def test_build_effective_value_text_no_key():
-    result = build_effective_value_text(None, context="linux", key="", show_secrets=False)
+    result = build_effective_value_text(
+        None, context="linux", key="", show_secrets=False
+    )
     ensure("select key" in result)
 
 
 def test_build_effective_value_text_no_record():
-    result = build_effective_value_text(None, context="linux", key="MISS", show_secrets=False)
+    result = build_effective_value_text(
+        None, context="linux", key="MISS", show_secrets=False
+    )
     ensure("not found" in result)
 
 
 def test_build_effective_value_text_with_record():
     rec = _make_record(name="K", value="v")
-    result = build_effective_value_text(rec, context="linux", key="K", show_secrets=True)
+    result = build_effective_value_text(
+        rec, context="linux", key="K", show_secrets=True
+    )
     ensure("K=v" in result)
     ensure("linux" in result)
 

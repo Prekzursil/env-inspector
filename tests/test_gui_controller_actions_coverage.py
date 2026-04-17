@@ -103,8 +103,10 @@ class _ActionTestMixin(EnvInspectorControllerActionsMixin):
 
 # --- abstract method stubs (NotImplementedError) ---
 
+
 def test_abstract_selected_row():
     import pytest
+
     mixin = EnvInspectorControllerActionsMixin()
     with pytest.raises(NotImplementedError):
         mixin._selected_row()
@@ -112,6 +114,7 @@ def test_abstract_selected_row():
 
 def test_abstract_set_status():
     import pytest
+
     mixin = EnvInspectorControllerActionsMixin()
     with pytest.raises(NotImplementedError):
         mixin._set_status("test")
@@ -119,6 +122,7 @@ def test_abstract_set_status():
 
 def test_abstract_update_effective():
     import pytest
+
     mixin = EnvInspectorControllerActionsMixin()
     with pytest.raises(NotImplementedError):
         mixin._update_effective("key")
@@ -126,12 +130,14 @@ def test_abstract_update_effective():
 
 def test_abstract_refresh_data():
     import pytest
+
     mixin = EnvInspectorControllerActionsMixin()
     with pytest.raises(NotImplementedError):
         mixin.refresh_data()
 
 
 # --- load_selected ---
+
 
 def test_load_selected_no_row():
     ctrl = _ActionTestMixin()
@@ -181,6 +187,7 @@ def test_load_selected_secret_hidden_confirm_no():
 
 # --- copy_selected_name ---
 
+
 def test_copy_selected_name_no_row():
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_name()
@@ -198,6 +205,7 @@ def test_copy_selected_name():
 
 
 # --- copy_selected_value ---
+
 
 def test_copy_selected_value_no_row():
     ctrl = _ActionTestMixin()
@@ -235,6 +243,7 @@ def test_copy_selected_value_secret_shown():
 
 # --- copy_selected_pair ---
 
+
 def test_copy_selected_pair_no_row():
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_pair()
@@ -261,6 +270,7 @@ def test_copy_selected_pair_secret_masked():
 
 # --- copy_selected_source_path ---
 
+
 def test_copy_selected_source_path_no_row():
     ctrl = _ActionTestMixin()
     ctrl.copy_selected_source_path()
@@ -276,6 +286,7 @@ def test_copy_selected_source_path():
 
 
 # --- open_selected_source ---
+
 
 def test_open_selected_source_no_row():
     ctrl = _ActionTestMixin()
@@ -298,12 +309,16 @@ def test_open_selected_source_success(tmp_path: Path):
     rec = _make_record(source_path=str(f))
     ctrl._selected = _make_row(rec)
 
-    with patch("env_inspector_gui.controller_actions.open_source_path", return_value=(True, None)):
+    with patch(
+        "env_inspector_gui.controller_actions.open_source_path",
+        return_value=(True, None),
+    ):
         ctrl.open_selected_source()
     ensure(any("Opened" in s for s in ctrl._status_calls))
 
 
 # --- export_records ---
+
 
 def test_export_records_json():
     ctrl = _ActionTestMixin()
@@ -355,6 +370,7 @@ def test_export_records_with_wsl_params(tmp_path: Path):
 
 # --- restore_backup ---
 
+
 def test_restore_backup_no_backups():
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=[])
@@ -380,7 +396,9 @@ def test_restore_backup_cancelled():
 def test_restore_backup_success():
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=["backup1.zip"])
-    ctrl.service.restore_backup = MagicMock(return_value={"success": True, "operation_id": "op-1"})
+    ctrl.service.restore_backup = MagicMock(
+        return_value={"success": True, "operation_id": "op-1"}
+    )
 
     with patch("env_inspector_gui.controller_actions.BackupPickerDialog") as MockDialog:
         instance = MagicMock()
@@ -397,7 +415,9 @@ def test_restore_backup_success():
 def test_restore_backup_failure():
     ctrl = _ActionTestMixin()
     ctrl.service.list_backups = MagicMock(return_value=["backup1.zip"])
-    ctrl.service.restore_backup = MagicMock(return_value={"success": False, "error_message": "corrupt"})
+    ctrl.service.restore_backup = MagicMock(
+        return_value={"success": False, "error_message": "corrupt"}
+    )
 
     with patch("env_inspector_gui.controller_actions.BackupPickerDialog") as MockDialog:
         instance = MagicMock()
@@ -412,6 +432,7 @@ def test_restore_backup_failure():
 
 # --- load_selected: secret loaded as masked (line 64 branch) ---
 
+
 def test_load_selected_secret_loaded_but_masked():
     """Line 64: record_is_secret and not raw — patched resolve_load_value returns (masked, False)."""
     ctrl = _ActionTestMixin()
@@ -419,13 +440,17 @@ def test_load_selected_secret_loaded_but_masked():
     rec = _make_record(name="TOKEN", value="secret123", is_secret=True)
     ctrl._selected = _make_row(rec)
 
-    with patch("env_inspector_gui.controller_actions.resolve_load_value", return_value=("***", False)):
+    with patch(
+        "env_inspector_gui.controller_actions.resolve_load_value",
+        return_value=("***", False),
+    ):
         ctrl.load_selected()
     ensure(ctrl.value_text.get() == "***")
     ensure(any("Loaded masked" in s for s in ctrl._status_calls))
 
 
 # --- _confirm_hidden_secret ---
+
 
 def test_confirm_hidden_secret():
     ctrl = _ActionTestMixin()
@@ -435,6 +460,7 @@ def test_confirm_hidden_secret():
 
 
 # --- _selected_record ---
+
 
 def test_selected_record_none():
     ctrl = _ActionTestMixin()

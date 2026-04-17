@@ -25,7 +25,9 @@ def _resolve_legacy_print_secrets_root(root: str | Path) -> Path:
     workspace_root = resolve_scan_root(Path.cwd())
     requested = resolve_scan_root(root)
     if requested != workspace_root:
-        raise PathPolicyError("Legacy --print-secrets only supports the current working directory.")
+        raise PathPolicyError(
+            "Legacy --print-secrets only supports the current working directory."
+        )
     return workspace_root
 
 
@@ -46,8 +48,14 @@ def _legacy_print_secrets(root: str | Path) -> int:
 
 def _parse_gui_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Env Inspector GUI")
-    parser.add_argument("--root", default=os.getcwd(), help="Root path to scan for .env files")
-    parser.add_argument("--print-secrets", action="store_true", help="Print detected secret keys and exit")
+    parser.add_argument(
+        "--root", default=os.getcwd(), help="Root path to scan for .env files"
+    )
+    parser.add_argument(
+        "--print-secrets",
+        action="store_true",
+        help="Print detected secret keys and exit",
+    )
     return parser.parse_args(argv)
 
 

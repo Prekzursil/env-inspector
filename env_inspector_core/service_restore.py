@@ -36,9 +36,7 @@ def restore_linux_target(*args, **kwargs) -> None:
 
     target = kwargs.pop("target")
     text = kwargs.pop("text")
-    write_linux_etc_env_fn = kwargs.pop(
-        "write_linux_etc_environment_with_privilege_fn"
-    )
+    write_linux_etc_env_fn = kwargs.pop("write_linux_etc_environment_with_privilege_fn")
     bashrc_target = kwargs.pop("bashrc_target", "linux:bashrc")
     etc_target = kwargs.pop("etc_target", "linux:etc_environment")
     if kwargs:
@@ -91,9 +89,7 @@ def restore_wsl_target(*args, **kwargs) -> None:
 def restore_powershell_target(*args, **kwargs) -> None:
     """Restore a PowerShell profile target via the validated path helper."""
     if args:
-        raise TypeError(
-            "restore_powershell_target accepts keyword arguments only."
-        )
+        raise TypeError("restore_powershell_target accepts keyword arguments only.")
 
     target = kwargs.pop("target")
     text = kwargs.pop("text")
@@ -199,9 +195,7 @@ def _dispatch_restore_dotenv(**kwargs) -> None:
 
 def _dispatch_restore_linux(**kwargs) -> None:
     """Forward Linux-target restore work to the injected callable."""
-    kwargs["restore_linux_target_fn"](
-        target=kwargs["target"], text=kwargs["text"]
-    )
+    kwargs["restore_linux_target_fn"](target=kwargs["target"], text=kwargs["text"])
 
 
 def _dispatch_restore_wsl(**kwargs) -> None:
@@ -211,9 +205,7 @@ def _dispatch_restore_wsl(**kwargs) -> None:
 
 def _dispatch_restore_powershell(**kwargs) -> None:
     """Forward PowerShell-target restore work to the injected callable."""
-    kwargs["restore_powershell_target_fn"](
-        target=kwargs["target"], text=kwargs["text"]
-    )
+    kwargs["restore_powershell_target_fn"](target=kwargs["target"], text=kwargs["text"])
 
 
 def _dispatch_restore_windows(**kwargs) -> None:

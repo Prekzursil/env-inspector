@@ -15,7 +15,9 @@ class _PreviewTabDeps:
 class TargetPickerDialog:
     """Modal dialog for selecting mutation targets."""
 
-    def __init__(self, parent: Any, targets: List[str], selected: List[str] | None = None) -> None:
+    def __init__(
+        self, parent: Any, targets: List[str], selected: List[str] | None = None
+    ) -> None:
         import tkinter as tk
         from tkinter import ttk
 
@@ -39,7 +41,9 @@ class TargetPickerDialog:
         frame = ttk.Frame(self.win, padding=10)
         frame.pack(fill="both", expand=True)
 
-        ttk.Label(frame, text="Choose one or more targets for this operation:").pack(anchor="w", pady=(0, 8))
+        ttk.Label(frame, text="Choose one or more targets for this operation:").pack(
+            anchor="w", pady=(0, 8)
+        )
         self._build_search_row(frame, tk, ttk)
         self._build_preset_row(frame, ttk)
 
@@ -81,13 +85,25 @@ class TargetPickerDialog:
     def _build_preset_row(self, frame: Any, ttk: Any) -> None:
         preset_row = ttk.Frame(frame)
         preset_row.pack(fill="x", pady=(0, 8))
-        ttk.Button(preset_row, text="Select All", command=self._select_all).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select None", command=self._select_none).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select Dotenv Only", command=self._select_dotenv).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select Windows Only", command=self._select_windows).pack(side="left", padx=(0, 6))
-        ttk.Button(preset_row, text="Select WSL Only", command=self._select_wsl).pack(side="left", padx=(0, 6))
+        ttk.Button(preset_row, text="Select All", command=self._select_all).pack(
+            side="left", padx=(0, 6)
+        )
+        ttk.Button(preset_row, text="Select None", command=self._select_none).pack(
+            side="left", padx=(0, 6)
+        )
+        ttk.Button(
+            preset_row, text="Select Dotenv Only", command=self._select_dotenv
+        ).pack(side="left", padx=(0, 6))
+        ttk.Button(
+            preset_row, text="Select Windows Only", command=self._select_windows
+        ).pack(side="left", padx=(0, 6))
+        ttk.Button(preset_row, text="Select WSL Only", command=self._select_wsl).pack(
+            side="left", padx=(0, 6)
+        )
 
-    def _build_target_checks(self, body: Any, selected_set: Set[str], has_selected: bool, tk: Any, ttk: Any) -> None:
+    def _build_target_checks(
+        self, body: Any, selected_set: Set[str], has_selected: bool, tk: Any, ttk: Any
+    ) -> None:
         for target in self._targets:
             default = target in selected_set if has_selected else True
             var = tk.BooleanVar(value=default)
@@ -100,7 +116,9 @@ class TargetPickerDialog:
     def _build_buttons(self, frame: Any, ttk: Any) -> None:
         btns = ttk.Frame(frame)
         btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
+            side="right", padx=(6, 0)
+        )
         ttk.Button(btns, text="Apply", command=self._apply).pack(side="right")
 
     def _sync_scrollregion(self, _event: Any) -> None:
@@ -135,13 +153,23 @@ class TargetPickerDialog:
         self._set_by_predicate(lambda _target: False)
 
     def _select_dotenv(self) -> None:
-        self._set_by_predicate(lambda target: target.startswith("dotenv:") or target.startswith("wsl_dotenv:"))
+        self._set_by_predicate(
+            lambda target: (
+                target.startswith("dotenv:") or target.startswith("wsl_dotenv:")
+            )
+        )
 
     def _select_windows(self) -> None:
-        self._set_by_predicate(lambda target: target.startswith("windows:") or target.startswith("powershell:"))
+        self._set_by_predicate(
+            lambda target: (
+                target.startswith("windows:") or target.startswith("powershell:")
+            )
+        )
 
     def _select_wsl(self) -> None:
-        self._set_by_predicate(lambda target: target.startswith("wsl:") or target.startswith("wsl_dotenv:"))
+        self._set_by_predicate(
+            lambda target: target.startswith("wsl:") or target.startswith("wsl_dotenv:")
+        )
 
     def _update_selected_count(self) -> None:
         count = sum(1 for var in self._vars.values() if var.get())
@@ -175,9 +203,10 @@ class DotenvTargetDialog:
         frame = ttk.Frame(self.win, padding=12)
         frame.pack(fill="both", expand=True)
 
-        ttk.Label(frame, text=f"'{key}' appears in multiple .env targets. Choose which file(s) to modify:").pack(
-            anchor="w", pady=(0, 8)
-        )
+        ttk.Label(
+            frame,
+            text=f"'{key}' appears in multiple .env targets. Choose which file(s) to modify:",
+        ).pack(anchor="w", pady=(0, 8))
 
         for target in targets:
             var = tk.BooleanVar(value=True)
@@ -186,7 +215,9 @@ class DotenvTargetDialog:
 
         btns = ttk.Frame(frame)
         btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
+            side="right", padx=(6, 0)
+        )
         ttk.Button(btns, text="Apply", command=self._apply).pack(side="right")
 
     def _apply(self) -> None:
@@ -228,7 +259,9 @@ class DiffPreviewDialog:
         notebook.pack(fill="both", expand=True)
 
         mono = tkfont.nametofont("TkFixedFont")
-        self._build_preview_tabs(notebook, previews, _PreviewTabDeps(mono, ttk, scrolledtext))
+        self._build_preview_tabs(
+            notebook, previews, _PreviewTabDeps(mono, ttk, scrolledtext)
+        )
 
         btns = ttk.Frame(frame)
         btns.pack(fill="x", pady=(10, 0))
@@ -262,11 +295,15 @@ class DiffPreviewDialog:
         txt.tag_configure("diff_add", foreground="#1f7a1f")
         txt.tag_configure("diff_remove", foreground="#9b1c1c")
         txt.tag_configure("diff_hunk", foreground="#005a9c")
-        self._render_diff_text(txt, str(preview.get("diff_preview") or "(no textual diff)"))
+        self._render_diff_text(
+            txt, str(preview.get("diff_preview") or "(no textual diff)")
+        )
         txt.configure(state="disabled")
 
     @staticmethod
-    def _build_summary(tab: Any, preview: Dict[str, Any], target: str, ttk: Any) -> None:
+    def _build_summary(
+        tab: Any, preview: Dict[str, Any], target: str, ttk: Any
+    ) -> None:
         summary = ttk.Frame(tab)
         summary.pack(fill="x", pady=(0, 6))
         ttk.Label(summary, text=f"Target: {target}").pack(anchor="w")
@@ -297,7 +334,9 @@ class DiffPreviewDialog:
         if preview_only:
             ttk.Button(btns, text="Close", command=self._cancel).pack(side="right")
             return
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
+            side="right", padx=(6, 0)
+        )
         ttk.Button(btns, text="Apply Changes", command=self._apply).pack(side="right")
 
     def _apply(self) -> None:
@@ -330,7 +369,9 @@ class BackupPickerDialog:
         frame = ttk.Frame(self.win, padding=10)
         frame.pack(fill="both", expand=True)
 
-        ttk.Label(frame, text="Select backup file to restore:").pack(anchor="w", pady=(0, 8))
+        ttk.Label(frame, text="Select backup file to restore:").pack(
+            anchor="w", pady=(0, 8)
+        )
 
         self.listbox = tk.Listbox(frame)
         self.listbox.pack(fill="both", expand=True)
@@ -339,7 +380,9 @@ class BackupPickerDialog:
 
         btns = ttk.Frame(frame)
         btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(side="right", padx=(6, 0))
+        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
+            side="right", padx=(6, 0)
+        )
         ttk.Button(btns, text="Restore", command=self._restore).pack(side="right")
 
     def _restore(self) -> None:

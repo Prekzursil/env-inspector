@@ -77,11 +77,17 @@ def validated_powershell_restore_path(
         current_user_target=current_user_target,
         all_users_target=all_users_target,
     )
-    return validate_path_in_roots(profile, allowed_roots, label="PowerShell profile path")
+    return validate_path_in_roots(
+        profile, allowed_roots, label="PowerShell profile path"
+    )
 
 
 def linux_etc_environment_path(linux_etc_env_path: str) -> Path:
-    path = Path(PureWindowsPath(linux_etc_env_path).as_posix()) if os.name == "nt" else Path(linux_etc_env_path)
+    path = (
+        Path(PureWindowsPath(linux_etc_env_path).as_posix())
+        if os.name == "nt"
+        else Path(linux_etc_env_path)
+    )
     if path.as_posix() != linux_etc_env_path:
         raise RuntimeError(f"Unexpected /etc/environment resolution: {path}")
     return path

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from tests.assertions import ensure
 
+
 def test_release_workflow_pins_third_party_actions_to_shas():
     """Require third-party workflow actions to be pinned to commit SHAs."""
     workflow = Path(".github/workflows/env-inspector-exe-release.yml")

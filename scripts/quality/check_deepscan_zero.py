@@ -54,10 +54,20 @@ split_validated_https_url = cast(
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert DeepScan has zero total open issues.")
-    parser.add_argument("--token", default="", help="DeepScan API token (falls back to DEEPSCAN_API_TOKEN env)")
-    parser.add_argument("--out-json", default="deepscan-zero/deepscan.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="deepscan-zero/deepscan.md", help="Output markdown path")
+    parser = argparse.ArgumentParser(
+        description="Assert DeepScan has zero total open issues."
+    )
+    parser.add_argument(
+        "--token",
+        default="",
+        help="DeepScan API token (falls back to DEEPSCAN_API_TOKEN env)",
+    )
+    parser.add_argument(
+        "--out-json", default="deepscan-zero/deepscan.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="deepscan-zero/deepscan.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
@@ -76,7 +86,9 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _request_json(*, host: str, path: str, query: Dict[str, str], token: str) -> Dict[str, Any]:
+def _request_json(
+    *, host: str, path: str, query: Dict[str, str], token: str
+) -> Dict[str, Any]:
     payload, _headers = request_json_https(
         host=host,
         path=path,
@@ -104,12 +116,22 @@ def _coerce_fetch_request(*args: Any, **kwargs: Any) -> DeepScanRequest:
     if args:
         if len(args) == 1 and isinstance(args[0], DeepScanRequest):
             if kwargs:
-                raise TypeError("Pass either a request object or keyword arguments, not both.")
+                raise TypeError(
+                    "Pass either a request object or keyword arguments, not both."
+                )
             return args[0]
         if len(args) == 5 and not kwargs:
             host, path, query, token, findings = args
-            return DeepScanRequest(host=str(host), path=str(path), query=dict(query), token=str(token), findings=findings)
-        raise TypeError("Pass a request object or keyword arguments, not positional arguments.")
+            return DeepScanRequest(
+                host=str(host),
+                path=str(path),
+                query=dict(query),
+                token=str(token),
+                findings=findings,
+            )
+        raise TypeError(
+            "Pass a request object or keyword arguments, not positional arguments."
+        )
     return DeepScanRequest(
         host=str(kwargs.pop("host")),
         path=str(kwargs.pop("path")),
@@ -122,17 +144,30 @@ def _coerce_fetch_request(*args: Any, **kwargs: Any) -> DeepScanRequest:
 def _fetch_open_issues(*args: Any, **kwargs: Any) -> int | None:
     request = _coerce_fetch_request(*args, **kwargs)
     try:
-        payload = _request_json(host=request.host, path=request.path, query=request.query, token=request.token)
-    except (urllib.error.URLError, RuntimeError, ValueError) as exc:  # pragma: no cover - network/runtime surface
+        payload = _request_json(
+            host=request.host,
+            path=request.path,
+            query=request.query,
+            token=request.token,
+        )
+    except (
+        urllib.error.URLError,
+        RuntimeError,
+        ValueError,
+    ) as exc:  # pragma: no cover - network/runtime surface
         request.findings.append(f"DeepScan API request failed: {exc}")
         return None
 
     open_issues = extract_total_open(payload)
     if open_issues is None:
-        request.findings.append("DeepScan response did not include a parseable total issue count.")
+        request.findings.append(
+            "DeepScan response did not include a parseable total issue count."
+        )
         return None
     if open_issues != 0:
-        request.findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
+        request.findings.append(
+            f"DeepScan reports {open_issues} open issues (expected 0)."
+        )
     return open_issues
 
 
@@ -170,7 +205,9 @@ def main() -> int:
 
     if not findings:
         host, path, query = _resolve_deepscan_endpoint(open_issues_url)
-        open_issues = _fetch_open_issues(host=host, path=path, query=query, token=token, findings=findings)
+        open_issues = _fetch_open_issues(
+            host=host, path=path, query=query, token=token, findings=findings
+        )
 
     status = "pass" if not findings else "fail"
     payload = {
@@ -182,7 +219,9 @@ def main() -> int:
     }
 
     try:
-        out_json = safe_output_path_in_workspace(args.out_json, "deepscan-zero/deepscan.json")
+        out_json = safe_output_path_in_workspace(
+            args.out_json, "deepscan-zero/deepscan.json"
+        )
         out_md = safe_output_path_in_workspace(args.out_md, "deepscan-zero/deepscan.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
@@ -190,7 +229,9 @@ def main() -> int:
 
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out_json.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
     return 0 if status == "pass" else 1

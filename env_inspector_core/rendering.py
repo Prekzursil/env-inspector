@@ -37,5 +37,8 @@ def export_rows(rows: List[Dict[str, Any]], *, output: str) -> str:
         writer.writerows(rows)
         return buf.getvalue()
 
-    lines = [f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}" for row in rows]
+    lines = [
+        f"{row['context']}\t{row['source_type']}\t{row['name']}\t{row['value']}"
+        for row in rows
+    ]
     return "\n".join(lines) + ("\n" if lines else "")

@@ -18,7 +18,9 @@ def is_openable_local_path(source_path: str) -> bool:
         return False
 
     # Typical pseudo form: distro:/path or distro:~/path
-    if source_path.count(":") >= 2 and not (len(source_path) >= 2 and source_path[1] == ":"):
+    if source_path.count(":") >= 2 and not (
+        len(source_path) >= 2 and source_path[1] == ":"
+    ):
         return False
 
     return False
@@ -40,7 +42,9 @@ def open_source_path(
     return True, None
 
 
-def _open_path(source_path: str, *, open_uri: Callable[[str], bool] | None = None) -> None:
+def _open_path(
+    source_path: str, *, open_uri: Callable[[str], bool] | None = None
+) -> None:
     uri = Path(source_path).resolve().as_uri()
     opener = open_uri or webbrowser.open
     opened = opener(uri)

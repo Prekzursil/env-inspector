@@ -41,7 +41,9 @@ def test_codacy_extract_total_open_handles_nested_and_missing_counts():
     case.assertIsNone(codacy_mod.extract_total_open({"outer": [{"nested": "value"}]}))
 
 
-def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monkeypatch, capsys):
+def test_codacy_main_returns_error_for_invalid_output_path(
+    tmp_path: Path, monkeypatch, capsys
+):
     monkeypatch.chdir(tmp_path)
     args = SimpleNamespace(
         provider="gh",
@@ -60,7 +62,9 @@ def test_codacy_main_returns_error_for_invalid_output_path(tmp_path: Path, monke
 
 
 def test_sentry_collect_projects_prefers_args_and_env_fallback():
-    args_with_projects = cast(argparse.Namespace, SimpleNamespace(project=["backend", "web"]))
+    args_with_projects = cast(
+        argparse.Namespace, SimpleNamespace(project=["backend", "web"])
+    )
     args_without_projects = cast(argparse.Namespace, SimpleNamespace(project=[]))
 
     ensure(sentry_mod._collect_projects(args_with_projects, {}) == ["backend", "web"])
@@ -77,9 +81,13 @@ def test_sentry_scan_projects_covers_header_fallback_and_failures(monkeypatch):
     def _fake_request_project_issues(org: str, project: str, token: str):
         return [{"id": "1"}], {}
 
-    monkeypatch.setattr(sentry_mod, "_request_project_issues", _fake_request_project_issues)
+    monkeypatch.setattr(
+        sentry_mod, "_request_project_issues", _fake_request_project_issues
+    )
 
-    mode, project_results, findings, failures = sentry_mod._scan_projects("org", ["proj"], "token")
+    mode, project_results, findings, failures = sentry_mod._scan_projects(
+        "org", ["proj"], "token"
+    )
 
     ensure(mode == "strict")
     ensure(project_results == [{"project": "proj", "unresolved": 1}])
@@ -93,7 +101,9 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
         raise _http_error(404, "Not Found")
 
     monkeypatch.setattr(sentry_mod, "_request_project_issues", _raise_404)
-    mode_404, project_results_404, findings_404, failures_404 = sentry_mod._scan_projects("org", ["proj"], "token")
+    mode_404, project_results_404, findings_404, failures_404 = (
+        sentry_mod._scan_projects("org", ["proj"], "token")
+    )
 
     ensure(mode_404 == "skipped")
     ensure(project_results_404 == [])
@@ -104,7 +114,9 @@ def test_sentry_scan_projects_handles_http_404_and_http_500(monkeypatch):
         raise _http_error(500, "Err")
 
     monkeypatch.setattr(sentry_mod, "_request_project_issues", _raise_500)
-    mode_500, project_results_500, findings_500, failures_500 = sentry_mod._scan_projects("org", ["proj"], "token")
+    mode_500, project_results_500, findings_500, failures_500 = (
+        sentry_mod._scan_projects("org", ["proj"], "token")
+    )
 
     ensure(mode_500 == "error")
     ensure(project_results_500 == [])
@@ -126,7 +138,12 @@ def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(
         sentry_mod,
         "_scan_projects",
-        lambda org, projects, token: ("strict", [{"project": "proj", "unresolved": 0}], [], []),
+        lambda org, projects, token: (
+            "strict",
+            [{"project": "proj", "unresolved": 0}],
+            [],
+            [],
+        ),
     )
 
     ensure(sentry_mod.main() == 0)
@@ -135,6 +152,11 @@ def test_sentry_main_strict_mode_pass_and_fail(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(
         sentry_mod,
         "_scan_projects",
-        lambda org, projects, token: ("error", [{"project": "proj", "unresolved": 1}], [], ["failure"]),
+        lambda org, projects, token: (
+            "error",
+            [{"project": "proj", "unresolved": 1}],
+            [],
+            ["failure"],
+        ),
     )
     ensure(sentry_mod.main() == 1)

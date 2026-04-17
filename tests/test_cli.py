@@ -193,8 +193,13 @@ def test_stdout_safe_rows_projects_only_exportable_fields():
 
 
 def test_run_cli_set_and_remove(capsys):
-    set_code = run_cli(["set", "--key", "A", "--value", "1", "--target", "windows:user"], service=FakeService())
-    remove_code = run_cli(["remove", "--key", "A", "--target", "windows:user"], service=FakeService())
+    set_code = run_cli(
+        ["set", "--key", "A", "--value", "1", "--target", "windows:user"],
+        service=FakeService(),
+    )
+    remove_code = run_cli(
+        ["remove", "--key", "A", "--target", "windows:user"], service=FakeService()
+    )
     case = _case()
     case.assertEqual(set_code, 0)
     case.assertEqual(remove_code, 0)
@@ -206,7 +211,16 @@ def test_run_cli_set_and_remove(capsys):
 def test_run_cli_preview_set_and_remove(capsys):
     svc = FakeService()
     set_code = run_cli(
-        ["set", "--key", "A", "--value", "1", "--target", "windows:user", "--preview-only"],
+        [
+            "set",
+            "--key",
+            "A",
+            "--value",
+            "1",
+            "--target",
+            "windows:user",
+            "--preview-only",
+        ],
         service=svc,
     )
     remove_code = run_cli(

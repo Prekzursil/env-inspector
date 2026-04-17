@@ -166,8 +166,10 @@ def test_run_operation_diff_rejected():
     ctrl.service = MagicMock()
     ctrl.service.preview_set = MagicMock(return_value=[{"success": True}])
 
-    with patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]), \
-         patch.object(ctrl, "_confirm_diff", return_value=False):
+    with (
+        patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]),
+        patch.object(ctrl, "_confirm_diff", return_value=False),
+    ):
         ctrl._run_operation("set")
 
     # Apply should NOT be called
@@ -186,8 +188,10 @@ def test_run_operation_apply_fails():
     ctrl.service.preview_set = MagicMock(return_value=[{"success": True}])
     ctrl.service.set_key = MagicMock(side_effect=RuntimeError("boom"))
 
-    with patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]), \
-         patch.object(ctrl, "_confirm_diff", return_value=True):
+    with (
+        patch.object(ctrl, "_maybe_choose_dotenv_targets", return_value=["a"]),
+        patch.object(ctrl, "_confirm_diff", return_value=True),
+    ):
         ctrl._run_operation("set")
 
     ctrl.messagebox.showerror.assert_called()
@@ -321,8 +325,10 @@ def test_resolve_root_path_invalid():
 # --- EnvInspectorApp ---
 def test_env_inspector_app():
     """Test env inspector app."""
-    with patch.object(EnvInspectorController, "__init__", return_value=None), \
-         patch.object(EnvInspectorController, "run"):
+    with (
+        patch.object(EnvInspectorController, "__init__", return_value=None),
+        patch.object(EnvInspectorController, "run"),
+    ):
         app = EnvInspectorApp(Path.cwd())
         app._controller = MagicMock()
         app.run()
@@ -330,6 +336,7 @@ def test_env_inspector_app():
 
 
 # --- Real method tests (not overridden) ---
+
 
 def test_real_init_root_window():
     """Cover lines 72-73: _init_root_window with real implementation."""
@@ -349,9 +356,17 @@ def test_real_load_boot_state():
     ctrl.service.list_contexts = MagicMock(return_value=["linux"])
     ctrl.state_dir = Path("/var/nonexistent-state-dir-test")
     cwd = Path.cwd()
-    with patch("env_inspector_gui.controller.load_ui_state", return_value=PersistedUiState()), \
-         patch("env_inspector_gui.controller.resolve_scan_root", return_value=cwd), \
-         patch("env_inspector_gui.controller.sanitize_loaded_state", return_value=PersistedUiState(context="linux")):
+    with (
+        patch(
+            "env_inspector_gui.controller.load_ui_state",
+            return_value=PersistedUiState(),
+        ),
+        patch("env_inspector_gui.controller.resolve_scan_root", return_value=cwd),
+        patch(
+            "env_inspector_gui.controller.sanitize_loaded_state",
+            return_value=PersistedUiState(context="linux"),
+        ),
+    ):
         boot_state, _fallback = EnvInspectorController._load_boot_state(ctrl, cwd)
     ensure(isinstance(boot_state, PersistedUiState))
     ensure(boot_state.context == "linux")
@@ -410,6 +425,7 @@ def test_real_bind_shortcuts():
 def test_real_load_tk_modules():
     """Cover lines 56-63: _load_tk_modules with mocked tkinter."""
     import sys
+
     mock_filedialog = MagicMock()
     mock_messagebox = MagicMock()
     mock_ttk = MagicMock()
@@ -419,7 +435,12 @@ def test_real_load_tk_modules():
     mock_tkinter.ttk = mock_ttk
 
     saved = {}
-    for mod_name in ("tkinter", "tkinter.filedialog", "tkinter.messagebox", "tkinter.ttk"):
+    for mod_name in (
+        "tkinter",
+        "tkinter.filedialog",
+        "tkinter.messagebox",
+        "tkinter.ttk",
+    ):
         saved[mod_name] = sys.modules.get(mod_name)
 
     sys.modules["tkinter"] = mock_tkinter
@@ -438,6 +459,7 @@ def test_real_load_tk_modules():
 
 
 # --- refresh_data with view present for _on_row_selected (line 359, 360) ---
+
 
 def test_refresh_data_with_view_and_selected_row():
     """Cover lines 358-360: refresh_data when view exists and tree has selection."""
@@ -464,6 +486,7 @@ def test_refresh_data_with_view_and_selected_row():
 
 # --- _report_operation_result with no error and no status (line 485) ---
 
+
 def test_report_operation_result_no_message():
     """Cover line 485: result with no error and no status message."""
     ctrl = _Harness()
@@ -472,6 +495,7 @@ def test_report_operation_result_no_message():
 
 
 # --- Partial branch coverage ---
+
 
 def test_refresh_data_with_tk_none():
     """Cover branch 360->363: tk is None during refresh, skip _persist_state."""
@@ -493,8 +517,10 @@ def test_refresh_data_with_tk_none():
         original_render_table()
         ctrl.tk = None  # type: ignore[assignment]
 
-    with patch.object(ctrl, "_render_table", side_effect=render_then_clear_tk), \
-         patch("env_inspector_gui.controller.save_ui_state") as mock_save:
+    with (
+        patch.object(ctrl, "_render_table", side_effect=render_then_clear_tk),
+        patch("env_inspector_gui.controller.save_ui_state") as mock_save,
+    ):
         ctrl.refresh_data()
 
     ensure(ctrl.last_refresh_at is not None)
@@ -507,9 +533,14 @@ def test_report_operation_result_both_none():
     ctrl = _Harness()
     ctrl.messagebox = MagicMock()
     # Manually construct a result that produces both None
-    with patch("env_inspector_gui.controller.summarize_operation_result") as mock_summary:
+    with patch(
+        "env_inspector_gui.controller.summarize_operation_result"
+    ) as mock_summary:
         from env_inspector_gui.models import OperationResultSummary
-        mock_summary.return_value = OperationResultSummary(status_message=None, error_message=None)
+
+        mock_summary.return_value = OperationResultSummary(
+            status_message=None, error_message=None
+        )
         ctrl._report_operation_result("set", {"success": True})
     # Neither showerror nor _set_status should be called
     ctrl.messagebox.showerror.assert_not_called()

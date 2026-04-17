@@ -17,21 +17,30 @@ from .path_policy import (
     validate_backup_path,
 )
 from .providers import (
-    WindowsRegistryProvider, WslProvider, build_registry_records,
+    WindowsRegistryProvider,
+    WslProvider,
+    build_registry_records,
     collect_dotenv_records,
-    collect_linux_records, collect_powershell_profile_records, collect_process_records,
-    collect_wsl_dotenv_records, collect_wsl_records, current_wsl_distro_name,
-    get_runtime_context, is_windows,
+    collect_linux_records,
+    collect_powershell_profile_records,
+    collect_process_records,
+    collect_wsl_dotenv_records,
+    collect_wsl_records,
+    current_wsl_distro_name,
+    get_runtime_context,
+    is_windows,
 )
 from .rendering import audit_safe_result
 from .resolver import resolve_effective_value
 from .service_listing import (
-    HostCollectionRequest, HostRowCollectors,
+    HostCollectionRequest,
+    HostRowCollectors,
     apply_row_filters as _apply_row_filters_helper,
     collect_host_rows as _collect_host_rows_helper,
     collect_wsl_rows as _collect_wsl_rows_helper,
     powershell_target_for_path as _powershell_target_for_path_helper,
-    record_target as _record_target_helper, rows_to_payload as _rows_to_payload_helper,
+    record_target as _record_target_helper,
+    rows_to_payload as _rows_to_payload_helper,
 )
 from .service_ops import (
     diff_text as _diff_text_helper,
@@ -74,13 +83,22 @@ WSL_DOTENV_TARGET_PREFIX = _service_mutations.WSL_DOTENV_TARGET_PREFIX
 which, run = _privileged_which, _privileged_run
 
 __all__ = [
-    "DOTENV_TARGET_PREFIX", "EnvInspectorService", "LINUX_ETC_ENV_PATH",
+    "DOTENV_TARGET_PREFIX",
+    "EnvInspectorService",
+    "LINUX_ETC_ENV_PATH",
     "ListRecordsRequest",
-    "ShellMutationRequest", "TARGET_LINUX_BASHRC", "TARGET_LINUX_ETC_ENV",
-    "TARGET_POWERSHELL_ALL_USERS", "TARGET_POWERSHELL_CURRENT_USER",
+    "ShellMutationRequest",
+    "TARGET_LINUX_BASHRC",
+    "TARGET_LINUX_ETC_ENV",
+    "TARGET_POWERSHELL_ALL_USERS",
+    "TARGET_POWERSHELL_CURRENT_USER",
     "TARGET_WINDOWS_MACHINE",
-    "TARGET_WINDOWS_USER", "TargetOperationBatch", "TargetOperationRequest",
-    "WSL_DOTENV_TARGET_PREFIX", "run", "which",
+    "TARGET_WINDOWS_USER",
+    "TargetOperationBatch",
+    "TargetOperationRequest",
+    "WSL_DOTENV_TARGET_PREFIX",
+    "run",
+    "which",
 ]
 
 

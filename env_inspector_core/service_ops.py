@@ -9,7 +9,9 @@ from .secrets import mask_value
 from . import service_ops_request as _service_ops_request
 
 normalize_target_operation_batch = _service_ops_request.normalize_target_operation_batch
-normalize_target_operation_request = _service_ops_request.normalize_target_operation_request
+normalize_target_operation_request = (
+    _service_ops_request.normalize_target_operation_request
+)
 
 
 @dataclass(frozen=True)
@@ -50,7 +52,9 @@ def make_operation_result(payload: OperationResultInput) -> OperationResult:
         target=payload.target,
         action=payload.action,
         success=payload.success,
-        backup_path=(None if payload.preview_only and payload.success else payload.backup_path),
+        backup_path=(
+            None if payload.preview_only and payload.success else payload.backup_path
+        ),
         diff_preview=payload.diff_preview,
         error_message=payload.error_message,
         value_masked=payload.value_masked,

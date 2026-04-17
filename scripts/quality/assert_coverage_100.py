@@ -44,13 +44,21 @@ def _load_security_helpers():
     )
 
 
-SAFE_INPUT_FILE_PATH_IN_WORKSPACE, SAFE_OUTPUT_PATH_IN_WORKSPACE = _load_security_helpers()
+SAFE_INPUT_FILE_PATH_IN_WORKSPACE, SAFE_OUTPUT_PATH_IN_WORKSPACE = (
+    _load_security_helpers()
+)
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert minimum coverage for all declared components.")
-    parser.add_argument("--xml", action="append", default=[], help="Coverage XML input: name=path")
-    parser.add_argument("--lcov", action="append", default=[], help="LCOV input: name=path")
+    parser = argparse.ArgumentParser(
+        description="Assert minimum coverage for all declared components."
+    )
+    parser.add_argument(
+        "--xml", action="append", default=[], help="Coverage XML input: name=path"
+    )
+    parser.add_argument(
+        "--lcov", action="append", default=[], help="LCOV input: name=path"
+    )
     parser.add_argument(
         "--require-source",
         action="append",
@@ -63,8 +71,12 @@ def _parse_args() -> argparse.Namespace:
         default=100.0,
         help="Minimum required coverage percentage for each component and combined summary.",
     )
-    parser.add_argument("--out-json", default="coverage-100/coverage.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="coverage-100/coverage.md", help="Output markdown path")
+    parser.add_argument(
+        "--out-json", default="coverage-100/coverage.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="coverage-100/coverage.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
@@ -91,7 +103,9 @@ def main() -> int:
     stats, covered_sources = _collect_stats(args)
 
     if not stats:
-        raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
+        raise SystemExit(
+            "No coverage files were provided; pass --xml and/or --lcov inputs."
+        )
 
     min_percent = max(0.0, min(100.0, float(args.min_percent)))
     status, findings = evaluate(
@@ -103,7 +117,9 @@ def main() -> int:
     payload = _build_payload(stats, covered_sources, min_percent, findings, status)
 
     try:
-        out_json = SAFE_OUTPUT_PATH_IN_WORKSPACE(args.out_json, "coverage-100/coverage.json")
+        out_json = SAFE_OUTPUT_PATH_IN_WORKSPACE(
+            args.out_json, "coverage-100/coverage.json"
+        )
         out_md = SAFE_OUTPUT_PATH_IN_WORKSPACE(args.out_md, "coverage-100/coverage.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)

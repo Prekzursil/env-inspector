@@ -27,7 +27,12 @@ def _name_suggests_secret(name: str) -> bool:
 
 
 def _is_path_like(candidate: str) -> bool:
-    return candidate.startswith(("/", "./", "../")) or "://" in candidate or "\\" in candidate or ":" in candidate
+    return (
+        candidate.startswith(("/", "./", "../"))
+        or "://" in candidate
+        or "\\" in candidate
+        or ":" in candidate
+    )
 
 
 def _is_base64_secret(candidate: str) -> bool:

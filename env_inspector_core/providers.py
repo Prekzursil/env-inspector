@@ -45,7 +45,6 @@ if TYPE_CHECKING:
         SetValueEx: Callable[[Any, str, int, int, str], None]
         DeleteValue: Callable[[Any, str], None]
 
-
     class WslClient(Protocol):
         """Protocol for the WSL interop client."""
 
@@ -88,6 +87,8 @@ SKIP_DIRS = {
 }
 
 _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
+
+
 def is_windows() -> bool:
     return os.name == "nt"
 
@@ -115,14 +116,20 @@ def _dotenv_matches(filename: str) -> bool:
 
 def _iter_dotenv_candidates(root: Path, max_depth: int) -> List[Path]:
     files: List[Path] = []
-    for current, dirs, filenames in os.walk(root):  # codeql[py/path-injection] root constrained to workspace scope
+    for current, dirs, filenames in os.walk(
+        root
+    ):  # codeql[py/path-injection] root constrained to workspace scope
         rel = Path(os.path.relpath(current, root))
         depth = 0 if str(rel) == "." else len(rel.parts)
         if depth > max_depth:
             dirs[:] = []
             continue
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        files.extend(Path(current) / filename for filename in filenames if _dotenv_matches(filename))
+        files.extend(
+            Path(current) / filename
+            for filename in filenames
+            if _dotenv_matches(filename)
+        )
     return files
 
 
@@ -169,12 +176,19 @@ class WindowsRegistryProvider:
 
     @staticmethod
     def _scope_details(scope: str, access: int) -> Tuple[Any, str, int]:
-        if scope not in {WindowsRegistryProvider.USER_SCOPE, WindowsRegistryProvider.MACHINE_SCOPE}:
+        if scope not in {
+            WindowsRegistryProvider.USER_SCOPE,
+            WindowsRegistryProvider.MACHINE_SCOPE,
+        }:
             raise ValueError(f"Unsupported scope: {scope}")
 
         registry = _require_winreg()
         root, path, scoped_access = {
-            WindowsRegistryProvider.USER_SCOPE: (registry.HKEY_CURRENT_USER, r"Environment", access),
+            WindowsRegistryProvider.USER_SCOPE: (
+                registry.HKEY_CURRENT_USER,
+                r"Environment",
+                access,
+            ),
             WindowsRegistryProvider.MACHINE_SCOPE: (
                 registry.HKEY_LOCAL_MACHINE,
                 r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
@@ -209,13 +223,23 @@ class WindowsRegistryProvider:
     def remove_scope_value(self, scope: str, key: str) -> None:
         registry = _require_winreg()
         root, path, access = self._scope_details(scope, registry.KEY_SET_VALUE)
-        with registry.OpenKey(root, path, 0, access) as regkey, suppress(FileNotFoundError):
+        with (
+            registry.OpenKey(root, path, 0, access) as regkey,
+            suppress(FileNotFoundError),
+        ):
             registry.DeleteValue(regkey, key)
 
 
 def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
-    for source_type, source_id, source_path, scope, precedence_rank, requires_privilege in (
+    for (
+        source_type,
+        source_id,
+        source_path,
+        scope,
+        precedence_rank,
+        requires_privilege,
+    ) in (
         (
             SOURCE_WINDOWS_USER,
             "user",
@@ -233,7 +257,9 @@ def build_registry_records(provider: WindowsRegistryProvider) -> List[EnvRecord]
             True,
         ),
     ):
-        for key, value in sorted(provider.list_scope(scope).items(), key=lambda kv: kv[0].lower()):
+        for key, value in sorted(
+            provider.list_scope(scope).items(), key=lambda kv: kv[0].lower()
+        ):
             rows.append(
                 EnvRecord(
                     source_type=source_type,
@@ -289,7 +315,9 @@ def parse_powershell_profile_text(text: str) -> List[Tuple[str, str]]:
     return rows
 
 
-def collect_dotenv_records(root: Path, max_depth: int = 5, context: str = "windows") -> List[EnvRecord]:
+def collect_dotenv_records(
+    root: Path, max_depth: int = 5, context: str = "windows"
+) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
     for path in discover_dotenv_files(root, max_depth=max_depth):
         try:

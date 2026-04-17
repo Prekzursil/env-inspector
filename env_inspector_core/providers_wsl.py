@@ -32,11 +32,24 @@ class WslProvider:
     @staticmethod
     def _discover_wsl_exe() -> str | None:
         candidate_paths = (
-            Path(system_root) / "System32" / "wsl.exe" if (system_root := os.environ.get("SystemRoot")) else None,
+            Path(system_root) / "System32" / "wsl.exe"
+            if (system_root := os.environ.get("SystemRoot"))
+            else None,
             Path("/mnt/c/Windows/System32/wsl.exe") if os.name != "nt" else None,
         )
-        discovered = next((candidate for candidate in filter(None, candidate_paths) if candidate.exists()), None)
-        return (str(discovered) if discovered is not None else None) or shutil.which("wsl.exe") or shutil.which("wsl")
+        discovered = next(
+            (
+                candidate
+                for candidate in filter(None, candidate_paths)
+                if candidate.exists()
+            ),
+            None,
+        )
+        return (
+            (str(discovered) if discovered is not None else None)
+            or shutil.which("wsl.exe")
+            or shutil.which("wsl")
+        )
 
     def available(self) -> bool:
         if self._available_cache is not None:
@@ -84,7 +97,9 @@ class WslProvider:
         out = self._decode(proc.stdout)
         err = self._decode(proc.stderr)
         if proc.returncode != 0:
-            raise RuntimeError((err or out).strip() or f"wsl command failed ({proc.returncode})")
+            raise RuntimeError(
+                (err or out).strip() or f"wsl command failed ({proc.returncode})"
+            )
         return out
 
     def list_distros(self) -> List[str]:
@@ -105,11 +120,23 @@ class WslProvider:
 
     def read_file(self, distro: str, path: str) -> str:
         quoted_path = shlex.quote(path)
-        return self._run(["-d", distro, "-e", "bash", "-lc", f"cat {quoted_path} 2>/dev/null || true"])
+        return self._run(
+            [
+                "-d",
+                distro,
+                "-e",
+                "bash",
+                "-lc",
+                f"cat {quoted_path} 2>/dev/null || true",
+            ]
+        )
 
     def write_file(self, distro: str, path: str, content: str) -> None:
         quoted_path = shlex.quote(path)
-        self._run(["-d", distro, "-e", "bash", "-lc", f"cat > {quoted_path}"], input_text=content)
+        self._run(
+            ["-d", distro, "-e", "bash", "-lc", f"cat > {quoted_path}"],
+            input_text=content,
+        )
 
     def write_file_with_privilege(self, distro: str, path: str, content: str) -> None:
         quoted_path = shlex.quote(path)
@@ -128,7 +155,9 @@ class WslProvider:
             "Failed to write with both root and sudo fallback. Run app as admin or configure sudo/root access."
         ) from root_error
 
-    def scan_dotenv_files(self, distro: str, root_path: str, max_depth: int) -> List[str]:
+    def scan_dotenv_files(
+        self, distro: str, root_path: str, max_depth: int
+    ) -> List[str]:
         quoted_root = shlex.quote(root_path)
         command = (
             f"find {quoted_root} -maxdepth {max_depth} -type f "
@@ -211,7 +240,9 @@ def collect_wsl_records(
     return rows
 
 
-def collect_wsl_dotenv_records(wsl: WslProvider, distro: str, root_path: str, max_depth: int) -> List[EnvRecord]:
+def collect_wsl_dotenv_records(
+    wsl: WslProvider, distro: str, root_path: str, max_depth: int
+) -> List[EnvRecord]:
     rows: List[EnvRecord] = []
     if not wsl.available():
         return rows

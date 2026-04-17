@@ -44,7 +44,9 @@ def _target_operation_batch_payload(request: Any) -> Dict[str, Any]:
         "key": request.key,
         "value": request.value,
         "targets": list(request.targets),
-        "scope_roots": None if request.scope_roots is None else list(request.scope_roots),
+        "scope_roots": None
+        if request.scope_roots is None
+        else list(request.scope_roots),
     }
 
 
@@ -90,7 +92,9 @@ def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, A
 
     if kwargs:
         raise TypeError("Unexpected keyword arguments for target operation request.")
-    _require_values("Target, key, and action are required.", target=target, key=key, action=action)
+    _require_values(
+        "Target, key, and action are required.", target=target, key=key, action=action
+    )
 
     return {
         "target": _coerce_string(target),
@@ -99,6 +103,7 @@ def normalize_target_operation_request(*args: Any, **kwargs: Any) -> Dict[str, A
         "action": _coerce_string(action),
         "scope_roots": list(scope_roots or []),
     }
+
 
 def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> Dict[str, Any]:
     request = _extract_request_object(
@@ -116,7 +121,12 @@ def normalize_target_operation_batch(*args: Any, **kwargs: Any) -> Dict[str, Any
 
     if kwargs:
         raise TypeError("Unexpected keyword arguments for target operation batch.")
-    _require_values("Action, key, and targets are required.", action=action, key=key, targets=targets)
+    _require_values(
+        "Action, key, and targets are required.",
+        action=action,
+        key=key,
+        targets=targets,
+    )
 
     return {
         "action": _coerce_string(action),

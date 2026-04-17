@@ -28,16 +28,32 @@ DEFAULT_REQUIRED_VARS = [
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Validate required quality-gate secrets/variables are configured.")
-    parser.add_argument("--required-secret", action="append", default=[], help="Additional required secret env var name")
-    parser.add_argument("--required-var", action="append", default=[], help="Additional required variable env var name")
+    parser = argparse.ArgumentParser(
+        description="Validate required quality-gate secrets/variables are configured."
+    )
+    parser.add_argument(
+        "--required-secret",
+        action="append",
+        default=[],
+        help="Additional required secret env var name",
+    )
+    parser.add_argument(
+        "--required-var",
+        action="append",
+        default=[],
+        help="Additional required variable env var name",
+    )
     parser.add_argument(
         "--strict",
         action="store_true",
         help="Fail when required secrets/vars are missing. Default mode only reports missing items.",
     )
-    parser.add_argument("--out-json", default="quality-secrets/secrets.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="quality-secrets/secrets.md", help="Output markdown path")
+    parser.add_argument(
+        "--out-json", default="quality-secrets/secrets.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="quality-secrets/secrets.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
@@ -68,7 +84,9 @@ def _partition_required(names: List[str]) -> Tuple[List[str], List[str]]:
     return missing, present
 
 
-def evaluate_env(required_secrets: List[str], required_vars: List[str]) -> Dict[str, List[str]]:
+def evaluate_env(
+    required_secrets: List[str], required_vars: List[str]
+) -> Dict[str, List[str]]:
     missing_secrets, present_secrets = _partition_required(required_secrets)
     missing_vars, present_vars = _partition_required(required_vars)
     return {
@@ -108,7 +126,9 @@ def _render_md(payload: dict) -> str:
 def main() -> int:
     args = _parse_args()
 
-    required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
+    required_secrets = _dedupe(
+        DEFAULT_REQUIRED_SECRETS + list(args.required_secret or [])
+    )
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))
 
     result = evaluate_env(required_secrets, required_vars)
@@ -124,8 +144,12 @@ def main() -> int:
     }
 
     try:
-        out_json = safe_output_path_in_workspace(args.out_json, "quality-secrets/secrets.json")
-        out_md = safe_output_path_in_workspace(args.out_md, "quality-secrets/secrets.md")
+        out_json = safe_output_path_in_workspace(
+            args.out_json, "quality-secrets/secrets.json"
+        )
+        out_md = safe_output_path_in_workspace(
+            args.out_md, "quality-secrets/secrets.md"
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -133,7 +157,9 @@ def main() -> int:
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
 
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out_json.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
 

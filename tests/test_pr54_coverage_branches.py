@@ -21,13 +21,17 @@ def test_list_records_rejects_request_and_kwargs(tmp_path: Path) -> None:
     svc = EnvInspectorService(state_dir=tmp_path / "state")
     request = service_module.ListRecordsRequest(root=tmp_path)
 
-    with pytest.raises(TypeError, match="Pass either a ListRecordsRequest or keyword arguments"):
+    with pytest.raises(
+        TypeError, match="Pass either a ListRecordsRequest or keyword arguments"
+    ):
         svc.list_records(request, root=tmp_path)
 
 
 def test_collect_wsl_rows_rejects_positional_and_unexpected_kwargs() -> None:
     """Test collect wsl rows rejects positional and unexpected kwargs."""
-    with pytest.raises(TypeError, match="collect_wsl_rows accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError, match="collect_wsl_rows accepts keyword arguments only"
+    ):
         service_listing_module.collect_wsl_rows("bad-arg")
 
     wsl = SimpleNamespace(available=lambda: False)
@@ -51,7 +55,9 @@ def test_wsl_dotenv_rows_returns_empty_when_request_is_incomplete() -> None:
     calls = []
 
     rows = service_listing_module._wsl_dotenv_rows(
-        request=service_listing_module._WslDotenvRequest(distro=None, wsl_path="/home/user/.env", scan_depth=1),
+        request=service_listing_module._WslDotenvRequest(
+            distro=None, wsl_path="/home/user/.env", scan_depth=1
+        ),
         wsl=SimpleNamespace(),
         collect_wsl_dotenv_records_fn=lambda *_args, **_kwargs: calls.append("called"),
     )
@@ -80,7 +86,9 @@ def test_bridge_rows_without_current_linux_distro_uses_no_exclusions() -> None:
     ensure(calls == [(True, None)])
 
 
-def test_apply_row_filters_and_available_targets_cover_falsey_branches(tmp_path: Path) -> None:
+def test_apply_row_filters_and_available_targets_cover_falsey_branches(
+    tmp_path: Path,
+) -> None:
     """Test apply row filters and available targets cover falsey branches."""
     rows = [
         service_module.EnvRecord(
@@ -99,7 +107,10 @@ def test_apply_row_filters_and_available_targets_cover_falsey_branches(tmp_path:
         )
     ]
 
-    ensure(service_listing_module.apply_row_filters(rows, source=None, context=None) == rows)
+    ensure(
+        service_listing_module.apply_row_filters(rows, source=None, context=None)
+        == rows
+    )
 
     unknown_record = service_module.EnvRecord(
         source_type="unknown",
@@ -116,10 +127,17 @@ def test_apply_row_filters_and_available_targets_cover_falsey_branches(tmp_path:
         requires_privilege=False,
     )
 
-    ensure(service_listing_module.available_targets([unknown_record], context="wsl:Ubuntu", win_provider_present=False) == [])
+    ensure(
+        service_listing_module.available_targets(
+            [unknown_record], context="wsl:Ubuntu", win_provider_present=False
+        )
+        == []
+    )
 
 
-def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(tmp_path: Path) -> None:
+def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(
+    tmp_path: Path,
+) -> None:
     """Test write linux etc environment with privilege rejects invalid arguments."""
     target = tmp_path / "environment"
 
@@ -138,22 +156,35 @@ def test_write_linux_etc_environment_with_privilege_rejects_invalid_arguments(tm
 
 def test_restore_helpers_reject_positional_arguments(tmp_path: Path) -> None:
     """Test restore helpers reject positional arguments."""
-    with pytest.raises(TypeError, match="restore_dotenv_target accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError, match="restore_dotenv_target accepts keyword arguments only"
+    ):
         service_restore_module.restore_dotenv_target("bad-arg")
 
-    with pytest.raises(TypeError, match="restore_linux_target accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError, match="restore_linux_target accepts keyword arguments only"
+    ):
         service_restore_module.restore_linux_target("bad-arg")
 
-    with pytest.raises(TypeError, match="restore_wsl_target accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError, match="restore_wsl_target accepts keyword arguments only"
+    ):
         service_restore_module.restore_wsl_target("bad-arg")
 
-    with pytest.raises(TypeError, match="restore_powershell_target accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError, match="restore_powershell_target accepts keyword arguments only"
+    ):
         service_restore_module.restore_powershell_target("bad-arg")
 
-    with pytest.raises(TypeError, match="restore_windows_registry_target accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError,
+        match="restore_windows_registry_target accepts keyword arguments only",
+    ):
         service_restore_module.restore_windows_registry_target("bad-arg")
 
-    with pytest.raises(TypeError, match="restore_target accepts keyword arguments only"):
+    with pytest.raises(
+        TypeError, match="restore_target accepts keyword arguments only"
+    ):
         service_restore_module.restore_target("bad-arg")
 
 
@@ -170,7 +201,9 @@ def _wsl_write_adapter() -> SimpleNamespace:
     )
 
 
-def test_restore_dotenv_target_rejects_unexpected_keyword_arguments(tmp_path: Path) -> None:
+def test_restore_dotenv_target_rejects_unexpected_keyword_arguments(
+    tmp_path: Path,
+) -> None:
     """Test restore dotenv target rejects unexpected keyword arguments."""
     scoped = _scoped_dotenv_target(tmp_path)
 
@@ -212,13 +245,17 @@ def test_restore_wsl_target_rejects_unexpected_keyword_arguments() -> None:
         )
 
 
-def test_restore_powershell_target_rejects_unexpected_keyword_arguments(tmp_path: Path) -> None:
+def test_restore_powershell_target_rejects_unexpected_keyword_arguments(
+    tmp_path: Path,
+) -> None:
     """Test restore powershell target rejects unexpected keyword arguments."""
     with pytest.raises(TypeError, match="Unexpected keyword argument"):
         service_restore_module.restore_powershell_target(
             target="powershell:current_user",
             text="$env:A='1'\n",
-            validated_powershell_restore_path_fn=lambda _target: tmp_path / "profile.ps1",
+            validated_powershell_restore_path_fn=lambda _target: (
+                tmp_path / "profile.ps1"
+            ),
             write_text_file_fn=lambda _path, _text: None,
             unexpected=True,
         )
@@ -235,7 +272,9 @@ def test_restore_windows_registry_target_rejects_unexpected_keyword_arguments() 
                 remove_scope_value=lambda *_args: None,
                 set_scope_value=lambda *_args: None,
             ),
-            windows_registry_provider_cls=SimpleNamespace(USER_SCOPE="User", MACHINE_SCOPE="Machine"),
+            windows_registry_provider_cls=SimpleNamespace(
+                USER_SCOPE="User", MACHINE_SCOPE="Machine"
+            ),
             unexpected=True,
         )
 
@@ -259,9 +298,13 @@ def test_restore_target_rejects_unexpected_keyword_arguments(tmp_path: Path) -> 
 def test_coerce_scan_request_covers_positional_branches() -> None:
     """Test coerce scan request covers positional branches."""
     auth_value = "auth-credential"
-    request = sentry_mod.SentryScanRequest(org="my-org", projects=["proj"], token=auth_value)
+    request = sentry_mod.SentryScanRequest(
+        org="my-org", projects=["proj"], token=auth_value
+    )
 
-    with pytest.raises(TypeError, match="Pass either a request object or keyword arguments"):
+    with pytest.raises(
+        TypeError, match="Pass either a request object or keyword arguments"
+    ):
         sentry_mod._coerce_scan_request(request, org="other")
 
     coerced = sentry_mod._coerce_scan_request("my-org", ("backend", "web"), auth_value)
@@ -290,7 +333,11 @@ def test_check_sentry_zero_script_does_not_duplicate_helper_root(monkeypatch) ->
     import sys
 
     helper_root = str(Path(sentry_mod.__file__).resolve().parent.parent)
-    monkeypatch.setattr(sys, "path", [helper_root] + [entry for entry in sys.path if entry != helper_root])
+    monkeypatch.setattr(
+        sys,
+        "path",
+        [helper_root] + [entry for entry in sys.path if entry != helper_root],
+    )
     monkeypatch.setattr(
         sys,
         "argv",
@@ -314,7 +361,9 @@ def test_check_sentry_zero_script_does_not_duplicate_helper_root(monkeypatch) ->
     ensure(sys.path.count(helper_root) == 1)
 
 
-def test_scan_projects_covers_request_object_and_keyword_request_paths(monkeypatch) -> None:
+def test_scan_projects_covers_request_object_and_keyword_request_paths(
+    monkeypatch,
+) -> None:
     """Test scan projects covers request object and keyword request paths."""
     auth_value = "auth-credential"
     monkeypatch.setattr(
@@ -323,7 +372,9 @@ def test_scan_projects_covers_request_object_and_keyword_request_paths(monkeypat
         lambda org, project, token: ([], {"x-hits": "0"}),
     )
 
-    request = sentry_mod.SentryScanRequest(org="my-org", projects=["proj"], token=auth_value)
+    request = sentry_mod.SentryScanRequest(
+        org="my-org", projects=["proj"], token=auth_value
+    )
     mode, results, findings, failures = sentry_mod._scan_projects(request)
     ensure(mode == "strict")
     ensure(results == [{"project": "proj", "unresolved": 0}])

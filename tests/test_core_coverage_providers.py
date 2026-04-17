@@ -29,14 +29,19 @@ def _case() -> unittest.TestCase:
 # _require_winreg (lines 70-72)
 # ---------------------------------------------------------------------------
 
+
 def test_require_winreg_raises_when_none(monkeypatch: pytest.MonkeyPatch) -> None:
     """_require_winreg raises RuntimeError when winreg is None."""
     monkeypatch.setattr(providers, "_winreg", None)
-    with pytest.raises(RuntimeError, match="Windows registry provider only available on Windows"):
+    with pytest.raises(
+        RuntimeError, match="Windows registry provider only available on Windows"
+    ):
         providers._require_winreg()
 
 
-def test_require_winreg_returns_module_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_require_winreg_returns_module_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """_require_winreg returns the module when it is not None."""
     fake = types.SimpleNamespace()
     monkeypatch.setattr(providers, "_winreg", fake)
@@ -48,7 +53,10 @@ def test_require_winreg_returns_module_when_present(monkeypatch: pytest.MonkeyPa
 # Already tested for non-Windows, but we need the Windows+winreg path.
 # ---------------------------------------------------------------------------
 
-def test_windows_registry_provider_init_succeeds_on_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+
+def test_windows_registry_provider_init_succeeds_on_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """WindowsRegistryProvider init succeeds when is_windows() and _winreg are both truthy."""
     monkeypatch.setattr(providers, "is_windows", lambda: True)
     fake_winreg = types.SimpleNamespace()
@@ -60,6 +68,7 @@ def test_windows_registry_provider_init_succeeds_on_windows(monkeypatch: pytest.
 # ---------------------------------------------------------------------------
 # WindowsRegistryProvider._scope_details (lines 169-181)
 # ---------------------------------------------------------------------------
+
 
 def _make_fake_winreg() -> types.SimpleNamespace:
     """Build a fake winreg module with all needed attributes."""
@@ -84,7 +93,9 @@ def test_scope_details_user_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_winreg = _make_fake_winreg()
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
 
-    root, path, access = providers.WindowsRegistryProvider._scope_details("User", fake_winreg.KEY_READ)
+    root, path, access = providers.WindowsRegistryProvider._scope_details(
+        "User", fake_winreg.KEY_READ
+    )
     ensure(root == "HKCU")
     ensure(path == r"Environment")
     ensure(access == fake_winreg.KEY_READ)
@@ -95,7 +106,9 @@ def test_scope_details_machine_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_winreg = _make_fake_winreg()
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
 
-    root, path, access = providers.WindowsRegistryProvider._scope_details("Machine", fake_winreg.KEY_READ)
+    root, path, access = providers.WindowsRegistryProvider._scope_details(
+        "Machine", fake_winreg.KEY_READ
+    )
     ensure(root == "HKLM")
     ensure("Session Manager" in path)
     ensure(access == (fake_winreg.KEY_READ | fake_winreg.KEY_WOW64_64KEY))
@@ -114,6 +127,7 @@ def test_scope_details_invalid_scope(monkeypatch: pytest.MonkeyPatch) -> None:
 # WindowsRegistryProvider._scope_to_key (line 186)
 # ---------------------------------------------------------------------------
 
+
 def test_scope_to_key_returns_root_and_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """_scope_to_key returns (root, path) for a valid scope."""
     fake_winreg = _make_fake_winreg()
@@ -128,6 +142,7 @@ def test_scope_to_key_returns_root_and_path(monkeypatch: pytest.MonkeyPatch) -> 
 # WindowsRegistryProvider.list_scope (lines 189-197)
 # ---------------------------------------------------------------------------
 
+
 def test_list_scope_returns_registry_values(monkeypatch: pytest.MonkeyPatch) -> None:
     """list_scope reads values from the fake registry."""
     fake_winreg = _make_fake_winreg()
@@ -140,10 +155,12 @@ def test_list_scope_returns_registry_values(monkeypatch: pytest.MonkeyPatch) -> 
     mock_key.__enter__ = MagicMock(return_value=mock_key)
     mock_key.__exit__ = MagicMock(return_value=False)
     fake_winreg.QueryInfoKey = MagicMock(return_value=(0, 2, 0))
-    fake_winreg.EnumValue = MagicMock(side_effect=[
-        ("PATH", "C:\\Windows", 1),
-        ("HOME", "C:\\Users\\test", 1),
-    ])
+    fake_winreg.EnumValue = MagicMock(
+        side_effect=[
+            ("PATH", "C:\\Windows", 1),
+            ("HOME", "C:\\Users\\test", 1),
+        ]
+    )
 
     provider = providers.WindowsRegistryProvider()
     result = provider.list_scope("User")
@@ -153,6 +170,7 @@ def test_list_scope_returns_registry_values(monkeypatch: pytest.MonkeyPatch) -> 
 # ---------------------------------------------------------------------------
 # WindowsRegistryProvider.set_scope_value (lines 200-204)
 # ---------------------------------------------------------------------------
+
 
 def test_set_scope_value_reg_sz(monkeypatch: pytest.MonkeyPatch) -> None:
     """set_scope_value uses REG_SZ for values without %."""
@@ -167,7 +185,9 @@ def test_set_scope_value_reg_sz(monkeypatch: pytest.MonkeyPatch) -> None:
 
     provider = providers.WindowsRegistryProvider()
     provider.set_scope_value("User", "MY_KEY", "my_value")
-    fake_winreg.SetValueEx.assert_called_once_with(mock_key, "MY_KEY", 0, fake_winreg.REG_SZ, "my_value")
+    fake_winreg.SetValueEx.assert_called_once_with(
+        mock_key, "MY_KEY", 0, fake_winreg.REG_SZ, "my_value"
+    )
 
 
 def test_set_scope_value_reg_expand_sz(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,12 +203,15 @@ def test_set_scope_value_reg_expand_sz(monkeypatch: pytest.MonkeyPatch) -> None:
 
     provider = providers.WindowsRegistryProvider()
     provider.set_scope_value("User", "PATH", "%SystemRoot%\\bin")
-    fake_winreg.SetValueEx.assert_called_once_with(mock_key, "PATH", 0, fake_winreg.REG_EXPAND_SZ, "%SystemRoot%\\bin")
+    fake_winreg.SetValueEx.assert_called_once_with(
+        mock_key, "PATH", 0, fake_winreg.REG_EXPAND_SZ, "%SystemRoot%\\bin"
+    )
 
 
 # ---------------------------------------------------------------------------
 # WindowsRegistryProvider.remove_scope_value (lines 207-211)
 # ---------------------------------------------------------------------------
+
 
 def test_remove_scope_value_deletes_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """remove_scope_value calls DeleteValue on the registry key."""
@@ -206,7 +229,9 @@ def test_remove_scope_value_deletes_key(monkeypatch: pytest.MonkeyPatch) -> None
     fake_winreg.DeleteValue.assert_called_once_with(mock_key, "MY_KEY")
 
 
-def test_remove_scope_value_suppresses_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_remove_scope_value_suppresses_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """remove_scope_value suppresses FileNotFoundError."""
     fake_winreg = _make_fake_winreg()
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
@@ -227,7 +252,10 @@ def test_remove_scope_value_suppresses_not_found(monkeypatch: pytest.MonkeyPatch
 # build_registry_records (lines 215-252)
 # ---------------------------------------------------------------------------
 
-def test_build_registry_records_creates_records(monkeypatch: pytest.MonkeyPatch) -> None:
+
+def test_build_registry_records_creates_records(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """build_registry_records creates EnvRecord entries from both User and Machine scopes."""
     fake_winreg = _make_fake_winreg()
     monkeypatch.setattr(providers, "_winreg", fake_winreg)
@@ -258,7 +286,10 @@ def test_build_registry_records_creates_records(monkeypatch: pytest.MonkeyPatch)
 # collect_dotenv_records UnicodeDecodeError branch (lines 295-296)
 # ---------------------------------------------------------------------------
 
-def test_collect_dotenv_records_falls_back_to_latin1(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+
+def test_collect_dotenv_records_falls_back_to_latin1(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """collect_dotenv_records falls back to latin-1 when UTF-8 decoding fails."""
     monkeypatch.chdir(tmp_path)
     env_file = tmp_path / ".env"
@@ -278,6 +309,7 @@ def test_collect_dotenv_records_falls_back_to_latin1(monkeypatch: pytest.MonkeyP
 # collect_powershell_profile_records (lines 319-343)
 # ---------------------------------------------------------------------------
 
+
 def test_collect_powershell_profile_records_reads_profiles(tmp_path: Path) -> None:
     """collect_powershell_profile_records reads PS profiles and builds records."""
     profile = tmp_path / "profile.ps1"
@@ -292,7 +324,9 @@ def test_collect_powershell_profile_records_reads_profiles(tmp_path: Path) -> No
     case.assertFalse(records[0].requires_privilege)
 
 
-def test_collect_powershell_profile_records_requires_privilege_for_program_files(tmp_path: Path) -> None:
+def test_collect_powershell_profile_records_requires_privilege_for_program_files(
+    tmp_path: Path,
+) -> None:
     """collect_powershell_profile_records sets requires_privilege for 'program files' paths."""
     program_files = tmp_path / "program files" / "powershell"
     program_files.mkdir(parents=True)
@@ -315,6 +349,7 @@ def test_collect_powershell_profile_records_skips_missing_files(tmp_path: Path) 
 # ---------------------------------------------------------------------------
 # collect_linux_records (lines 346-383 — exercises the Linux provider paths)
 # ---------------------------------------------------------------------------
+
 
 def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path) -> None:
     """collect_linux_records reads both bashrc and /etc/environment when they exist."""

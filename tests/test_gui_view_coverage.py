@@ -287,9 +287,16 @@ def test_view_details_vars_created():
     """Test view details vars created."""
     view = _build_view()
     expected_keys = {
-        "name", "context", "source", "source_path",
-        "secret", "persistent", "mutable", "writable",
-        "requires_privilege", "precedence_rank",
+        "name",
+        "context",
+        "source",
+        "source_path",
+        "secret",
+        "persistent",
+        "mutable",
+        "writable",
+        "requires_privilege",
+        "precedence_rank",
     }
     ensure(set(view.details_vars.keys()) == expected_keys)
 
@@ -351,7 +358,13 @@ def test_set_mutation_actions_enabled():
     """Test set mutation actions enabled."""
     view = _build_view()
     view.set_mutation_actions_enabled(True)
-    for widget in (view.refresh_button, view.load_button, view.choose_targets_button, view.set_button, view.remove_button):
+    for widget in (
+        view.refresh_button,
+        view.load_button,
+        view.choose_targets_button,
+        view.set_button,
+        view.remove_button,
+    ):
         widget.configure.assert_called_with(state="normal")
 
 
@@ -359,7 +372,13 @@ def test_set_mutation_actions_disabled():
     """Test set mutation actions disabled."""
     view = _build_view()
     view.set_mutation_actions_enabled(False)
-    for widget in (view.refresh_button, view.load_button, view.choose_targets_button, view.set_button, view.remove_button):
+    for widget in (
+        view.refresh_button,
+        view.load_button,
+        view.choose_targets_button,
+        view.set_button,
+        view.remove_button,
+    ):
         widget.configure.assert_called_with(state="disabled")
 
 
@@ -377,7 +396,9 @@ def test_insert_table_row():
     view.tree.insert.return_value = "new_item"
     result = view.insert_table_row(("a", "b", "c"), striped=True)
     ensure(result == "new_item")
-    view.tree.insert.assert_called_with("", "end", values=("a", "b", "c"), tags=("row_even",))
+    view.tree.insert.assert_called_with(
+        "", "end", values=("a", "b", "c"), tags=("row_even",)
+    )
 
 
 def test_insert_table_row_odd():
@@ -410,8 +431,13 @@ def test_set_details_enabled():
     """Test set details enabled."""
     view = _build_view()
     view.set_details_enabled(True)
-    for widget in (view.copy_name_button, view.copy_value_button, view.copy_pair_button,
-                   view.copy_source_path_button, view.detail_open_button):
+    for widget in (
+        view.copy_name_button,
+        view.copy_value_button,
+        view.copy_pair_button,
+        view.copy_source_path_button,
+        view.detail_open_button,
+    ):
         widget.configure.assert_called_with(state="normal")
 
 
@@ -419,8 +445,13 @@ def test_set_details_disabled():
     """Test set details disabled."""
     view = _build_view()
     view.set_details_enabled(False)
-    for widget in (view.copy_name_button, view.copy_value_button, view.copy_pair_button,
-                   view.copy_source_path_button, view.detail_open_button):
+    for widget in (
+        view.copy_name_button,
+        view.copy_value_button,
+        view.copy_pair_button,
+        view.copy_source_path_button,
+        view.detail_open_button,
+    ):
         widget.configure.assert_called_with(state="disabled")
 
 

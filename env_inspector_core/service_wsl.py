@@ -66,7 +66,9 @@ def resolve_wsl_target(*args, **kwargs) -> Tuple[str, str, str, bool]:
         raise TypeError("resolve_wsl_target requires a target argument.")
     target = args[0]
     if len(args) > 1:
-        raise TypeError("resolve_wsl_target accepts a single positional target argument only.")
+        raise TypeError(
+            "resolve_wsl_target accepts a single positional target argument only."
+        )
 
     dotenv_prefix = kwargs.pop("dotenv_prefix")
     validate_distro_name_fn = kwargs.pop("validate_distro_name_fn")

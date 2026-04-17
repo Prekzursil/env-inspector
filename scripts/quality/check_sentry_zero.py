@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Tuple
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if os.path.exists(_SCRIPT_DIR / "security_helpers.py") else _SCRIPT_DIR.parent
+_HELPER_ROOT = (
+    _SCRIPT_DIR
+    if os.path.exists(_SCRIPT_DIR / "security_helpers.py")
+    else _SCRIPT_DIR.parent
+)
 if str(_HELPER_ROOT) not in sys.path:
     sys.path.insert(0, str(_HELPER_ROOT))
 
@@ -36,21 +40,35 @@ class SentryScanRequest:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert Sentry has zero unresolved issues for configured projects.")
-    parser.add_argument("--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)")
+    parser = argparse.ArgumentParser(
+        description="Assert Sentry has zero unresolved issues for configured projects."
+    )
+    parser.add_argument(
+        "--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)"
+    )
     parser.add_argument(
         "--project",
         action="append",
         default=[],
         help="Project slug (repeatable, falls back to SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)",
     )
-    parser.add_argument("--token", default="", help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)")
-    parser.add_argument("--out-json", default="sentry-zero/sentry.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="sentry-zero/sentry.md", help="Output markdown path")
+    parser.add_argument(
+        "--token",
+        default="",
+        help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)",
+    )
+    parser.add_argument(
+        "--out-json", default="sentry-zero/sentry.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="sentry-zero/sentry.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
-def _request_project_issues(org: str, project: str, token: str) -> Tuple[List[Any], Dict[str, str]]:
+def _request_project_issues(
+    org: str, project: str, token: str
+) -> Tuple[List[Any], Dict[str, str]]:
     org_slug = encode_identifier(org, field_name="Sentry org")
     project_slug = encode_identifier(project, field_name="Sentry project")
     payload, headers = request_json_https(
@@ -99,7 +117,9 @@ def _missing_config_findings(token: str, org: str, projects: List[str]) -> List[
     if not org:
         findings.append("SENTRY_ORG is missing.")
     if not projects:
-        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB).")
+        findings.append(
+            "No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB)."
+        )
     return findings
 
 
@@ -123,12 +143,18 @@ def _coerce_scan_request(*args: Any, **kwargs: Any) -> SentryScanRequest:
     if args:
         if len(args) == 1 and isinstance(args[0], SentryScanRequest):
             if kwargs:
-                raise TypeError("Pass either a request object or keyword arguments, not both.")
+                raise TypeError(
+                    "Pass either a request object or keyword arguments, not both."
+                )
             return args[0]
         if len(args) == 3 and not kwargs:
             org, projects, token = args
-            return SentryScanRequest(org=str(org), projects=list(projects), token=str(token))
-        raise TypeError("Pass a request object or keyword arguments, not positional arguments.")
+            return SentryScanRequest(
+                org=str(org), projects=list(projects), token=str(token)
+            )
+        raise TypeError(
+            "Pass a request object or keyword arguments, not positional arguments."
+        )
     return SentryScanRequest(
         org=str(kwargs.pop("org")),
         projects=list(kwargs.pop("projects")),
@@ -136,7 +162,9 @@ def _coerce_scan_request(*args: Any, **kwargs: Any) -> SentryScanRequest:
     )
 
 
-def _scan_projects(*args: Any, **kwargs: Any) -> Tuple[str, List[Dict[str, Any]], List[str], List[str]]:
+def _scan_projects(
+    *args: Any, **kwargs: Any
+) -> Tuple[str, List[Dict[str, Any]], List[str], List[str]]:
     request = _coerce_scan_request(*args, **kwargs)
     mode = "strict"
     project_results: List[Dict[str, Any]] = []
@@ -145,20 +173,32 @@ def _scan_projects(*args: Any, **kwargs: Any) -> Tuple[str, List[Dict[str, Any]]
 
     for project in request.projects:
         try:
-            issues, headers = _request_project_issues(request.org, project, request.token)
+            issues, headers = _request_project_issues(
+                request.org, project, request.token
+            )
             unresolved = _resolve_unresolved_count(issues, headers, project, failures)
             if unresolved != 0:
-                failures.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
+                failures.append(
+                    f"Sentry project {project} has {unresolved} unresolved issues (expected 0)."
+                )
             project_results.append({"project": project, "unresolved": unresolved})
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 mode = "skipped"
-                findings.append(f"Sentry project {project} not found (HTTP 404). Skipping project.")
+                findings.append(
+                    f"Sentry project {project} not found (HTTP 404). Skipping project."
+                )
                 continue
-            failures.append(f"Sentry API request failed for project {project}: HTTP {exc.code}")
+            failures.append(
+                f"Sentry API request failed for project {project}: HTTP {exc.code}"
+            )
             mode = "error"
             break
-        except (OSError, ValueError, RuntimeError) as exc:  # pragma: no cover - network/runtime surface
+        except (
+            OSError,
+            ValueError,
+            RuntimeError,
+        ) as exc:  # pragma: no cover - network/runtime surface
             failures.append(f"Sentry API request failed for project {project}: {exc}")
             mode = "error"
             break
@@ -208,7 +248,9 @@ def main() -> int:
         status = "pass"
         mode = "skipped"
     else:
-        mode, project_results, runtime_findings, failures = _scan_projects(org=org, projects=projects, token=token)
+        mode, project_results, runtime_findings, failures = _scan_projects(
+            org=org, projects=projects, token=token
+        )
         findings.extend(runtime_findings)
         findings.extend(failures)
         status = "pass" if not failures else "fail"
@@ -223,7 +265,9 @@ def main() -> int:
     }
 
     try:
-        out_json = safe_output_path_in_workspace(args.out_json, "sentry-zero/sentry.json")
+        out_json = safe_output_path_in_workspace(
+            args.out_json, "sentry-zero/sentry.json"
+        )
         out_md = safe_output_path_in_workspace(args.out_md, "sentry-zero/sentry.md")
     except ValueError as exc:
         print(str(exc), file=sys.stderr)

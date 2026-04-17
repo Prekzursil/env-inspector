@@ -34,25 +34,45 @@ def _mock_tk_module():
     """Build a mock tkinter module with all needed classes."""
     tk = MagicMock()
     tk.Toplevel = MagicMock(return_value=_make_mock_widget())
-    tk.BooleanVar = MagicMock(side_effect=lambda value=False: MagicMock(get=MagicMock(return_value=value), set=MagicMock(), trace_add=MagicMock()))
-    tk.StringVar = MagicMock(side_effect=lambda value="": MagicMock(get=MagicMock(return_value=value), set=MagicMock()))
-    tk.Canvas = MagicMock(return_value=_make_mock_widget(
-        create_window=MagicMock(),
-        bbox=MagicMock(return_value=(0, 0, 100, 100)),
-    ))
-    tk.Listbox = MagicMock(return_value=_make_mock_widget(
-        insert=MagicMock(),
-        curselection=MagicMock(return_value=()),
-        get=MagicMock(return_value="backup1.zip"),
-    ))
+    tk.BooleanVar = MagicMock(
+        side_effect=lambda value=False: MagicMock(
+            get=MagicMock(return_value=value), set=MagicMock(), trace_add=MagicMock()
+        )
+    )
+    tk.StringVar = MagicMock(
+        side_effect=lambda value="": MagicMock(
+            get=MagicMock(return_value=value), set=MagicMock()
+        )
+    )
+    tk.Canvas = MagicMock(
+        return_value=_make_mock_widget(
+            create_window=MagicMock(),
+            bbox=MagicMock(return_value=(0, 0, 100, 100)),
+        )
+    )
+    tk.Listbox = MagicMock(
+        return_value=_make_mock_widget(
+            insert=MagicMock(),
+            curselection=MagicMock(return_value=()),
+            get=MagicMock(return_value="backup1.zip"),
+        )
+    )
     return tk
 
 
 def _mock_ttk_module():
     """Handle  mock ttk module."""
     ttk = MagicMock()
-    for widget_name in ("Frame", "Label", "Button", "Entry", "Checkbutton",
-                        "Scrollbar", "Notebook", "LabelFrame"):
+    for widget_name in (
+        "Frame",
+        "Label",
+        "Button",
+        "Entry",
+        "Checkbutton",
+        "Scrollbar",
+        "Notebook",
+        "LabelFrame",
+    ):
         mock_cls = MagicMock(return_value=_make_mock_widget())
         setattr(ttk, widget_name, mock_cls)
     return ttk
@@ -95,6 +115,7 @@ def _install_mock_tkinter():
 
 # --- TargetPickerDialog ---
 
+
 class TestTargetPickerDialog:
     """Tests for TargetPickerDialog behaviour with mocked tkinter."""
 
@@ -106,12 +127,15 @@ class TestTargetPickerDialog:
 
         tk, ttk, font, scrolledtext = _install_mock_tkinter()
 
-        with patch.dict(sys.modules, {
-            "tkinter": tk,
-            "tkinter.ttk": ttk,
-            "tkinter.font": font,
-            "tkinter.scrolledtext": scrolledtext,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "tkinter": tk,
+                "tkinter.ttk": ttk,
+                "tkinter.font": font,
+                "tkinter.scrolledtext": scrolledtext,
+            },
+        ):
             # We need to import inside the patch context because the dialog
             # imports tkinter at class instantiation time
             from env_inspector_gui.dialogs import TargetPickerDialog
@@ -177,7 +201,9 @@ class TestTargetPickerDialog:
 
     def test_select_windows(self):
         """Test select windows."""
-        dialog = self._build(targets=["windows:user", "powershell:machine", "dotenv:/a"])
+        dialog = self._build(
+            targets=["windows:user", "powershell:machine", "dotenv:/a"]
+        )
         dialog._select_windows()
         dialog._vars["windows:user"].set.assert_called_with(True)
         dialog._vars["powershell:machine"].set.assert_called_with(True)
@@ -185,7 +211,9 @@ class TestTargetPickerDialog:
 
     def test_select_wsl(self):
         """Test select wsl."""
-        dialog = self._build(targets=["wsl:Ubuntu:bashrc", "wsl_dotenv:/a", "windows:user"])
+        dialog = self._build(
+            targets=["wsl:Ubuntu:bashrc", "wsl_dotenv:/a", "windows:user"]
+        )
         dialog._select_wsl()
         dialog._vars["wsl:Ubuntu:bashrc"].set.assert_called_with(True)
         dialog._vars["wsl_dotenv:/a"].set.assert_called_with(True)
@@ -247,6 +275,7 @@ class TestTargetPickerDialog:
 
 # --- DotenvTargetDialog ---
 
+
 class TestDotenvTargetDialog:
     """Tests for DotenvTargetDialog behaviour with mocked tkinter."""
 
@@ -258,11 +287,15 @@ class TestDotenvTargetDialog:
 
         tk, ttk, *_ = _install_mock_tkinter()
 
-        with patch.dict(sys.modules, {
-            "tkinter": tk,
-            "tkinter.ttk": ttk,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "tkinter": tk,
+                "tkinter.ttk": ttk,
+            },
+        ):
             from env_inspector_gui.dialogs import DotenvTargetDialog
+
             parent = _make_mock_widget()
             dialog = DotenvTargetDialog(parent, key, targets)
         return dialog
@@ -290,6 +323,7 @@ class TestDotenvTargetDialog:
 
 # --- DiffPreviewDialog ---
 
+
 class TestDiffPreviewDialog:
     """Tests for DiffPreviewDialog behaviour with mocked tkinter."""
 
@@ -314,15 +348,21 @@ class TestDiffPreviewDialog:
 
         tk, ttk, font, scrolledtext = _install_mock_tkinter()
 
-        with patch.dict(sys.modules, {
-            "tkinter": tk,
-            "tkinter.ttk": ttk,
-            "tkinter.font": font,
-            "tkinter.scrolledtext": scrolledtext,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "tkinter": tk,
+                "tkinter.ttk": ttk,
+                "tkinter.font": font,
+                "tkinter.scrolledtext": scrolledtext,
+            },
+        ):
             from env_inspector_gui.dialogs import DiffPreviewDialog
+
             parent = _make_mock_widget()
-            dialog = DiffPreviewDialog(parent, action=action, previews=previews, preview_only=preview_only)
+            dialog = DiffPreviewDialog(
+                parent, action=action, previews=previews, preview_only=preview_only
+            )
         return dialog
 
     def test_creates_dialog(self):
@@ -357,6 +397,7 @@ class TestDiffPreviewDialog:
     def test_diff_tag_static_method():
         """Test diff tag static method."""
         from env_inspector_gui.dialogs import DiffPreviewDialog
+
         ensure(DiffPreviewDialog._diff_tag("@@ -1,2 +1,3 @@") == "diff_hunk")
         ensure(DiffPreviewDialog._diff_tag("+added line") == "diff_add")
         ensure(DiffPreviewDialog._diff_tag("-removed line") == "diff_remove")
@@ -366,7 +407,9 @@ class TestDiffPreviewDialog:
 
     def test_no_diff_preview(self):
         """Tab with no diff_preview should show '(no textual diff)'."""
-        dialog = self._build(previews=[{"target": "t", "success": True, "diff_preview": None}])
+        dialog = self._build(
+            previews=[{"target": "t", "success": True, "diff_preview": None}]
+        )
         ensure(dialog.confirmed is False)
 
     def test_preview_missing_target(self):
@@ -376,6 +419,7 @@ class TestDiffPreviewDialog:
 
 
 # --- BackupPickerDialog ---
+
 
 class TestBackupPickerDialog:
     """Tests for BackupPickerDialog behaviour with mocked tkinter."""
@@ -388,11 +432,15 @@ class TestBackupPickerDialog:
 
         tk, ttk, *_ = _install_mock_tkinter()
 
-        with patch.dict(sys.modules, {
-            "tkinter": tk,
-            "tkinter.ttk": ttk,
-        }):
+        with patch.dict(
+            sys.modules,
+            {
+                "tkinter": tk,
+                "tkinter.ttk": ttk,
+            },
+        ):
             from env_inspector_gui.dialogs import BackupPickerDialog
+
             parent = _make_mock_widget()
             dialog = BackupPickerDialog(parent, backups)
         return dialog
