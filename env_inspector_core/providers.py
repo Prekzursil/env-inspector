@@ -89,7 +89,6 @@ SKIP_DIRS = {
 }
 
 
-
 def is_windows() -> bool:
     """Is windows."""
     return os.name == "nt"
