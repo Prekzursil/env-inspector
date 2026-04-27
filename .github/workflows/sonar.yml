@@ -36,6 +36,14 @@ jobs:
             --cov-branch --cov-report=xml:coverage.xml || true
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        # The 40-hex value after @ is the SonarSource sonarqube-scan-action's
+        # git commit SHA (required by Codacy's
+        # third-party-action-not-pinned-to-commit-sha rule). Semgrep's
+        # secrets.sonarqube-docs-api-key rule matches the same 40-hex shape
+        # and flags this as a hardcoded API key — that's a false positive
+        # because git commit SHAs and SonarQube API keys share the same
+        # 40-hex shape but only one of those (the API key) carries
+        # credential value.
+        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703  # v5  # nosemgrep
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
