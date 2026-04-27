@@ -22,11 +22,35 @@ from scripts.quality._coverage_assert_support import (
     parse_named_path as parse_named_path_impl,
 )
 
+normalize_source_path = _support.normalize_source_path
+posixpath = _support.posixpath
+
+# Re-exports — these names are used by tests/test_pr39_owned_coverage.py
+# (\`coverage_mod._normalize_source_path\`, \`coverage_mod._matches_required_source\`,
+# \`coverage_mod._render_md\`). The leading underscore is the test-fixture
+# convention; the underlying support module already exports the public-named
+# equivalents. ``__all__`` makes these visible to CodeQL as module exports
+# so the per-name globals don't trip ``py/unused-global-variable``.
 _matches_required_source = _support.matches_required_source
 _normalize_source_path = _support.normalize_source_path_public
 _render_md = _support.render_md
-normalize_source_path = _support.normalize_source_path
-posixpath = _support.posixpath
+
+__all__ = [
+    "CoverageStats",
+    "_build_payload",
+    "_matches_required_source",
+    "_normalize_source_path",
+    "_render_md",
+    "_write_outputs",
+    "coverage_sources_from_lcov",
+    "coverage_sources_from_xml",
+    "evaluate",
+    "normalize_source_path",
+    "parse_coverage_xml",
+    "parse_lcov",
+    "parse_named_path_impl",
+    "posixpath",
+]
 
 
 def _load_security_helpers():

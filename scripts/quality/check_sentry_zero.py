@@ -257,7 +257,8 @@ def main() -> int:
 
     findings = _missing_config_findings(token, org, projects)
     project_results: List[Dict[str, Any]] = []
-    mode = "strict"
+    # ``mode`` is assigned in both branches below; avoid the dead first-write
+    # CodeQL flags as ``py/multiple-definition``.
 
     if findings:
         status = "pass"

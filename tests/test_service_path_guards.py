@@ -5,8 +5,9 @@ from typing import Dict, List, Tuple
 
 import pytest
 
-import env_inspector_core.service as service_module
-import env_inspector_core.service_paths as service_paths_module
+from importlib import import_module
+service_module = import_module('env_inspector_core.service')
+service_paths_module = import_module('env_inspector_core.service_paths')
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
 

@@ -10,7 +10,8 @@ from typing import Any, List, TYPE_CHECKING, Tuple
 try:
     from . import _codacy_zero_support as _support
 except ImportError:  # pragma: no cover - direct script execution
-    import _codacy_zero_support as _support  # type: ignore
+    import importlib
+    _support = importlib.import_module('_codacy_zero_support')
 
 if TYPE_CHECKING:
     from scripts.quality._codacy_zero_support import CodacyRequest
@@ -20,9 +21,6 @@ else:
 CODACY_API_HOST = _support.CODACY_API_HOST
 CODACY_REQUEST_EXCEPTIONS = _support.CODACY_REQUEST_EXCEPTIONS
 TOTAL_KEYS = _support.TOTAL_KEYS
-_fetch_sample_payload = _support._fetch_sample_payload
-_first_text = _support._first_text
-_format_issue_sample = _support._format_issue_sample
 _provider_candidates = _support._provider_candidates
 _request_json = _support._request_json
 _sample_issue_findings = _support._sample_issue_findings

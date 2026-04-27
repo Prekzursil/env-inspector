@@ -5,7 +5,8 @@ from typing import List
 
 import pytest
 
-import env_inspector_core.service as service_module
+from importlib import import_module
+service_module = import_module('env_inspector_core.service')
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
 from env_inspector_core.service import EnvInspectorService

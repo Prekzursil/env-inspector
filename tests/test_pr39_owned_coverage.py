@@ -8,10 +8,11 @@ from typing import Dict
 
 import pytest
 
+from importlib import import_module
 import env_inspector
-import env_inspector_core.cli as cli_module
-import env_inspector_core.service as service_module
-import env_inspector_core.service_listing as service_listing_module
+cli_module = import_module('env_inspector_core.cli')
+service_module = import_module('env_inspector_core.service')
+service_listing_module = import_module('env_inspector_core.service_listing')
 import env_inspector_core.service_privileged as service_privileged_module
 from env_inspector_core.models import EnvRecord, OperationResult
 from env_inspector_core.path_policy import PathPolicyError
