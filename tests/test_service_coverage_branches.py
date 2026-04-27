@@ -3,9 +3,9 @@
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import pytest
-
 from importlib import import_module
+
+import pytest
 
 from env_inspector_core.constants import (
     SOURCE_DOTENV,

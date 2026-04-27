@@ -6,9 +6,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Dict
 
-import pytest
-
 from importlib import import_module
+
+import pytest
 import env_inspector
 import env_inspector_core.service_privileged as service_privileged_module
 from env_inspector_core.models import EnvRecord, OperationResult

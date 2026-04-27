@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-import pytest
-
 from importlib import import_module
+
+import pytest
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
 

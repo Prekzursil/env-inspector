@@ -4,9 +4,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import List
 
-import pytest
-
 from importlib import import_module
+
+import pytest
 
 from env_inspector_core.constants import SOURCE_DOTENV
 from env_inspector_core.service import EnvInspectorService
