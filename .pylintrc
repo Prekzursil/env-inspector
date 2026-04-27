@@ -6,10 +6,20 @@ py-version = 3.12
 # / PEP 585 idiom; disable only those specific false-positive rules.
 # Real findings still surface — this is rule configuration, not a file/issue
 # exclusion.
+#
+# R0801 (duplicate-code/similar-lines) flags single-line module docstrings as
+# "Similar lines in 2 files" because every module's first line follows the
+# pattern ``"""<Name> module."""`` — Pylint's similarity detector sees the
+# pattern as duplication. Raising ``min-similarity-lines`` would help most
+# repos, but Codacy's hosted Pylint runs without our [SIMILARITIES] override,
+# so disabling R0801 is the only reliable fix. Real cross-file duplication is
+# already covered by qlty's duplicate-code rule + Codacy's own duplication
+# percentage metric.
 disable =
     E0611,
     E1136,
     R0201,
+    R0801,
     R0903,
     W0104,
     W0212,
