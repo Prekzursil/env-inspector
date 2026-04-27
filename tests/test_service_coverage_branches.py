@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 import pytest
 
 from importlib import import_module
-service_module = import_module('env_inspector_core.service')
+
 from env_inspector_core.constants import (
     SOURCE_DOTENV,
     SOURCE_LINUX_BASHRC,
@@ -19,6 +19,8 @@ from env_inspector_core.constants import (
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
+
+service_module = import_module('env_inspector_core.service')
 
 
 def _record(

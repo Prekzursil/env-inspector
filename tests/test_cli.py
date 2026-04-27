@@ -6,8 +6,9 @@ import unittest
 from typing import Dict, List, cast
 
 from importlib import import_module
-cli_mod = import_module('env_inspector_core.cli')
 from env_inspector_core.cli import build_parser, run_cli
+
+cli_mod = import_module('env_inspector_core.cli')
 
 RecordRow = Dict[str, object]
 ServiceCall = Dict[str, object]
