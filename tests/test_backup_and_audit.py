@@ -7,11 +7,12 @@ from pathlib import Path
 import pytest
 
 from importlib import import_module
-storage_mod = import_module('env_inspector_core.storage')
 from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
 from env_inspector_core.storage import AuditLogger, BackupManager
 from tests.assertions import ensure
+
+storage_mod = import_module('env_inspector_core.storage')
 
 
 def test_backup_manager_retention_and_restore(tmp_path: Path):

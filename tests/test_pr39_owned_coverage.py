@@ -10,9 +10,6 @@ import pytest
 
 from importlib import import_module
 import env_inspector
-cli_module = import_module('env_inspector_core.cli')
-service_module = import_module('env_inspector_core.service')
-service_listing_module = import_module('env_inspector_core.service_listing')
 import env_inspector_core.service_privileged as service_privileged_module
 from env_inspector_core.models import EnvRecord, OperationResult
 from env_inspector_core.path_policy import PathPolicyError
@@ -20,6 +17,10 @@ from env_inspector_core.service import EnvInspectorService
 from env_inspector_core.service_ops import OperationResultInput, operation_result
 from scripts.quality import assert_coverage_100 as coverage_mod
 from tests.assertions import ensure
+
+cli_module = import_module('env_inspector_core.cli')
+service_module = import_module('env_inspector_core.service')
+service_listing_module = import_module('env_inspector_core.service_listing')
 
 
 def _record(

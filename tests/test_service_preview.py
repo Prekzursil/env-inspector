@@ -5,9 +5,10 @@ from pathlib import Path
 import pytest
 
 from importlib import import_module
-service_module = import_module('env_inspector_core.service')
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
+
+service_module = import_module('env_inspector_core.service')
 
 _ORIGINAL_PATH_EXISTS = service_module._path_exists
 _ORIGINAL_READ_TEXT_IF_EXISTS = service_module._read_text_if_exists

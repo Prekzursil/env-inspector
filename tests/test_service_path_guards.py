@@ -6,10 +6,11 @@ from typing import Dict, List, Tuple
 import pytest
 
 from importlib import import_module
-service_module = import_module('env_inspector_core.service')
-service_paths_module = import_module('env_inspector_core.service_paths')
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
+
+service_module = import_module('env_inspector_core.service')
+service_paths_module = import_module('env_inspector_core.service_paths')
 
 
 def test_is_path_within_returns_false_for_unrelated_roots(tmp_path: Path):

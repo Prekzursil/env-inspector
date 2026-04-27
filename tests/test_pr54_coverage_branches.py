@@ -7,14 +7,16 @@ from typing import List
 import pytest
 
 from importlib import import_module
-service_module = import_module('env_inspector_core.service')
-service_listing_module = import_module('env_inspector_core.service_listing')
-service_privileged_module = import_module('env_inspector_core.service_privileged')
-service_restore_module = import_module('env_inspector_core.service_restore')
+
 from env_inspector_core.constants import SOURCE_DOTENV
 from env_inspector_core.service import EnvInspectorService
 from scripts.quality import check_sentry_zero as sentry_mod
 from tests.assertions import ensure
+
+service_module = import_module('env_inspector_core.service')
+service_listing_module = import_module('env_inspector_core.service_listing')
+service_privileged_module = import_module('env_inspector_core.service_privileged')
+service_restore_module = import_module('env_inspector_core.service_restore')
 
 
 def test_list_records_rejects_request_and_kwargs(tmp_path: Path) -> None:
