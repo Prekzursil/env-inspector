@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def collect_lines(in_path: Path) -> dict[str, dict[int, tuple[int, int, int]]]:
-    """Parse cobertura XML, return ``{file: {line: (hits, branches, covered_branches)}}``."""
+    """Parse cobertura XML, return per-file/line (hits, branches, covered)."""
     by_file: dict[str, dict[int, tuple[int, int, int]]] = defaultdict(dict)
     tree = ET.parse(str(in_path))
     root = tree.getroot()
@@ -71,7 +71,10 @@ def collect_lines(in_path: Path) -> dict[str, dict[int, tuple[int, int, int]]]:
     return by_file
 
 
-def emit_xml(by_file: dict[str, dict[int, tuple[int, int, int]]], out_path: Path) -> int:
+def emit_xml(
+    by_file: dict[str, dict[int, tuple[int, int, int]]],
+    out_path: Path,
+) -> int:
     """Emit Sonar Generic Test Coverage XML and return file count."""
     out: list[str] = ['<coverage version="1">']
     for file_path in sorted(by_file):
