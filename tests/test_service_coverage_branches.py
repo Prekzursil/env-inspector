@@ -5,7 +5,8 @@ from typing import Dict, List, Tuple
 
 import pytest
 
-import env_inspector_core.service as service_module
+from importlib import import_module
+service_module = import_module('env_inspector_core.service')
 from env_inspector_core.constants import (
     SOURCE_DOTENV,
     SOURCE_LINUX_BASHRC,

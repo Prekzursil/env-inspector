@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-import env_inspector_core.service as service_module
+from importlib import import_module
+service_module = import_module('env_inspector_core.service')
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
 

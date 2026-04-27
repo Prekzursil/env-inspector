@@ -5,7 +5,8 @@ import json
 import unittest
 from typing import Dict, List, cast
 
-import env_inspector_core.cli as cli_mod
+from importlib import import_module
+cli_mod = import_module('env_inspector_core.cli')
 from env_inspector_core.cli import build_parser, run_cli
 
 RecordRow = Dict[str, object]

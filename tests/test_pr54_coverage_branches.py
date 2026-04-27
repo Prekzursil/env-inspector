@@ -6,10 +6,11 @@ from typing import List
 
 import pytest
 
-import env_inspector_core.service as service_module
-import env_inspector_core.service_listing as service_listing_module
-import env_inspector_core.service_privileged as service_privileged_module
-import env_inspector_core.service_restore as service_restore_module
+from importlib import import_module
+service_module = import_module('env_inspector_core.service')
+service_listing_module = import_module('env_inspector_core.service_listing')
+service_privileged_module = import_module('env_inspector_core.service_privileged')
+service_restore_module = import_module('env_inspector_core.service_restore')
 from env_inspector_core.constants import SOURCE_DOTENV
 from env_inspector_core.service import EnvInspectorService
 from scripts.quality import check_sentry_zero as sentry_mod

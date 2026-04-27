@@ -274,8 +274,8 @@ def test_build_registry_records_creates_records(
     # Should have records from both User and Machine scopes
     user_records = [r for r in records if r.source_type == SOURCE_WINDOWS_USER]
     machine_records = [r for r in records if r.source_type == SOURCE_WINDOWS_MACHINE]
-    case.assertTrue(len(user_records) >= 1)
-    case.assertTrue(len(machine_records) >= 1)
+    case.assertGreaterEqual(len(user_records), 1)
+    case.assertGreaterEqual(len(machine_records), 1)
     case.assertFalse(user_records[0].requires_privilege)
     case.assertTrue(machine_records[0].requires_privilege)
 
@@ -363,8 +363,8 @@ def test_collect_linux_records_reads_bashrc_and_etc_environment(tmp_path: Path) 
     case = _case()
     bashrc_records = [r for r in records if r.source_type == SOURCE_LINUX_BASHRC]
     etc_records = [r for r in records if r.source_type == SOURCE_LINUX_ETC_ENV]
-    case.assertTrue(len(bashrc_records) >= 1)
-    case.assertTrue(len(etc_records) >= 1)
+    case.assertGreaterEqual(len(bashrc_records), 1)
+    case.assertGreaterEqual(len(etc_records), 1)
     case.assertEqual(bashrc_records[0].name, "API_KEY")
     case.assertEqual(etc_records[0].name, "LANG")
     case.assertFalse(bashrc_records[0].requires_privilege)

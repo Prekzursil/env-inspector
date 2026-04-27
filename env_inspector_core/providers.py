@@ -88,7 +88,6 @@ SKIP_DIRS = {
     "backend/.venv",
 }
 
-_HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
 
 
 def is_windows() -> bool:

@@ -80,7 +80,7 @@ def test_legacy_print_secrets_uses_workspace_root_for_listing(
 
     case = _case()
     case.assertEqual(code, 0)
-    case.assertTrue(captured["include_raw_secrets"] is True)
+    case.assertIs(captured["include_raw_secrets"], True)
     case.assertEqual(Path(str(captured["root"])), workspace.resolve())
     out = capsys.readouterr().out
     case.assertIn("API_TOKEN", out)

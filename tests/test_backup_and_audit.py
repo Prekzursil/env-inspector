@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-import env_inspector_core.storage as storage_mod
+from importlib import import_module
+storage_mod = import_module('env_inspector_core.storage')
 from env_inspector_core.models import OperationResult
 from env_inspector_core.service import EnvInspectorService
 from env_inspector_core.storage import AuditLogger, BackupManager

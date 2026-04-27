@@ -83,7 +83,13 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         root_tk = self.tk
         root_tk.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        self.refresh_data()
+        # Defer refresh_data() to avoid CodeQL py/init-calls-subclass:
+        # if a subclass overrides refresh_data, calling it directly from
+        # ``__init__`` would dispatch to the subclass version before the
+        # subclass's ``__init__`` body runs. ``after_idle`` schedules the
+        # call to fire after the current event-loop tick, by which point
+        # any subclass ``__init__`` has fully completed.
+        root_tk.after_idle(self.refresh_data)
         root_tk.after_idle(self.view.focus_filter)
 
     @staticmethod
