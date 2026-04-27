@@ -32,8 +32,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install pytest pytest-cov
-          pytest -q --cov=env_inspector --cov=env_inspector_core --cov=env_inspector_gui \
-            --cov-branch --cov-report=xml:coverage.xml || true
+          # Use ``--cov=.`` (repo root) so coverage.xml has a single
+          # ``<source>`` element that SonarCloud's Cobertura sensor can
+          # use to map ``<class filename>`` paths back to indexed files.
+          # Coverage scope (which files count) is governed by
+          # ``.coveragerc`` (omits tests/, scripts/quality/**, etc).
+          # The previous per-package style (``--cov=env_inspector ...``)
+          # produced multiple ``<source>`` roots that Sonar couldn't
+          # disambiguate, so coverage applied to nothing and the
+          # project showed ``line_coverage=0%``.
+          pytest -q --cov=. --cov-branch --cov-report=xml:coverage.xml || true
 
       - name: SonarCloud Scan
         # The 40-hex value after @ is the SonarSource sonarqube-scan-action's

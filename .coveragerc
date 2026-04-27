@@ -1,0 +1,36 @@
+# Coverage configuration for env-inspector.
+#
+# Drives ``--cov=.`` to produce repo-relative filenames in
+# ``coverage.xml`` so SonarCloud's Cobertura sensor can match them
+# against indexed source files. Without this, pytest-cov's per-package
+# ``--cov=env_inspector --cov=env_inspector_core`` style emits multiple
+# ``<source>`` roots that Sonar can't disambiguate, so coverage applies
+# to nothing and the project shows ``line_coverage=0%`` even when
+# Codecov reports 100%.
+[run]
+source = .
+omit =
+    tests/*
+    .venv/*
+    build/*
+    dist/*
+    htmlcov/*
+    .tmp_platform/*
+    coverage_platform/*
+    setup.py
+    conftest.py
+    scripts/__init__.py
+    scripts/security_helpers.py
+    scripts/quality/*
+relative_files = True
+
+[report]
+# Exclude unreachable / type-checker-only lines from the denominator
+# so coverage reflects actual runtime behaviour.
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+    \.\.\. *$
