@@ -43,6 +43,30 @@ jobs:
           # project showed ``line_coverage=0%``.
           pytest -q --cov=. --cov-branch --cov-report=xml:coverage.xml || true
 
+          # Post-process coverage.xml: ``relative_files = True`` produces
+          # multiple empty ``<source>`` elements which Sonar's Cobertura
+          # sensor can't resolve against indexed source files. Replace
+          # with a single ``<source>`` pointing at the project root so
+          # ``<class filename>`` lookup works.
+          if [ -f coverage.xml ]; then
+            python - <<'PY'
+          import xml.etree.ElementTree as ET
+          import os
+
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          sources = root.find('sources')
+          if sources is not None:
+              for src in list(sources):
+                  sources.remove(src)
+              new_src = ET.SubElement(sources, 'source')
+              new_src.text = os.getcwd()
+          tree.write('coverage.xml', xml_declaration=True, encoding='utf-8')
+          print('Patched <sources> to single absolute repo root.')
+          PY
+            head -8 coverage.xml
+          fi
+
       - name: SonarCloud Scan
         # The 40-hex value after @ is the SonarSource sonarqube-scan-action's
         # git commit SHA (required by Codacy's
