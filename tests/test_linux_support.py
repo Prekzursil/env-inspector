@@ -3,9 +3,9 @@
 from pathlib import Path
 from typing import List
 
-import pytest
-
 from importlib import import_module
+
+import pytest
 from env_inspector_core.models import EnvRecord
 from env_inspector_core.providers import collect_dotenv_records, collect_linux_records
 from env_inspector_core.service import EnvInspectorService
