@@ -31,40 +31,25 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov
+          python -m pip install pytest pytest-cov defusedxml
           # Use ``--cov=.`` (repo root) so coverage.xml has a single
           # ``<source>`` element that SonarCloud's Cobertura sensor can
           # use to map ``<class filename>`` paths back to indexed files.
           # Coverage scope (which files count) is governed by
           # ``.coveragerc`` (omits tests/, scripts/quality/**, etc).
-          # The previous per-package style (``--cov=env_inspector ...``)
-          # produced multiple ``<source>`` roots that Sonar couldn't
-          # disambiguate, so coverage applied to nothing and the
-          # project showed ``line_coverage=0%``.
           pytest -q --cov=. --cov-branch --cov-report=xml:coverage.xml || true
 
-          # Post-process coverage.xml: ``relative_files = True`` produces
-          # multiple empty ``<source>`` elements which Sonar's Cobertura
-          # sensor can't resolve against indexed source files. Replace
-          # with a single ``<source>`` pointing at the project root so
-          # ``<class filename>`` lookup works.
+          # SonarCloud's Cobertura sensor for Python silently drops all
+          # hits on this project (parses coverage.xml in <250ms and
+          # applies 0% coverage). Generate Sonar Generic Test Coverage
+          # XML directly so the ``path`` attributes map 1:1 against
+          # indexed source files, bypassing whatever path resolution
+          # issue the Cobertura sensor has.
           if [ -f coverage.xml ]; then
-            python - <<'PY'
-          import xml.etree.ElementTree as ET
-          import os
-
-          tree = ET.parse('coverage.xml')
-          root = tree.getroot()
-          sources = root.find('sources')
-          if sources is not None:
-              for src in list(sources):
-                  sources.remove(src)
-              new_src = ET.SubElement(sources, 'source')
-              new_src.text = os.getcwd()
-          tree.write('coverage.xml', xml_declaration=True, encoding='utf-8')
-          print('Patched <sources> to single absolute repo root.')
-          PY
-            head -8 coverage.xml
+            python scripts/cobertura_to_sonar_generic.py \
+              --in coverage.xml \
+              --out coverage-sonar.xml
+            head -10 coverage-sonar.xml
           fi
 
       - name: SonarCloud Scan
