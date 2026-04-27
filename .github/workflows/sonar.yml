@@ -61,6 +61,6 @@ jobs:
         # because git commit SHAs and SonarQube API keys share the same
         # 40-hex shape but only one of those (the API key) carries
         # credential value.
-        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703  # v5  # nosemgrep
+        uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4  # v5  # nosemgrep
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
