@@ -33,7 +33,10 @@ def _quoteattr(value: str) -> str:
     ``use-defused-xml``). Only escapes attribute-significant characters;
     never parses XML, so it has no XXE surface.
     """
-    return '"' + value.replace("&", "&amp;").replace("<", "&lt;").replace('"', "&quot;") + '"'
+    escaped = (
+        value.replace("&", "&amp;").replace("<", "&lt;").replace('"', "&quot;")
+    )
+    return f'"{escaped}"'
 
 
 def parse_args() -> argparse.Namespace:
