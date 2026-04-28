@@ -57,8 +57,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _parse_condition_coverage(condition_coverage: str) -> tuple[int, int]:
-    """Parse Cobertura ``condition-coverage`` like ``"50% (1/2)"`` → (covered, total)."""
+def _parse_condition_coverage(  # pylint: disable=unsubscriptable-object
+    condition_coverage: str,
+) -> tuple[int, int]:
+    """Parse Cobertura ``condition-coverage`` like ``"50% (1/2)"`` → (covered, total).
+
+    The ``# pylint: disable=unsubscriptable-object`` is a workaround for
+    Codacy's deprecated Pylint engine — it doesn't recognise PEP 585
+    subscripted built-ins like ``tuple[int, int]`` even with
+    ``from __future__ import annotations`` in scope. The active
+    ``pylintpython3`` engine handles PEP 585 correctly; this comment
+    only silences the deprecated duplicate that ``.codacy.yml`` already
+    disables but Codacy keeps emitting from cache.
+    """
     if "(" not in condition_coverage:
         return (0, 0)
     fraction = condition_coverage.split("(")[1].rstrip(")")
