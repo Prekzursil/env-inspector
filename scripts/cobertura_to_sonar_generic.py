@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+# pylint: disable=unsubscriptable-object,no-name-in-module,unused-import
+# Codacy's deprecated Pylint engine — already disabled in .codacy.yml
+# but Codacy keeps emitting the previously-detected open issues against
+# this file because it can't confirm they're cleared (the engine doesn't
+# run anymore so it can't sweep). Module-level pragmas silence the false
+# positives:
+#   - unsubscriptable-object: PEP 585 dict[K,V] / list[T] / tuple[A,B]
+#   - no-name-in-module: __future__.annotations
+#   - unused-import: covers W1618 'missing absolute_import' (Python 2 noise)
+# The active pylintpython3 engine (the modern one) handles all of these
+# correctly and isn't affected.
 """Convert cobertura coverage.xml to Sonar Generic Test Coverage XML.
 
 SonarCloud's Cobertura sensor for Python silently drops all hits on
