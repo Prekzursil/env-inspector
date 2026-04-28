@@ -61,6 +61,16 @@ def test_collect_lines_parses_hits_and_branches(tmp_path: Path) -> None:
     assert rows[3] == (2, 2, 1)
 
 
+def test_parse_condition_coverage_returns_zeros_when_no_paren() -> None:
+    """``_parse_condition_coverage`` short-circuits to (0, 0) on malformed input."""
+    module = _load_module()
+    # Empty string and any input lacking '(' both fall to the (0, 0) early
+    # return — exercising the branch that complementary fixture data
+    # (which always passes well-formed condition-coverage) doesn't reach.
+    assert module._parse_condition_coverage("") == (0, 0)
+    assert module._parse_condition_coverage("100%") == (0, 0)
+
+
 def test_emit_xml_round_trips_through_converter(tmp_path: Path) -> None:
     """``emit_xml`` produces Sonar Generic XML with line + branch attrs."""
     module = _load_module()
