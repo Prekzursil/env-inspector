@@ -37,25 +37,8 @@ def _impl_helper(name: str) -> Any:
 
 
 def _parse_args() -> argparse.Namespace:
-    """Parse command-line arguments for the required-checks gate."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Wait for required GitHub check contexts and assert they are successful."
-        )
-    )
-    parser.add_argument("--repo", required=True, help="owner/repo")
-    parser.add_argument("--sha", required=True, help="commit SHA")
-    parser.add_argument(
-        "--required-context",
-        action="append",
-        default=[],
-        help="Required context name",
-    )
-    parser.add_argument("--timeout-seconds", type=int, default=900)
-    parser.add_argument("--poll-seconds", type=int, default=20)
-    parser.add_argument("--out-json", default="quality-zero-gate/required-checks.json")
-    parser.add_argument("--out-md", default="quality-zero-gate/required-checks.md")
-    return parser.parse_args()
+    """Parse command-line arguments via the shared implementation."""
+    return _impl_helper("_parse_args")()
 
 
 def _parse_repo(raw: str) -> Tuple[str, str]:

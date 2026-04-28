@@ -81,13 +81,13 @@ def test_emit_xml_round_trips_through_converter(tmp_path: Path) -> None:
     assert files[0].get("path") == "env_inspector_core/cli.py"
 
     lines = files[0].findall("lineToCover")
-    assert {l.get("lineNumber"): l.get("covered") for l in lines} == {
+    assert {line.get("lineNumber"): line.get("covered") for line in lines} == {
         "1": "true",
         "2": "false",
         "3": "true",
     }
     # Line 3 has branch coverage info.
-    branchy = [l for l in lines if l.get("lineNumber") == "3"][0]
+    branchy = [line for line in lines if line.get("lineNumber") == "3"][0]
     assert branchy.get("branchesToCover") == "2"
     assert branchy.get("coveredBranches") == "1"
 

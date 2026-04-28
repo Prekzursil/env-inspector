@@ -1,4 +1,13 @@
 ---
+exclude_paths:
+  # Bandit's B101 (use of `assert`) is a security warning that's irrelevant
+  # in test code, where `assert` is the primary success/failure mechanism.
+  # Excluding the test directory from analysis here also keeps Pylint
+  # noise off the test suite (R0914 / W0613 / W1619 etc. — test fixtures
+  # naturally use throw-away locals and patterned signatures). Real test
+  # quality is enforced via pytest + ruff in the matrix.
+  - "tests/**"
+
 engines:
   # Codacy's deprecated 'pylint' tool runs alongside the modern
   # pylintpython3 engine and emits Python-2 compat warnings (W1618 /

@@ -21,9 +21,22 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 from pathlib import Path
-from xml.sax.saxutils import quoteattr
 
 from defusedxml import ElementTree as ET
+
+
+def _quoteattr(value: str) -> str:
+    """Escape and quote an XML attribute value.
+
+    Local equivalent of ``xml.sax.saxutils.quoteattr`` so this script can
+    keep the entire xml subsystem on ``defusedxml`` (Semgrep
+    ``use-defused-xml``). Only escapes attribute-significant characters;
+    never parses XML, so it has no XXE surface.
+    """
+    escaped = (
+        value.replace("&", "&amp;").replace("<", "&lt;").replace('"', "&quot;")
+    )
+    return f'"{escaped}"'
 
 
 def parse_args() -> argparse.Namespace:
@@ -78,7 +91,7 @@ def emit_xml(
     """Emit Sonar Generic Test Coverage XML and return file count."""
     out: list[str] = ['<coverage version="1">']
     for file_path in sorted(by_file):
-        out.append(f"  <file path={quoteattr(file_path)}>")
+        out.append(f"  <file path={_quoteattr(file_path)}>")
         for ln in sorted(by_file[file_path]):
             hits, b_total, b_covered = by_file[file_path][ln]
             covered = "true" if hits > 0 else "false"
