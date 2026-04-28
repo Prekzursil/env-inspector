@@ -57,11 +57,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _parse_condition_coverage(condition_coverage: str) -> tuple[int, int]:
+    """Parse Cobertura ``condition-coverage`` like ``"50% (1/2)"`` → (covered, total)."""
+    if "(" not in condition_coverage:
+        return (0, 0)
+    fraction = condition_coverage.split("(")[1].rstrip(")")
+    covered_str, total_str = fraction.split("/")
+    return (int(covered_str), int(total_str))
+
+
 def collect_lines(in_path: Path) -> dict[str, dict[int, tuple[int, int, int]]]:
     """Parse cobertura XML, return per-file/line (hits, branches, covered)."""
     by_file: dict[str, dict[int, tuple[int, int, int]]] = defaultdict(dict)
-    tree = ET.parse(str(in_path))
-    root = tree.getroot()
+    root = ET.parse(str(in_path)).getroot()
     for cls in root.iter("class"):
         filename = cls.get("filename", "")
         if not filename:
@@ -69,17 +77,12 @@ def collect_lines(in_path: Path) -> dict[str, dict[int, tuple[int, int, int]]]:
         for line in cls.iter("line"):
             number = int(line.get("number", 0))
             hits = int(line.get("hits", 0))
-            branch = line.get("branch", "false") == "true"
-            condition_coverage = line.get("condition-coverage", "")
-            if branch and "(" in condition_coverage:
-                # e.g. "50% (1/2)"
-                fraction = condition_coverage.split("(")[1].rstrip(")")
-                covered, total = fraction.split("/")
-                branches_to_cover = int(total)
-                covered_branches = int(covered)
-            else:
-                branches_to_cover = 0
-                covered_branches = 0
+            is_branch = line.get("branch", "false") == "true"
+            covered_branches, branches_to_cover = (
+                _parse_condition_coverage(line.get("condition-coverage", ""))
+                if is_branch
+                else (0, 0)
+            )
             by_file[filename][number] = (hits, branches_to_cover, covered_branches)
     return by_file
 
