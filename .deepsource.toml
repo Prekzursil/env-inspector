@@ -1,0 +1,41 @@
+version = 1
+
+# Keep this file explicit so provider-side analysis re-reads repo scope changes.
+# Mirrors the .codacy.yml exclusions so the strict-zero contract converges
+# across all four cloud platforms (Codacy / SonarCloud / qlty / DeepSource).
+
+exclude_patterns = [
+  "tests/**",                  # Bandit B101 (use of `assert`) is a test idiom, not a finding
+  "build/**",
+  "dist/**",
+  "docs/**",
+  "reports/**",
+  "release-notes/**",
+  "scripts/cobertura_to_sonar_generic.py",  # one-off coverage transform shim
+  "__pycache__/**",
+]
+
+test_patterns = [
+  "tests/**",
+]
+
+[[analyzers]]
+name = "python"
+enabled = true
+
+  [analyzers.meta]
+  runtime_version = "3.x.x"
+  max_line_length = 180
+  skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]
+
+[[analyzers]]
+name = "secrets"
+enabled = true
+
+[[analyzers]]
+name = "shell"
+enabled = true
+
+[[analyzers]]
+name = "test-coverage"
+enabled = true
