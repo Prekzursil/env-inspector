@@ -37,6 +37,8 @@ _evaluate = _http._evaluate
 encode_identifier = _http.encode_identifier
 request_json_https = _http.request_json_https
 safe_output_path_in_workspace = _http.safe_output_path_in_workspace
+emit_zero_report = _http.emit_zero_report
+ZeroReportSpec = _http.ZeroReportSpec
 
 
 def _parse_args() -> argparse.Namespace:

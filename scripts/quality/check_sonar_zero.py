@@ -3,24 +3,24 @@
 
 import argparse
 import base64
-import json
 import os
-import sys
 import urllib.error
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Tuple
 
 try:
     from ._security_imports import (
+        ZeroReportSpec,
+        emit_zero_report,
         normalize_https_url,
         request_json_https,
-        safe_output_path_in_workspace,
     )
 except ImportError:  # pragma: no cover - direct script execution
-    from _security_imports import (
+    from _security_imports import (  # type: ignore
+        ZeroReportSpec,
+        emit_zero_report,
         normalize_https_url,
         request_json_https,
-        safe_output_path_in_workspace,
     )
 
 SONAR_API_HOST = "sonarcloud.io"
@@ -272,21 +272,17 @@ def main() -> int:
         ).rstrip("/"),
     }
 
-    try:
-        out_json = safe_output_path_in_workspace(args.out_json, "sonar-zero/sonar.json")
-        out_md = safe_output_path_in_workspace(args.out_md, "sonar-zero/sonar.md")
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    return emit_zero_report(
+        ZeroReportSpec(
+            out_json_arg=args.out_json,
+            out_md_arg=args.out_md,
+            json_fallback="sonar-zero/sonar.json",
+            md_fallback="sonar-zero/sonar.md",
+            payload=payload,
+            rendered_md=_render_md(payload),
+            passed=status == "pass",
+        )
     )
-    out_md.write_text(_render_md(payload), encoding="utf-8")
-    print(out_md.read_text(encoding="utf-8"), end="")
-    return 0 if status == "pass" else 1
 
 
 if __name__ == "__main__":

@@ -3,7 +3,6 @@
 
 import argparse
 import importlib
-import json
 import os
 import sys
 import urllib.error
@@ -25,7 +24,9 @@ if str(_HELPER_ROOT) not in sys.path:
 _security_helpers = importlib.import_module("security_helpers")
 encode_identifier = _security_helpers.encode_identifier
 request_json_https = _security_helpers.request_json_https
-safe_output_path_in_workspace = _security_helpers.safe_output_path_in_workspace
+emit_zero_report = _security_helpers.emit_zero_report
+ZeroReportSpec = _security_helpers.ZeroReportSpec
+render_findings_md = _security_helpers.render_findings_md
 
 SENTRY_API_HOST = "sentry.io"
 
@@ -239,13 +240,7 @@ def _render_md(payload: dict) -> str:
         lines.append("- None")
 
     lines.extend(["", "## Findings"])
-    findings = payload.get("findings") or []
-    if findings:
-        lines.extend(f"- {item}" for item in findings)
-    else:
-        lines.append("- None")
-
-    return "\n".join(lines) + "\n"
+    return render_findings_md(lines, payload.get("findings") or [])
 
 
 def main() -> int:
@@ -280,24 +275,17 @@ def main() -> int:
         "findings": findings,
     }
 
-    try:
-        out_json = safe_output_path_in_workspace(
-            args.out_json, "sentry-zero/sentry.json"
+    return emit_zero_report(
+        ZeroReportSpec(
+            out_json_arg=args.out_json,
+            out_md_arg=args.out_md,
+            json_fallback="sentry-zero/sentry.json",
+            md_fallback="sentry-zero/sentry.md",
+            payload=payload,
+            rendered_md=_render_md(payload),
+            passed=status == "pass",
         )
-        out_md = safe_output_path_in_workspace(args.out_md, "sentry-zero/sentry.md")
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    os.makedirs(out_json.parent, exist_ok=True)
-    os.makedirs(out_md.parent, exist_ok=True)
-    with open(out_json, "w", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-    rendered = _render_md(payload)
-    with open(out_md, "w", encoding="utf-8") as handle:
-        handle.write(rendered)
-    print(rendered, end="")
-    return 0 if status == "pass" else 1
+    )
 
 
 if __name__ == "__main__":

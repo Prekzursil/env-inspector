@@ -176,6 +176,98 @@ def test_safe_output_path_in_workspace_rejects_workspace_escape(tmp_path, monkey
         sec.safe_output_path_in_workspace(str(outside), "fallback.json")
 
 
+def test_render_findings_md_lists_findings():
+    """Render one Markdown bullet per finding with a trailing newline."""
+    rendered = sec.render_findings_md(["## Findings"], ["alpha", "beta"])
+
+    ensure(rendered == "## Findings\n- alpha\n- beta\n")
+
+
+def test_render_findings_md_emits_none_when_empty():
+    """Render a single ``- None`` bullet when there are no findings."""
+    rendered = sec.render_findings_md(["## Findings"], [])
+
+    ensure(rendered == "## Findings\n- None\n")
+
+
+def test_write_zero_report_persists_json_and_markdown(tmp_path, capsys):
+    """Write JSON + Markdown outputs and echo the Markdown to stdout."""
+    out_json = tmp_path / "nested" / "report.json"
+    out_md = tmp_path / "nested" / "report.md"
+
+    sec.write_zero_report(out_json, out_md, {"status": "pass"}, "# Report\n")
+
+    ensure('"status": "pass"' in out_json.read_text(encoding="utf-8"))
+    ensure(out_md.read_text(encoding="utf-8") == "# Report\n")
+    ensure(capsys.readouterr().out == "# Report\n")
+
+
+def test_write_zero_report_can_suppress_echo(tmp_path, capsys):
+    """Skip stdout echo when ``echo`` is false but still write both files."""
+    out_json = tmp_path / "report.json"
+    out_md = tmp_path / "report.md"
+
+    sec.write_zero_report(out_json, out_md, {"status": "fail"}, "# R\n", echo=False)
+
+    ensure(out_md.read_text(encoding="utf-8") == "# R\n")
+    ensure(capsys.readouterr().out == "")
+
+
+def test_emit_zero_report_writes_and_returns_pass(tmp_path):
+    """Return ``0`` and persist outputs when the gate passed."""
+    spec = sec.ZeroReportSpec(
+        out_json_arg="gate/out.json",
+        out_md_arg="gate/out.md",
+        json_fallback="gate/fallback.json",
+        md_fallback="gate/fallback.md",
+        payload={"status": "pass"},
+        rendered_md="# OK\n",
+        passed=True,
+    )
+
+    code = sec.emit_zero_report(spec, echo=False, base=tmp_path)
+
+    ensure(code == 0)
+    ensure((tmp_path / "gate" / "out.md").read_text(encoding="utf-8") == "# OK\n")
+
+
+def test_emit_zero_report_returns_one_when_not_passed(tmp_path):
+    """Return ``1`` when the gate did not pass while still writing outputs."""
+    spec = sec.ZeroReportSpec(
+        out_json_arg="",
+        out_md_arg="",
+        json_fallback="gate/out.json",
+        md_fallback="gate/out.md",
+        payload={"status": "fail"},
+        rendered_md="# FAIL\n",
+        passed=False,
+    )
+
+    code = sec.emit_zero_report(spec, echo=False, base=tmp_path)
+
+    ensure(code == 1)
+    ensure((tmp_path / "gate" / "out.json").exists())
+
+
+def test_emit_zero_report_rejects_workspace_escape(tmp_path, capsys):
+    """Return ``1`` and print the error when an output path escapes the root."""
+    escaped = str(tmp_path.parent / "escaped.json")
+    spec = sec.ZeroReportSpec(
+        out_json_arg=escaped,
+        out_md_arg="gate/out.md",
+        json_fallback="gate/out.json",
+        md_fallback="gate/out.md",
+        payload={"status": "pass"},
+        rendered_md="# X\n",
+        passed=True,
+    )
+
+    code = sec.emit_zero_report(spec, base=tmp_path)
+
+    ensure(code == 1)
+    ensure("escapes workspace root" in capsys.readouterr().err)
+
+
 def test_validate_hostname_allowlists_accepts_none_suffixes():
     """Allow hostname validation when no suffix allowlist is configured."""
     sec._validate_hostname_allowlists("api.codacy.com", allowed_host_suffixes=None)

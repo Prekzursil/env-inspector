@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Codacy zero support module."""
 
-import importlib
 import sys
 import urllib.error
 from dataclasses import dataclass, replace
@@ -32,25 +31,24 @@ class CodacyRequest:
     data: Dict[str, Any] | None = None
 
 
-def _load_security_imports() -> Any:
-    """Load security imports."""
-    try:
-        return importlib.import_module("scripts.quality._security_imports")
-    except ModuleNotFoundError:  # pragma: no cover - direct script execution
-        helper_root = Path(__file__).resolve().parent
-        helper_root_str = str(helper_root)
-        if helper_root_str not in sys.path:
-            sys.path.insert(0, helper_root_str)
-        return importlib.import_module("_security_imports")
+try:
+    from ._module_loader import load_quality_module
+except ImportError:  # pragma: no cover - direct script execution
+    from _module_loader import load_quality_module  # type: ignore
 
 
-_security_imports = _load_security_imports()
+_security_imports = load_quality_module(
+    "scripts.quality._security_imports", "_security_imports"
+)
 encode_identifier = cast(EncodeIdentifier, _security_imports.encode_identifier)
 request_json_https = cast(RequestJsonHttps, _security_imports.request_json_https)
 safe_output_path_in_workspace = cast(
     SafeOutputPathInWorkspace,
     _security_imports.safe_output_path_in_workspace,
 )
+emit_zero_report = _security_imports.emit_zero_report
+ZeroReportSpec = _security_imports.ZeroReportSpec
+render_findings_md = _security_imports.render_findings_md
 
 
 def _public_codacy_module() -> Any | None:
@@ -70,6 +68,9 @@ __all__ = [
     "_request_json",
     "_sample_issue_findings",
     "encode_identifier",
+    "ZeroReportSpec",
+    "emit_zero_report",
+    "render_findings_md",
     "request_json_https",
     "safe_output_path_in_workspace",
 ]

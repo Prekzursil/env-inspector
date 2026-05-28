@@ -1,48 +1,30 @@
 #!/usr/bin/env python3
 """Codacy zero-issue gate for repository and branch scopes."""
 
-import importlib
-import json
 import os
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-
-def _load_impl() -> Any:
-    """Load the reusable Codacy helper module for script and package modes."""
-    try:
-        return importlib.import_module("scripts.quality._codacy_zero_impl")
-    except ModuleNotFoundError:  # pragma: no cover - direct script execution
-        helper_root = Path(__file__).resolve().parent
-        helper_root_str = str(helper_root)
-        if helper_root_str not in sys.path:
-            sys.path.insert(0, helper_root_str)
-        return importlib.import_module("_codacy_zero_impl")
+try:
+    from ._module_loader import load_quality_module
+except ImportError:  # pragma: no cover - direct script execution
+    from _module_loader import load_quality_module  # type: ignore
 
 
-def _load_support() -> Any:
-    """Load the shared Codacy support module for script and package modes."""
-    try:
-        return importlib.import_module("scripts.quality._codacy_zero_support")
-    except ModuleNotFoundError:  # pragma: no cover - direct script execution
-        helper_root = Path(__file__).resolve().parent
-        helper_root_str = str(helper_root)
-        if helper_root_str not in sys.path:
-            sys.path.insert(0, helper_root_str)
-        return importlib.import_module("_codacy_zero_support")
-
-
-_impl = _load_impl()
-_support = _load_support()
+_impl = load_quality_module(
+    "scripts.quality._codacy_zero_impl", "_codacy_zero_impl"
+)
+_support = load_quality_module(
+    "scripts.quality._codacy_zero_support", "_codacy_zero_support"
+)
 CodacyRequest = _impl.CodacyRequest
 TOTAL_KEYS = _impl.TOTAL_KEYS
 CODACY_API_HOST = _impl.CODACY_API_HOST
 CODACY_REQUEST_EXCEPTIONS = _impl.CODACY_REQUEST_EXCEPTIONS
 request_json_https = _impl.request_json_https
 encode_identifier = _impl.encode_identifier
-safe_output_path_in_workspace = _impl.safe_output_path_in_workspace
+emit_zero_report = _impl.emit_zero_report
+ZeroReportSpec = _impl.ZeroReportSpec
 
 extract_total_open = _impl.extract_total_open
 
@@ -153,24 +135,18 @@ def main() -> int:
         "findings": findings,
     }
 
-    try:
-        out_json = safe_output_path_in_workspace(
-            args.out_json,
-            "codacy-zero/codacy.json",
-        )
-        out_md = safe_output_path_in_workspace(args.out_md, "codacy-zero/codacy.md")
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+    return emit_zero_report(
+        ZeroReportSpec(
+            out_json_arg=args.out_json,
+            out_md_arg=args.out_md,
+            json_fallback="codacy-zero/codacy.json",
+            md_fallback="codacy-zero/codacy.md",
+            payload=payload,
+            rendered_md=_render_md(payload),
+            passed=status == "pass",
+        ),
+        echo=False,
     )
-    out_md.write_text(_render_md(payload), encoding="utf-8")
-    return 0 if status == "pass" else 1
 
 
 if __name__ == "__main__":

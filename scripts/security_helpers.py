@@ -4,6 +4,7 @@ import ipaddress
 import json
 import re
 import ssl
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -126,7 +127,10 @@ def normalize_https_url(
     - optional hostname suffix allowlist.
     """
     parsed = _parse_https_url(raw_url)
-    hostname = parsed.hostname.lower().strip(".")
+    # ``_parse_https_url`` already rejects URLs without a hostname, so
+    # ``parsed.hostname`` is non-empty here; ``or ""`` only narrows the
+    # static ``str | None`` type without adding a reachable runtime branch.
+    hostname = (parsed.hostname or "").lower().strip(".")
     _validate_hostname_allowlists(
         hostname,
         allowed_hosts=allowed_hosts,
@@ -362,3 +366,90 @@ def safe_input_file_path_in_workspace(raw: str, *, base: Path | None = None) -> 
     if not resolved.exists() or not resolved.is_file():
         raise ValueError(f"Input file does not exist: {resolved}")
     return resolved
+
+
+def write_zero_report(
+    out_json: Path,
+    out_md: Path,
+    payload: Dict[str, Any],
+    rendered_md: str,
+    *,
+    echo: bool = True,
+) -> None:
+    """Persist a quality-gate report's JSON payload and rendered Markdown.
+
+    Creates the parent directories for both outputs, writes the
+    deterministically serialised JSON ``payload`` and the ``rendered_md``
+    Markdown summary, and (when ``echo`` is true) prints the Markdown to
+    stdout so CI logs surface the result. Centralises the write/echo tail
+    shared by every ``check_*_zero`` gate script.
+    """
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_md.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    out_md.write_text(rendered_md, encoding="utf-8")
+    if echo:
+        print(rendered_md, end="")
+
+
+def render_findings_md(lines: list, findings: list) -> str:
+    """Append a findings bullet list to ``lines`` and join into Markdown.
+
+    Extends the already-built ``lines`` with one ``- <finding>`` bullet per
+    entry in ``findings`` (or a single ``- None`` bullet when empty), then
+    returns the newline-joined document with a trailing newline. Centralises
+    the findings-list rendering tail shared by every ``check_*_zero`` gate's
+    ``_render_md`` helper.
+    """
+    if findings:
+        lines.extend(f"- {item}" for item in findings)
+    else:
+        lines.append("- None")
+    return "\n".join(lines) + "\n"
+
+
+@dataclass(frozen=True)
+class ZeroReportSpec:
+    """Bundled inputs for emitting a quality-gate zero report.
+
+    Groups the output-path arguments and their workspace-relative fallbacks
+    with the report content (``payload`` / ``rendered_md``) and outcome
+    (``passed``). Presentation/runtime options (``echo``, ``base``) are passed
+    to :func:`emit_zero_report` separately so this content spec stays small.
+    """
+
+    out_json_arg: str
+    out_md_arg: str
+    json_fallback: str
+    md_fallback: str
+    payload: Dict[str, Any]
+    rendered_md: str
+    passed: bool
+
+
+def emit_zero_report(
+    spec: ZeroReportSpec, *, echo: bool = True, base: Path | None = None
+) -> int:
+    """Validate output paths, write a zero-gate report, and return an exit code.
+
+    Resolves ``spec.out_json_arg`` / ``spec.out_md_arg`` against the workspace
+    root (falling back to ``spec.json_fallback`` / ``spec.md_fallback``);
+    ``base`` overrides that root. On a path that escapes the workspace the
+    validation error is printed to stderr and ``1`` is returned. Otherwise the
+    report is persisted via :func:`write_zero_report` (printing the Markdown
+    when ``echo`` is true) and the exit code is ``0`` when ``spec.passed`` is
+    true, else ``1``. Collapses the resolve/except/write/return tail every
+    ``check_*_zero`` gate script shares into a single call.
+    """
+    try:
+        out_json = safe_output_path_in_workspace(
+            spec.out_json_arg, spec.json_fallback, base
+        )
+        out_md = safe_output_path_in_workspace(spec.out_md_arg, spec.md_fallback, base)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    write_zero_report(out_json, out_md, spec.payload, spec.rendered_md, echo=echo)
+    return 0 if spec.passed else 1

@@ -24,13 +24,21 @@ request_json_https = _helpers.request_json_https
 safe_input_file_path_in_workspace = _helpers.safe_input_file_path_in_workspace
 safe_output_path_in_workspace = _helpers.safe_output_path_in_workspace
 split_validated_https_url = _helpers.split_validated_https_url
+write_zero_report = _helpers.write_zero_report
+emit_zero_report = _helpers.emit_zero_report
+ZeroReportSpec = _helpers.ZeroReportSpec
+render_findings_md = _helpers.render_findings_md
 
 
 __all__ = [
+    "ZeroReportSpec",
+    "emit_zero_report",
     "encode_identifier",
     "normalize_https_url",
+    "render_findings_md",
     "request_json_https",
     "safe_input_file_path_in_workspace",
     "safe_output_path_in_workspace",
     "split_validated_https_url",
+    "write_zero_report",
 ]

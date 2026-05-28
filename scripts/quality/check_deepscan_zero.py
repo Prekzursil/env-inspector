@@ -2,21 +2,16 @@
 """Check deepscan zero module."""
 
 import argparse
-import importlib
-import json
 import os
-import sys
 import urllib.error
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Tuple, cast
 from collections.abc import Callable
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
 RequestJsonHttps = Callable[..., Tuple[Any, Dict[str, str]]]
-SafeOutputPathInWorkspace = Callable[..., Path]
 SplitValidatedHttpsUrl = Callable[..., Tuple[str, str, Dict[str, str]]]
 
 
@@ -31,28 +26,23 @@ class DeepScanRequest:
     findings: List[str]
 
 
-def _load_security_imports() -> Any:
-    """Load security imports."""
-    try:
-        return importlib.import_module("scripts.quality._security_imports")
-    except ModuleNotFoundError:  # pragma: no cover - direct script execution
-        helper_root = Path(__file__).resolve().parent
-        helper_root_str = str(helper_root)
-        if helper_root_str not in sys.path:
-            sys.path.insert(0, helper_root_str)
-        return importlib.import_module("_security_imports")
+try:
+    from ._module_loader import load_quality_module
+except ImportError:  # pragma: no cover - direct script execution
+    from _module_loader import load_quality_module  # type: ignore
 
 
-_security_imports = _load_security_imports()
-request_json_https = cast(RequestJsonHttps, _security_imports.request_json_https)
-safe_output_path_in_workspace = cast(
-    SafeOutputPathInWorkspace,
-    _security_imports.safe_output_path_in_workspace,
+_security_imports = load_quality_module(
+    "scripts.quality._security_imports", "_security_imports"
 )
+request_json_https = cast(RequestJsonHttps, _security_imports.request_json_https)
 split_validated_https_url = cast(
     SplitValidatedHttpsUrl,
     _security_imports.split_validated_https_url,
 )
+emit_zero_report = _security_imports.emit_zero_report
+ZeroReportSpec = _security_imports.ZeroReportSpec
+render_findings_md = _security_imports.render_findings_md
 
 
 def _parse_args() -> argparse.Namespace:
@@ -191,12 +181,7 @@ def _render_md(payload: dict) -> str:
         "",
         "## Findings",
     ]
-    findings = payload.get("findings") or []
-    if findings:
-        lines.extend(f"- {item}" for item in findings)
-    else:
-        lines.append("- None")
-    return "\n".join(lines) + "\n"
+    return render_findings_md(lines, payload.get("findings") or [])
 
 
 def main() -> int:
@@ -228,23 +213,17 @@ def main() -> int:
         "findings": findings,
     }
 
-    try:
-        out_json = safe_output_path_in_workspace(
-            args.out_json, "deepscan-zero/deepscan.json"
+    return emit_zero_report(
+        ZeroReportSpec(
+            out_json_arg=args.out_json,
+            out_md_arg=args.out_md,
+            json_fallback="deepscan-zero/deepscan.json",
+            md_fallback="deepscan-zero/deepscan.md",
+            payload=payload,
+            rendered_md=_render_md(payload),
+            passed=status == "pass",
         )
-        out_md = safe_output_path_in_workspace(args.out_md, "deepscan-zero/deepscan.md")
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    out_md.write_text(_render_md(payload), encoding="utf-8")
-    print(out_md.read_text(encoding="utf-8"), end="")
-    return 0 if status == "pass" else 1
 
 
 if __name__ == "__main__":

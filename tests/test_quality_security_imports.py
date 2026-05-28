@@ -45,6 +45,10 @@ def test_security_imports_fallback_loader_inserts_helper_root(monkeypatch):
             safe_input_file_path_in_workspace=lambda *args, **kwargs: Path("."),
             safe_output_path_in_workspace=lambda *args, **kwargs: Path("."),
             split_validated_https_url=lambda *args, **kwargs: ("host", "/", {}),
+            write_zero_report=lambda *args, **kwargs: None,
+            emit_zero_report=lambda *args, **kwargs: 0,
+            ZeroReportSpec=object,
+            render_findings_md=lambda *args, **kwargs: "",
         )
 
     monkeypatch.setattr(
@@ -55,3 +59,49 @@ def test_security_imports_fallback_loader_inserts_helper_root(monkeypatch):
 
     case.assertTrue(hasattr(loaded, "request_json_https"))
     case.assertIn(helper_root, security_imports.sys.path)
+
+
+def test_load_quality_module_prefers_qualified_name():
+    """Return the package-qualified module when it imports successfully."""
+    from scripts.quality import _module_loader
+
+    case = _case()
+    loaded = _module_loader.load_quality_module(
+        "scripts.quality._security_imports", "_security_imports"
+    )
+
+    case.assertTrue(hasattr(loaded, "emit_zero_report"))
+
+
+def test_load_quality_module_falls_back_to_bare_name(monkeypatch):
+    """Insert the helper root and import the bare name when qualified fails."""
+    import types
+
+    from scripts.quality import _module_loader
+
+    case = _case()
+    helper_root = str(Path(_module_loader.__file__).resolve().parent)
+    monkeypatch.setattr(
+        _module_loader.sys,
+        "path",
+        [entry for entry in _module_loader.sys.path if entry != helper_root],
+    )
+    sentinel = types.SimpleNamespace(loaded=True)
+
+    def _fake_import_module(name: str):
+        """Fake import module."""
+        if name == "scripts.quality._missing":
+            raise ModuleNotFoundError("package form unavailable")
+        case.assertEqual(name, "_missing")
+        return sentinel
+
+    monkeypatch.setattr(
+        _module_loader.importlib, "import_module", _fake_import_module
+    )
+
+    loaded = _module_loader.load_quality_module(
+        "scripts.quality._missing", "_missing"
+    )
+
+    case.assertIs(loaded, sentinel)
+    case.assertIn(helper_root, _module_loader.sys.path)
