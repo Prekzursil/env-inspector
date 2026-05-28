@@ -93,8 +93,23 @@ class EnvInspectorControllerActionsMixin:
         self.tk.clipboard_append(rec.name)
         self._set_status(f"Copied name: {rec.name}")
 
-    def copy_selected_value(self) -> None:
-        """Copy selected value."""
+    def _copy_selected(
+        self,
+        *,
+        as_pair: bool,
+        confirm_prompt: str,
+        masked_status: str,
+        plain_status: str,
+    ) -> None:
+        """Copy the selected record's value or name=value pair to the clipboard.
+
+        Shared implementation for :meth:`copy_selected_value` and
+        :meth:`copy_selected_pair`. Resolves the (possibly masked) payload via
+        the secret policy, writes it to the clipboard, and reports a status
+        message. ``masked_status`` and ``plain_status`` are format strings
+        receiving the record name; the masked variant is used when the record
+        is a secret that was not revealed in raw form.
+        """
         rec = self._selected_record()
         if rec is None:
             self._show_select_row_required()
@@ -104,44 +119,40 @@ class EnvInspectorControllerActionsMixin:
         payload, raw = resolve_copy_payload(
             rec,
             show_secrets=bool(self.show_secrets.get()),
-            confirm_raw=lambda: self._confirm_hidden_secret(
+            confirm_raw=lambda: self._confirm_hidden_secret(confirm_prompt),
+            as_pair=as_pair,
+        )
+
+        self.tk.clipboard_clear()
+        self.tk.clipboard_append(payload)
+        if record_is_secret and not raw:
+            self._set_status(masked_status.format(name=rec.name))
+        else:
+            self._set_status(plain_status.format(name=rec.name))
+
+    def copy_selected_value(self) -> None:
+        """Copy selected value."""
+        self._copy_selected(
+            as_pair=False,
+            confirm_prompt=(
                 "This value appears to be a secret and is hidden. "
                 "Copy raw value to clipboard?"
             ),
-            as_pair=False,
+            masked_status="Copied masked value for: {name}",
+            plain_status="Copied value for: {name}",
         )
-
-        self.tk.clipboard_clear()
-        self.tk.clipboard_append(payload)
-        if record_is_secret and not raw:
-            self._set_status(f"Copied masked value for: {rec.name}")
-        else:
-            self._set_status(f"Copied value for: {rec.name}")
 
     def copy_selected_pair(self) -> None:
         """Copy selected pair."""
-        rec = self._selected_record()
-        if rec is None:
-            self._show_select_row_required()
-            return
-
-        record_is_secret = is_record_secret(rec)
-        payload, raw = resolve_copy_payload(
-            rec,
-            show_secrets=bool(self.show_secrets.get()),
-            confirm_raw=lambda: self._confirm_hidden_secret(
+        self._copy_selected(
+            as_pair=True,
+            confirm_prompt=(
                 "This value appears to be a secret and is hidden. "
                 "Copy raw name=value to clipboard?"
             ),
-            as_pair=True,
+            masked_status="Copied masked pair for: {name}",
+            plain_status="Copied pair: {name}=...",
         )
-
-        self.tk.clipboard_clear()
-        self.tk.clipboard_append(payload)
-        if record_is_secret and not raw:
-            self._set_status(f"Copied masked pair for: {rec.name}")
-        else:
-            self._set_status(f"Copied pair: {rec.name}=...")
 
     def copy_selected_source_path(self) -> None:
         """Copy selected source path."""
