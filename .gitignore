@@ -33,3 +33,4 @@ coverage/
 coverage_platform/
 .tmp_platform/
 htmlcov/
+.tmp/

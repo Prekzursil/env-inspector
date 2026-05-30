@@ -1,5 +1,0 @@
-{
-  "target": "dotenv:/home/user/env-inspector/.tmp/pytest-of-root/pytest-11/test_restore_dotenv_backup_in_0/allowed/.env",
-  "created_at": "20260528T114542057462Z",
-  "text": "A=1\n"
-}

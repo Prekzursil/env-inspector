@@ -1,5 +1,0 @@
-{
-  "target": "wsl_dotenv:Ubuntu:/home/user/.env",
-  "created_at": "20260528T114408193056Z",
-  "text": "A=1\n"
-}
