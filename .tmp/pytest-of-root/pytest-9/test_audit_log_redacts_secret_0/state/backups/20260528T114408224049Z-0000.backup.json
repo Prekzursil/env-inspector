@@ -1,0 +1,5 @@
+{
+  "target": "dotenv:/home/user/env-inspector/.tmp/pytest-of-root/pytest-9/test_audit_log_redacts_secret_0/.env",
+  "created_at": "20260528T114408224049Z",
+  "text": "API_TOKEN=old\n"
+}

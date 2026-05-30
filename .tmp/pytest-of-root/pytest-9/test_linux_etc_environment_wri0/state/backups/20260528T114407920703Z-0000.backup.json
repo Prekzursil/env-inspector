@@ -1,0 +1,5 @@
+{
+  "target": "linux:etc_environment",
+  "created_at": "20260528T114407920703Z",
+  "text": "A=1\n"
+}

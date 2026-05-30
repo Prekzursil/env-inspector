@@ -1,0 +1,5 @@
+{
+  "target": "dotenv:/workspace/.env",
+  "created_at": "20260101T000000000000Z",
+  "text": "A=2\n"
+}

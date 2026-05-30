@@ -1,0 +1,5 @@
+{
+  "target": "dotenv:/tmp/.env",
+  "created_at": "20260528T114404744914Z",
+  "text": "A=2\n"
+}

@@ -40,7 +40,6 @@ bundle_analysis:
   status: informational
 
 ignore:
-  - ".guardrails.yml"
-  - ".guardrails.yaml"
+  - ".guardrails/**"
   - ".qlty/**"
   - ".github/dependabot.yml"

@@ -1,0 +1,5 @@
+{
+  "target": "wsl:Ubuntu:bashrc",
+  "created_at": "20260528T114408195636Z",
+  "text": "export A='1'\n"
+}

@@ -1,0 +1,5 @@
+{
+  "target": "linux:bashrc",
+  "created_at": "20260528T114546636603Z",
+  "text": "export A='1'\n\nexport MY_TEST_VAR='hello'\n"
+}
