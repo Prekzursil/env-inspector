@@ -373,7 +373,6 @@ def write_zero_report(
     out_md: Path,
     payload: Dict[str, Any],
     rendered_md: str,
-    *,
     echo: bool = True,
 ) -> None:
     """Persist a quality-gate report's JSON payload and rendered Markdown.
