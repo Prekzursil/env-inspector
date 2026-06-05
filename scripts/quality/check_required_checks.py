@@ -2,33 +2,25 @@
 """Required-check gate wrapper for the shared GitHub context helpers."""
 
 import argparse
-import importlib
-import json
-import sys
 import urllib.error
-from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-
-def _load_impl() -> Any:
-    """Load the reusable required-checks implementation module."""
-    try:
-        return importlib.import_module("scripts.quality._required_checks_impl")
-    except ModuleNotFoundError:  # pragma: no cover - direct script execution
-        helper_root = Path(__file__).resolve().parent
-        helper_root_str = str(helper_root)
-        if helper_root_str not in sys.path:
-            sys.path.insert(0, helper_root_str)
-        return importlib.import_module("_required_checks_impl")
+try:
+    from ._module_loader import load_quality_module
+except ImportError:  # pragma: no cover - direct script execution
+    from _module_loader import load_quality_module  # type: ignore
 
 
-_impl = _load_impl()
+_impl = load_quality_module(
+    "scripts.quality._required_checks_impl", "_required_checks_impl"
+)
 GitHubRequest = _impl.GitHubRequest
 SettledChecksRequest = _impl.SettledChecksRequest
 GITHUB_API_HOST = _impl.GITHUB_API_HOST
 encode_identifier = _impl.encode_identifier
 request_json_https = _impl.request_json_https
-safe_output_path_in_workspace = _impl.safe_output_path_in_workspace
+emit_zero_report = _impl.emit_zero_report
+ZeroReportSpec = _impl.ZeroReportSpec
 
 
 def _impl_helper(name: str) -> Any:
@@ -215,29 +207,17 @@ def main() -> int:
         )
     )
 
-    try:
-        out_json = safe_output_path_in_workspace(
-            args.out_json,
-            "quality-zero-gate/required-checks.json",
+    return emit_zero_report(
+        ZeroReportSpec(
+            out_json_arg=args.out_json,
+            out_md_arg=args.out_md,
+            json_fallback="quality-zero-gate/required-checks.json",
+            md_fallback="quality-zero-gate/required-checks.md",
+            payload=final_payload,
+            rendered_md=_render_md(final_payload),
+            passed=final_payload["status"] == "pass",
         )
-        out_md = safe_output_path_in_workspace(
-            args.out_md,
-            "quality-zero-gate/required-checks.md",
-        )
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(
-        json.dumps(final_payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
     )
-    out_md.write_text(_render_md(final_payload), encoding="utf-8")
-    print(out_md.read_text(encoding="utf-8"), end="")
-
-    return 0 if final_payload["status"] == "pass" else 1
 
 
 if __name__ == "__main__":

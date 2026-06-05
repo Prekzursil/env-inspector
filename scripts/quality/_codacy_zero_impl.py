@@ -27,6 +27,9 @@ _sample_issue_findings = _support._sample_issue_findings
 encode_identifier = _support.encode_identifier
 request_json_https = _support.request_json_https
 safe_output_path_in_workspace = _support.safe_output_path_in_workspace
+emit_zero_report = _support.emit_zero_report
+ZeroReportSpec = _support.ZeroReportSpec
+render_findings_md = _support.render_findings_md
 
 
 def _public_codacy_module() -> Any | None:
@@ -245,9 +248,4 @@ def _render_md(payload: dict) -> str:
         "",
         "## Findings",
     ]
-    findings = payload.get("findings") or []
-    if findings:
-        lines.extend(f"- {item}" for item in findings)
-    else:
-        lines.append("- None")
-    return "\n".join(lines) + "\n"
+    return render_findings_md(lines, payload.get("findings") or [])

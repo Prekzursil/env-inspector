@@ -1,5 +1,6 @@
 """Dialogs module."""
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Set, Tuple, cast
 from collections.abc import Callable
 
@@ -11,6 +12,43 @@ class _PreviewTabDeps:
         self.mono = mono
         self.ttk = ttk
         self.scrolledtext = scrolledtext
+
+
+@dataclass(frozen=True)
+class _ActionButtonSpec:
+    """Bundle the primary / cancel button configuration for one dialog row.
+
+    Collapses the previously-flat ``_build_action_buttons`` parameter list
+    (``primary_text`` / ``primary_command`` / ``cancel_text`` /
+    ``cancel_command``) into a single value object so the function stays
+    under qlty's many-parameters threshold without losing call-site
+    expressiveness.
+    """
+
+    primary_text: str
+    primary_command: Callable[[], None]
+    cancel_command: Callable[[], None] | None = None
+    cancel_text: str = "Cancel"
+
+
+def _build_action_buttons(parent: Any, ttk: Any, spec: _ActionButtonSpec) -> Any:
+    """Build a right-aligned dialog button row and return the button frame.
+
+    Packs a primary action button on the right and, when ``spec.cancel_command``
+    is provided, a cancel button to its left. Centralises the Cancel/Apply
+    layout shared by every modal dialog in this module so the widget-
+    construction boilerplate lives in one place.
+    """
+    btns = ttk.Frame(parent)
+    btns.pack(fill="x", pady=(10, 0))
+    if spec.cancel_command is not None:
+        ttk.Button(btns, text=spec.cancel_text, command=spec.cancel_command).pack(
+            side="right", padx=(6, 0)
+        )
+    ttk.Button(btns, text=spec.primary_text, command=spec.primary_command).pack(
+        side="right"
+    )
+    return btns
 
 
 class TargetPickerDialog:
@@ -133,12 +171,15 @@ class TargetPickerDialog:
 
     def _build_buttons(self, frame: Any, ttk: Any) -> None:
         """Build buttons."""
-        btns = ttk.Frame(frame)
-        btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
-            side="right", padx=(6, 0)
+        _build_action_buttons(
+            frame,
+            ttk,
+            _ActionButtonSpec(
+                primary_text="Apply",
+                primary_command=self._apply,
+                cancel_command=self._cancel,
+            ),
         )
-        ttk.Button(btns, text="Apply", command=self._apply).pack(side="right")
 
     def _sync_scrollregion(self, _event: Any) -> None:
         """Sync scrollregion."""
@@ -248,12 +289,15 @@ class DotenvTargetDialog:
             self._vars.append((target, var))
             ttk.Checkbutton(frame, text=target, variable=var).pack(anchor="w")
 
-        btns = ttk.Frame(frame)
-        btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
-            side="right", padx=(6, 0)
+        _build_action_buttons(
+            frame,
+            ttk,
+            _ActionButtonSpec(
+                primary_text="Apply",
+                primary_command=self._apply,
+                cancel_command=self._cancel,
+            ),
         )
-        ttk.Button(btns, text="Apply", command=self._apply).pack(side="right")
 
     def _apply(self) -> None:
         """Apply."""
@@ -300,9 +344,7 @@ class DiffPreviewDialog:
             notebook, previews, _PreviewTabDeps(mono, ttk, scrolledtext)
         )
 
-        btns = ttk.Frame(frame)
-        btns.pack(fill="x", pady=(10, 0))
-        self._build_buttons(btns, preview_only, ttk)
+        self._build_buttons(frame, preview_only, ttk)
 
         self.win.bind("<Escape>", self._on_escape)
 
@@ -372,15 +414,26 @@ class DiffPreviewDialog:
             return "diff_remove"
         return None
 
-    def _build_buttons(self, btns: Any, preview_only: bool, ttk: Any) -> None:
+    def _build_buttons(self, frame: Any, preview_only: bool, ttk: Any) -> None:
         """Build buttons."""
         if preview_only:
-            ttk.Button(btns, text="Close", command=self._cancel).pack(side="right")
+            _build_action_buttons(
+                frame,
+                ttk,
+                _ActionButtonSpec(
+                    primary_text="Close", primary_command=self._cancel
+                ),
+            )
             return
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
-            side="right", padx=(6, 0)
+        _build_action_buttons(
+            frame,
+            ttk,
+            _ActionButtonSpec(
+                primary_text="Apply Changes",
+                primary_command=self._apply,
+                cancel_command=self._cancel,
+            ),
         )
-        ttk.Button(btns, text="Apply Changes", command=self._apply).pack(side="right")
 
     def _apply(self) -> None:
         """Apply."""
@@ -424,12 +477,15 @@ class BackupPickerDialog:
         for item in backups:
             self.listbox.insert("end", item)
 
-        btns = ttk.Frame(frame)
-        btns.pack(fill="x", pady=(10, 0))
-        ttk.Button(btns, text="Cancel", command=self._cancel).pack(
-            side="right", padx=(6, 0)
+        _build_action_buttons(
+            frame,
+            ttk,
+            _ActionButtonSpec(
+                primary_text="Restore",
+                primary_command=self._restore,
+                cancel_command=self._cancel,
+            ),
         )
-        ttk.Button(btns, text="Restore", command=self._restore).pack(side="right")
 
     def _restore(self) -> None:
         """Restore."""

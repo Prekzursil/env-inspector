@@ -9,12 +9,16 @@ from typing import Any, Dict, List, Tuple
 
 try:
     from ._security_imports import (
+        ZeroReportSpec,
+        emit_zero_report,
         encode_identifier,
         request_json_https,
         safe_output_path_in_workspace,
     )
 except ImportError:  # pragma: no cover - direct script execution
     from _security_imports import (  # type: ignore
+        ZeroReportSpec,
+        emit_zero_report,
         encode_identifier,
         request_json_https,
         safe_output_path_in_workspace,
@@ -285,6 +289,8 @@ __all__ = [
     "_should_retry_url_error",
     "_status_context",
     "_status_failure",
+    "ZeroReportSpec",
+    "emit_zero_report",
     "encode_identifier",
     "request_json_https",
     "safe_output_path_in_workspace",

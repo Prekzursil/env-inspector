@@ -2,16 +2,17 @@
 """Check quality secrets module."""
 
 import argparse
-import json
 import os
-import sys
 from datetime import datetime, timezone
 from typing import Dict, List, Set, Tuple
 
 try:
-    from ._security_imports import safe_output_path_in_workspace
+    from ._security_imports import ZeroReportSpec, emit_zero_report
 except ImportError:  # pragma: no cover - direct script execution
-    from _security_imports import safe_output_path_in_workspace
+    from _security_imports import (  # type: ignore
+        ZeroReportSpec,
+        emit_zero_report,
+    )
 
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
@@ -153,27 +154,17 @@ def main() -> int:
         **result,
     }
 
-    try:
-        out_json = safe_output_path_in_workspace(
-            args.out_json, "quality-secrets/secrets.json"
+    return emit_zero_report(
+        ZeroReportSpec(
+            out_json_arg=args.out_json,
+            out_md_arg=args.out_md,
+            json_fallback="quality-secrets/secrets.json",
+            md_fallback="quality-secrets/secrets.md",
+            payload=payload,
+            rendered_md=_render_md(payload),
+            passed=status == "pass",
         )
-        out_md = safe_output_path_in_workspace(
-            args.out_md, "quality-secrets/secrets.md"
-        )
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-
-    out_json.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    out_md.write_text(_render_md(payload), encoding="utf-8")
-    print(out_md.read_text(encoding="utf-8"), end="")
-
-    return 0 if status == "pass" else 1
 
 
 if __name__ == "__main__":

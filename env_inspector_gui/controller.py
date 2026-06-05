@@ -79,8 +79,12 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         self._initialize_view(tk, ttk, boot_state)
         self._bind_shortcuts()
         # _init_root_window assigned a real Tk instance;
-        # the runtime tk root is non-optional from here on.
-        root_tk = self.tk
+        # the runtime tk root is non-optional from here on. The explicit
+        # ``Any`` annotation keeps type-checkers from narrowing ``self.tk``
+        # to the ``None`` it was seeded with at the top of ``__init__``
+        # (mypy doesn't track the cross-method assignment in
+        # ``_init_root_window``).
+        root_tk: Any = self.tk
         root_tk.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Defer refresh_data() to avoid CodeQL py/init-calls-subclass:
@@ -89,8 +93,9 @@ class EnvInspectorController(EnvInspectorControllerActionsMixin):
         # subclass's ``__init__`` body runs. ``after_idle`` schedules the
         # call to fire after the current event-loop tick, by which point
         # any subclass ``__init__`` has fully completed.
+        view: Any = self.view
         root_tk.after_idle(self.refresh_data)
-        root_tk.after_idle(self.view.focus_filter)
+        root_tk.after_idle(view.focus_filter)
 
     @staticmethod
     def _load_tk_modules():

@@ -92,6 +92,11 @@ def collect_lines(in_path: Path) -> dict[str, dict[int, tuple[int, int, int]]]:
     """Parse cobertura XML, return per-file/line (hits, branches, covered)."""
     by_file: dict[str, dict[int, tuple[int, int, int]]] = defaultdict(dict)
     root = ET.parse(str(in_path)).getroot()
+    if root is None:  # pragma: no cover - defensive: ElementTree.getroot()
+        # is typed Optional; a parsed document always has a root element,
+        # but guard so static type-checkers (pyright reportOptionalMemberAccess)
+        # see a non-None value before ``.iter`` and we fail loudly otherwise.
+        raise ValueError(f"No root element in cobertura XML: {in_path}")
     for cls in root.iter("class"):
         filename = cls.get("filename", "")
         if not filename:
