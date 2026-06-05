@@ -1,0 +1,483 @@
+# Instincts generated from https://github.com/Prekzursil/env-inspector
+# Generated: 2026-06-05T06:04:41.013Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: env-inspector-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: ci, fix, refactor, chore
+
+## Evidence
+
+- 10 commits analyzed
+- Detected conventional commit pattern
+- Examples: fix(types): clear pyright/mypy Optional-access findings to strict zero, chore: ignore local venv and coverage artifacts
+
+---
+id: env-inspector-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Commit Length
+
+## Action
+
+Write moderate-length commit messages (~63 characters)
+
+## Evidence
+
+- Average commit message length: 63 chars
+- Based on 10 commits
+
+---
+id: env-inspector-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Naming Files
+
+## Action
+
+Use snake_case naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: snake_case
+
+---
+id: env-inspector-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: env-inspector-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: env-inspector-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: env-inspector-workflow-refactoring
+trigger: "when refactoring code"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Workflow Refactoring
+
+## Action
+
+Follow the refactoring workflow:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~9x per month
+- Files: src/**/*
+
+---
+id: env-inspector-workflow-cleanup-test-artifacts-and-gitignore
+trigger: "when doing cleanup test artifacts and gitignore"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Workflow Cleanup Test Artifacts And Gitignore
+
+## Action
+
+Follow the cleanup-test-artifacts-and-gitignore workflow:
+1. Identify and remove .tmp/pytest-of-root/pytest-* test artifact directories and files from the repository.
+2. Update .gitignore to include new patterns for artifacts (e.g., .venv/, coverage outputs, .tmp/).
+3. Commit with a message referencing cleanup or untracking artifacts.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: .gitignore, .tmp/pytest-of-root/pytest-*/*
+
+---
+id: env-inspector-workflow-ci-config-move-or-update
+trigger: "when doing ci config move or update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Workflow Ci Config Move Or Update
+
+## Action
+
+Follow the ci-config-move-or-update workflow:
+1. Move or update CI config files (e.g., .guardrails.yml to .guardrails/config.yml, update codecov.yml).
+2. Adjust config content to scope scanning or ignore non-source files.
+3. Commit with a message referencing CI, config, or ignore.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: .guardrails.yml, .guardrails/config.yml, codecov.yml
+
+---
+id: env-inspector-workflow-deduplicate-helper-refactor
+trigger: "when doing deduplicate helper refactor"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/Prekzursil/env-inspector
+---
+
+# Env Inspector Workflow Deduplicate Helper Refactor
+
+## Action
+
+Follow the deduplicate-helper-refactor workflow:
+1. Identify duplicated code patterns across files.
+2. Extract shared logic into a helper function or utility module.
+3. Update all call sites to use the new shared helper.
+4. Add or update unit tests for the new helpers.
+5. Commit with a message referencing refactor, deduplication, or helpers.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: env_inspector_gui/controller_actions.py, env_inspector_gui/dialogs.py, scripts/quality/_codacy_zero_impl.py
+
+---
+id: env-inspector-instinct-file-naming
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct File Naming
+
+## Action
+
+Use snake_case for file names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+- Consistent snake_case in scripts/quality/_codacy_zero_impl.py
+
+---
+id: env-inspector-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Function Naming
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: env-inspector-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Class Naming
+
+## Action
+
+Use PascalCase for class names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: env-inspector-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: env-inspector-instinct-relative-imports
+trigger: "When importing modules within the package"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Relative Imports
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+- Seen in scripts/quality/_codacy_zero_impl.py
+
+---
+id: env-inspector-instinct-named-exports
+trigger: "When exporting functions or classes from a module"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Named Exports
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: env-inspector-instinct-test-location
+trigger: "When adding or organizing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Test Location
+
+## Action
+
+Place tests in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.testLocation
+- tests/test_security_helpers.py
+
+---
+id: env-inspector-instinct-test-helper-coverage
+trigger: "When extracting or refactoring helpers"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Test Helper Coverage
+
+## Action
+
+Add or update unit tests for new or changed helpers
+
+## Evidence
+
+- Workflow: deduplicate-helper-refactor
+- tests/test_security_helpers.py
+
+---
+id: env-inspector-instinct-conventional-commits
+trigger: "When writing a commit message"
+confidence: 0.95
+domain: git
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Conventional Commits
+
+## Action
+
+Use conventional commit prefixes (ci, fix, refactor, chore) and scope where relevant
+
+## Evidence
+
+- Pattern in commits.prefixes
+- Examples: fix(types): clear pyright/mypy Optional-access findings to strict zero
+
+---
+id: env-inspector-instinct-commit-length
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Commit Length
+
+## Action
+
+Keep commit messages concise (~63 characters on average)
+
+## Evidence
+
+- Pattern in commits.averageLength
+
+---
+id: env-inspector-instinct-cleanup-artifacts
+trigger: "When test artifacts or temporary files are accidentally staged or new artifact types need to be ignored"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Cleanup Artifacts
+
+## Action
+
+Remove test artifacts and update .gitignore to prevent future inclusion
+
+## Evidence
+
+- Workflow: cleanup-test-artifacts-and-gitignore
+- Commits: ci: untrack accidentally-staged .tmp test artifacts dir
+- Pattern in files: .gitignore, .tmp/pytest-of-root/pytest-*/*
+
+---
+id: env-inspector-instinct-ci-config-update
+trigger: "When CI tools require config file path corrections or updates to ignore files"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Ci Config Update
+
+## Action
+
+Move or update CI config files and adjust config content to scope scanning or ignore non-source files
+
+## Evidence
+
+- Workflow: ci-config-move-or-update
+- Commits: ci(guardrails): move config to .guardrails/config.yml (correct path per docs)
+- Pattern in files: .guardrails.yml, .guardrails/config.yml, codecov.yml
+
+---
+id: env-inspector-instinct-deduplicate-helper
+trigger: "When duplicate logic is found in multiple modules or scripts"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: Prekzursil/env-inspector
+---
+
+# Env Inspector Instinct Deduplicate Helper
+
+## Action
+
+Extract shared logic into a helper and update all call sites to use it; add or update tests
+
+## Evidence
+
+- Workflow: deduplicate-helper-refactor
+- Commits: refactor(gui): extract shared helpers to remove duplicated dialog/clipboard code
+- Pattern in files: env_inspector_gui/controller_actions.py, scripts/quality/_codacy_zero_impl.py
+
