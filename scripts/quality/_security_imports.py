@@ -29,7 +29,6 @@ emit_zero_report = _helpers.emit_zero_report
 ZeroReportSpec = _helpers.ZeroReportSpec
 render_findings_md = _helpers.render_findings_md
 
-
 __all__ = [
     "ZeroReportSpec",
     "emit_zero_report",

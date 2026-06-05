@@ -95,13 +95,9 @@ def test_load_quality_module_falls_back_to_bare_name(monkeypatch):
         case.assertEqual(name, "_missing")
         return sentinel
 
-    monkeypatch.setattr(
-        _module_loader.importlib, "import_module", _fake_import_module
-    )
+    monkeypatch.setattr(_module_loader.importlib, "import_module", _fake_import_module)
 
-    loaded = _module_loader.load_quality_module(
-        "scripts.quality._missing", "_missing"
-    )
+    loaded = _module_loader.load_quality_module("scripts.quality._missing", "_missing")
 
     case.assertIs(loaded, sentinel)
     case.assertIn(helper_root, _module_loader.sys.path)

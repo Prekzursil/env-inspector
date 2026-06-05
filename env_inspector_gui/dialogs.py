@@ -1,8 +1,8 @@
 """Dialogs module."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set, Tuple, cast
-from collections.abc import Callable
 
 
 class _PreviewTabDeps:
@@ -420,9 +420,7 @@ class DiffPreviewDialog:
             _build_action_buttons(
                 frame,
                 ttk,
-                _ActionButtonSpec(
-                    primary_text="Close", primary_command=self._cancel
-                ),
+                _ActionButtonSpec(primary_text="Close", primary_command=self._cancel),
             )
             return
         _build_action_buttons(

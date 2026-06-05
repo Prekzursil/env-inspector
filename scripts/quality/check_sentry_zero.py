@@ -6,11 +6,11 @@ import importlib
 import os
 import sys
 import urllib.error
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
-from collections.abc import Mapping
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _HELPER_ROOT = (

@@ -4,10 +4,10 @@
 import argparse
 import os
 import urllib.error
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Tuple, cast
-from collections.abc import Callable
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
@@ -30,7 +30,6 @@ try:
     from ._module_loader import load_quality_module
 except ImportError:  # pragma: no cover - direct script execution
     from _module_loader import load_quality_module  # type: ignore
-
 
 _security_imports = load_quality_module(
     "scripts.quality._security_imports", "_security_imports"

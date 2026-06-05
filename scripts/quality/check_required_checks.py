@@ -10,7 +10,6 @@ try:
 except ImportError:  # pragma: no cover - direct script execution
     from _module_loader import load_quality_module  # type: ignore
 
-
 _impl = load_quality_module(
     "scripts.quality._required_checks_impl", "_required_checks_impl"
 )
