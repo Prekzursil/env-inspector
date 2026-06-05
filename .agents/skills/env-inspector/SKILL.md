@@ -1,18 +1,21 @@
-```markdown
+````markdown
 # env-inspector Development Patterns
 
 > Auto-generated skill from repository analysis
 
 ## Overview
+
 This skill teaches the core development patterns and workflows used in the `env-inspector` Python repository. It covers coding conventions, file organization, commit message standards, and step-by-step guides for common maintenance and refactoring tasks. Whether you're contributing code, maintaining CI configurations, or cleaning up test artifacts, this guide will help you follow established practices for consistency and quality.
 
 ## Coding Conventions
 
 ### File Naming
+
 - Use **snake_case** for all Python files and modules.
   - Example: `controller_actions.py`, `test_security_helpers.py`
 
 ### Import Style
+
 - Use **relative imports** within packages.
   - Example:
     ```python
@@ -20,8 +23,10 @@ This skill teaches the core development patterns and workflows used in the `env-
     ```
 
 ### Export Style
+
 - Use **named exports**; avoid wildcard (`*`) exports.
   - Example:
+
     ```python
     def useful_function():
         pass
@@ -30,17 +35,20 @@ This skill teaches the core development patterns and workflows used in the `env-
     ```
 
 ### Commit Messages
+
 - Follow **conventional commit** style.
 - Prefixes include: `ci`, `fix`, `refactor`, `chore`
 - Example:
-  ```
-  refactor: extract shared dialog button row helper
-  ```
+````
+
+refactor: extract shared dialog button row helper
+
+````
 
 ## Workflows
 
 ### Cleanup Test Artifacts and .gitignore
-**Trigger:** When test artifacts or temporary files are accidentally staged or new artifact types need to be ignored.  
+**Trigger:** When test artifacts or temporary files are accidentally staged or new artifact types need to be ignored.
 **Command:** `/cleanup-artifacts`
 
 1. Identify and remove `.tmp/pytest-of-root/pytest-*` test artifact directories and files from the repository.
@@ -53,11 +61,12 @@ rm -rf .tmp/pytest-of-root/pytest-*
 echo ".tmp/" >> .gitignore
 git add .gitignore
 git commit -am "chore: cleanup test artifacts and update .gitignore"
-```
+````
 
 ---
 
 ### CI Config Move or Update
+
 **Trigger:** When CI tools (e.g., GuardRails, Codecov) require config file path corrections or updates to ignore files.  
 **Command:** `/ci-config-update`
 
@@ -66,6 +75,7 @@ git commit -am "chore: cleanup test artifacts and update .gitignore"
 3. Commit with a message referencing CI, config, or ignore.
 
 **Example:**
+
 ```bash
 mkdir -p .guardrails
 mv .guardrails.yml .guardrails/config.yml
@@ -76,6 +86,7 @@ git commit -m "ci: move GuardRails config to correct location"
 ---
 
 ### Deduplicate Helper Refactor
+
 **Trigger:** When duplicate logic is found in multiple modules or scripts (e.g., dialog button rows, report writing, clipboard handlers).  
 **Command:** `/deduplicate-helper`
 
@@ -86,6 +97,7 @@ git commit -m "ci: move GuardRails config to correct location"
 5. Commit with a message referencing refactor, deduplication, or helpers.
 
 **Example:**
+
 ```python
 # In utils.py
 def shared_dialog_button_row(...):
@@ -94,6 +106,7 @@ def shared_dialog_button_row(...):
 # In controller_actions.py and dialogs.py
 from .utils import shared_dialog_button_row
 ```
+
 ```bash
 git add env_inspector_gui/utils.py env_inspector_gui/controller_actions.py env_inspector_gui/dialogs.py
 git commit -m "refactor: deduplicate dialog button row logic into shared helper"
@@ -110,9 +123,12 @@ git commit -m "refactor: deduplicate dialog button row logic into shared helper"
 
 ## Commands
 
-| Command              | Purpose                                                      |
-|----------------------|--------------------------------------------------------------|
-| /cleanup-artifacts   | Remove test artifacts and update `.gitignore`                |
-| /ci-config-update    | Move or update CI configuration files                        |
-| /deduplicate-helper  | Refactor and deduplicate shared helper logic                 |
+| Command             | Purpose                                       |
+| ------------------- | --------------------------------------------- |
+| /cleanup-artifacts  | Remove test artifacts and update `.gitignore` |
+| /ci-config-update   | Move or update CI configuration files         |
+| /deduplicate-helper | Refactor and deduplicate shared helper logic  |
+
+```
+
 ```

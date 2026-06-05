@@ -26,7 +26,7 @@ Removes accidentally committed or generated test artifacts and updates .gitignor
 
 ## Typical Commit Signals
 
-- Identify and remove .tmp/pytest-of-root/pytest-* test artifact directories and files from the repository.
+- Identify and remove .tmp/pytest-of-root/pytest-\* test artifact directories and files from the repository.
 - Update .gitignore to include new patterns for artifacts (e.g., .venv/, coverage outputs, .tmp/).
 - Commit with a message referencing cleanup or untracking artifacts.
 
