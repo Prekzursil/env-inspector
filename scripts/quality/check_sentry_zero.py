@@ -220,7 +220,7 @@ def _scan_projects(
     return mode, project_results, findings, failures
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# Sentry Zero Gate",

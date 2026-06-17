@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
 
 from .models import EnvRecord
 from .providers import WindowsRegistryProvider
@@ -131,7 +131,7 @@ def preview_set(
     value: str,
     targets: List[str],
     scope_roots=None,
-) -> List[dict]:
+) -> List[Dict[str, Any]]:
     """Preview a set operation and serialize the results."""
     return [
         r.to_dict()
@@ -152,7 +152,7 @@ def preview_remove(
     key: str,
     targets: List[str],
     scope_roots=None,
-) -> List[dict]:
+) -> List[Dict[str, Any]]:
     """Preview a remove operation and serialize the results."""
     return [
         r.to_dict()

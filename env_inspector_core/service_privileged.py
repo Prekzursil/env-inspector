@@ -21,8 +21,8 @@ def _run_sudo_tee(
     allowed_sudo_path: str,
     expected_path: str,
     text: str,
-    run_fn: Callable[..., CompletedProcess],
-) -> CompletedProcess:
+    run_fn: Callable[..., CompletedProcess[str]],
+) -> CompletedProcess[str]:
     """Run sudo tee."""
     return run_fn(  # nosec B603
         [allowed_sudo_path, "-n", "tee", expected_path],
@@ -47,7 +47,7 @@ def _write_with_sudo(
     expected_path: str,
     text: str,
     which_fn: Callable[[str], str | None],
-    run_fn: Callable[..., CompletedProcess],
+    run_fn: Callable[..., CompletedProcess[str]],
 ) -> None:
     """Write with sudo."""
     proc = _run_sudo_tee(_resolve_allowed_sudo(which_fn), expected_path, text, run_fn)

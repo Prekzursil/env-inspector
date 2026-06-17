@@ -5,7 +5,7 @@ import argparse
 import sys
 import urllib.error
 from dataclasses import replace
-from typing import Any, List, TYPE_CHECKING, Tuple
+from typing import Any, Dict, List, TYPE_CHECKING, Tuple
 
 try:
     from . import _codacy_zero_support as _support
@@ -65,7 +65,9 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _extract_numeric_total(payload: dict, keys: tuple) -> int | None:
+def _extract_numeric_total(
+    payload: Dict[str, Any], keys: Tuple[str, ...]
+) -> int | None:
     """Extract numeric total."""
     for key in keys:
         value = payload.get(key)
@@ -236,7 +238,7 @@ def _query_open_issues(
     return None, findings
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# Codacy Zero Gate",

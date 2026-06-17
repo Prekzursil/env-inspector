@@ -11,6 +11,40 @@
 # source (env_inspector.py) and packaged as a Windows EXE via PyInstaller, not
 # distributed as a wheel.
 
+# Type-checking gate (lean gate 2: `basedpyright`).
+#
+# Mirrors the PROVEN lean-gate baseline shipped in Prekzursil/Reframe
+# (typeCheckingMode = "standard", tests/build excluded, scoped include). The
+# lean reusable template invokes bare `basedpyright`, which would otherwise pick
+# its stricter undocumented default and scan tests + generated trees. This block
+# is the standing config for the gate, NOT a per-error suppression: the two real
+# error families flagged on this branch (reportMissingTypeArgument and
+# reportInvalidCast) were fixed in source, not silenced here.
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.12"
+include = [
+  "env_inspector.py",
+  "env_inspector_core",
+  "env_inspector_gui",
+  "scripts",
+]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  ".venv",
+  "build",
+  "dist",
+  "htmlcov",
+  ".tmp_platform",
+  "coverage_platform",
+  "**/tests",
+]
+# winreg is a Windows-only stdlib module; on the Linux CI runner its import is
+# unresolved by design (guarded at runtime via ModuleNotFoundError).
+reportMissingImports = "warning"
+reportMissingModuleSource = "none"
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]

@@ -23,7 +23,7 @@ class WslProvider:
 
     def __init__(
         self,
-        runner: Callable[..., CompletedProcess] | None = None,
+        runner: Callable[..., CompletedProcess[bytes]] | None = None,
         wsl_exe: str | None = None,
     ) -> None:
         self.runner = runner or run

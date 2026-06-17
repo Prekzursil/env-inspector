@@ -93,7 +93,7 @@ def _build_issue_query(
 
 def _build_quality_gate_query(
     project_key: str, *, branch: str, pull_request: str
-) -> dict:
+) -> Dict[str, str]:
     """Build quality gate query."""
     query = {"projectKey": project_key}
     if pull_request:
@@ -163,7 +163,7 @@ def _evaluate_sonar(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple:
+) -> Tuple[int | None, str | None, int | None, str | None, List[str]]:
     """Evaluate sonar."""
     findings: List[str] = []
     open_issues: int | None = None
@@ -216,7 +216,7 @@ def _evaluate_sonar(
     return open_issues, quality_gate, open_hotspots, quality_gate_warning, findings
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# Sonar Zero Gate",

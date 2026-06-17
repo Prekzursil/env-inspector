@@ -4,7 +4,7 @@
 import argparse
 import os
 from datetime import datetime, timezone
-from typing import Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 try:
     from ._security_imports import ZeroReportSpec, emit_zero_report
@@ -106,7 +106,7 @@ def evaluate_env(
     }
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# Quality Secrets Preflight",

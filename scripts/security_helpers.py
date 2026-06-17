@@ -11,7 +11,7 @@ import urllib.request
 from dataclasses import dataclass
 from email.message import Message
 from pathlib import Path
-from typing import Any, Dict, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -393,7 +393,7 @@ def write_zero_report(
         print(rendered_md, end="")
 
 
-def render_findings_md(lines: list, findings: list) -> str:
+def render_findings_md(lines: List[str], findings: List[Any]) -> str:
     """Append a findings bullet list to ``lines`` and join into Markdown.
 
     Extends the already-built ``lines`` with one ``- <finding>`` bullet per

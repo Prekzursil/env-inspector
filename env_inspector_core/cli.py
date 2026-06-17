@@ -84,7 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _is_successful_payload(item: dict) -> bool:
+def _is_successful_payload(item: Dict[str, object]) -> bool:
     """Return whether a payload item reports success."""
     return bool(item.get("success", False))
 

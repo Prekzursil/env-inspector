@@ -148,7 +148,7 @@ def _first_text(issue: Dict[str, Any], keys: Tuple[str, ...]) -> str:
     return ""
 
 
-def _format_issue_sample(issue: dict) -> str | None:
+def _format_issue_sample(issue: Dict[str, Any]) -> str | None:
     """Format issue sample."""
     pattern = _first_text(issue, ("patternId", "pattern"))
     path = _first_text(issue, ("filename", "filePath", "path"))
@@ -162,7 +162,7 @@ def _format_issue_sample(issue: dict) -> str | None:
     return f"Sample issue: `{identity}` at `{location}`{suffix}"
 
 
-def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
+def _sample_issue_findings(payload: Dict[str, Any], limit: int = 5) -> List[str]:
     """Sample issue findings."""
     data = payload.get("data")
     if not isinstance(data, list):
@@ -181,6 +181,6 @@ def _sample_issue_findings(payload: dict, limit: int = 5) -> List[str]:
     return findings
 
 
-def _fetch_sample_payload(request: CodacyRequest) -> dict:
+def _fetch_sample_payload(request: CodacyRequest) -> Dict[str, Any]:
     """Fetch sample payload."""
     return _request_json(request=replace(request, limit=20, method="POST", data={}))

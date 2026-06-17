@@ -21,7 +21,7 @@ class DeepScanRequest:
 
     host: str
     path: str
-    query: dict
+    query: Dict[str, str]
     token: str
     findings: List[str]
 
@@ -169,7 +169,7 @@ def _fetch_open_issues(*args: Any, **kwargs: Any) -> int | None:
     return open_issues
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: Dict[str, Any]) -> str:
     """Render md."""
     lines = [
         "# DeepScan Zero Gate",
