@@ -158,9 +158,7 @@ class _MockView:
         """Stub for testing."""
 
     # pylint: disable=no-self-use,unused-argument  # mirror view protocol
-    def insert_table_row(
-        self, values: Tuple[Any, ...], *, striped: bool
-    ) -> str:
+    def insert_table_row(self, values: Tuple[Any, ...], *, striped: bool) -> str:
         """Handle insert table row.
 
         Captures call args so production code matches our test surface; the

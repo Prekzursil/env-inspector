@@ -11,7 +11,8 @@ try:
     from . import _codacy_zero_support as _support
 except ImportError:  # pragma: no cover - direct script execution
     import importlib
-    _support = importlib.import_module('_codacy_zero_support')
+
+    _support = importlib.import_module("_codacy_zero_support")
 
 if TYPE_CHECKING:
     from scripts.quality._codacy_zero_support import CodacyRequest

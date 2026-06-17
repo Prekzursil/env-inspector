@@ -420,9 +420,7 @@ class DiffPreviewDialog:
             _build_action_buttons(
                 frame,
                 ttk,
-                _ActionButtonSpec(
-                    primary_text="Close", primary_command=self._cancel
-                ),
+                _ActionButtonSpec(primary_text="Close", primary_command=self._cancel),
             )
             return
         _build_action_buttons(

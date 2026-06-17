@@ -18,9 +18,9 @@ from env_inspector_core.service_ops import OperationResultInput, operation_resul
 from scripts.quality import assert_coverage_100 as coverage_mod
 from tests.assertions import ensure
 
-cli_module = import_module('env_inspector_core.cli')
-service_module = import_module('env_inspector_core.service')
-service_listing_module = import_module('env_inspector_core.service_listing')
+cli_module = import_module("env_inspector_core.cli")
+service_module = import_module("env_inspector_core.service")
+service_listing_module = import_module("env_inspector_core.service_listing")
 
 
 def _record(

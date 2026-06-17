@@ -14,7 +14,9 @@ SCRIPT_PATH = REPO_ROOT / "scripts" / "cobertura_to_sonar_generic.py"
 
 def _load_module() -> object:
     """Load the converter as a module object so we can call its functions."""
-    spec = importlib.util.spec_from_file_location("cobertura_to_sonar_generic", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "cobertura_to_sonar_generic", SCRIPT_PATH
+    )
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)

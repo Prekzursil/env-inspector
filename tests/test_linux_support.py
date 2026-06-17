@@ -11,7 +11,7 @@ from env_inspector_core.providers import collect_dotenv_records, collect_linux_r
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
 
-service_module = import_module('env_inspector_core.service')
+service_module = import_module("env_inspector_core.service")
 
 _ORIGINAL_PATH_EXISTS = service_module._path_exists
 _ORIGINAL_READ_TEXT_IF_EXISTS = service_module._read_text_if_exists
