@@ -1,0 +1,13 @@
+# Runtime dependencies for env-inspector.
+#
+# The lean quality gate (Prekzursil/quality-zero-platform reusable-quality.yml@v1)
+# installs the caller's runtime deps from requirements*.txt BEFORE running pytest.
+# Without this manifest the gate-3 lane installed only pytest/pytest-cov, so test
+# collection failed with "No module named defusedxml" (the converter and its
+# tests import it).
+#
+# defusedxml is the XXE-safe XML parser used by
+# scripts/cobertura_to_sonar_generic.py and its tests (Semgrep
+# python.lang.security.use-defused-xmltree). It must be a declared runtime dep so
+# the gate-3 dependency install resolves it.
+defusedxml==0.7.1
