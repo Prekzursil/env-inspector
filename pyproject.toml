@@ -1,0 +1,81 @@
+# Project config for the lean quality gate.
+#
+# This file exists so the lean reusable template's Python tests+coverage lane
+# (gate 3) activates and enforces STRICT 100% line+branch. The template runs:
+#   pip install pytest pytest-cov && python -m pytest --cov --cov-branch --cov-fail-under=100
+# when it detects "pytest" in pyproject.toml (it does, below). The coverage
+# settings mirror the existing .coveragerc so behaviour is identical to the
+# legacy QZT CI; .coveragerc is retained for tools that read it directly.
+#
+# No build-system / packaging metadata is declared — env-inspector is run from
+# source (env_inspector.py) and packaged as a Windows EXE via PyInstaller, not
+# distributed as a wheel.
+
+# Type-checking gate (lean gate 2: `basedpyright`).
+#
+# Mirrors the PROVEN lean-gate baseline shipped in Prekzursil/Reframe
+# (typeCheckingMode = "standard", tests/build excluded, scoped include). The
+# lean reusable template invokes bare `basedpyright`, which would otherwise pick
+# its stricter undocumented default and scan tests + generated trees. This block
+# is the standing config for the gate, NOT a per-error suppression: the two real
+# error families flagged on this branch (reportMissingTypeArgument and
+# reportInvalidCast) were fixed in source, not silenced here.
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.12"
+include = [
+  "env_inspector.py",
+  "env_inspector_core",
+  "env_inspector_gui",
+  "scripts",
+]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  ".venv",
+  "build",
+  "dist",
+  "htmlcov",
+  ".tmp_platform",
+  "coverage_platform",
+  "**/tests",
+]
+# winreg is a Windows-only stdlib module; on the Linux CI runner its import is
+# unresolved by design (guarded at runtime via ModuleNotFoundError).
+reportMissingImports = "warning"
+reportMissingModuleSource = "none"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+relative_files = true
+omit = [
+  "tests/*",
+  ".venv/*",
+  "build/*",
+  "dist/*",
+  "htmlcov/*",
+  ".tmp_platform/*",
+  "coverage_platform/*",
+  "setup.py",
+  "conftest.py",
+  "scripts/__init__.py",
+  "scripts/security_helpers.py",
+  "scripts/quality/*",
+]
+
+[tool.coverage.report]
+# Exclude unreachable / type-checker-only lines from the denominator so coverage
+# reflects actual runtime behaviour (kept in sync with .coveragerc).
+exclude_lines = [
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
+  '\.\.\. *$',
+]

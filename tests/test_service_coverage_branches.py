@@ -20,7 +20,7 @@ from env_inspector_core.models import EnvRecord
 from env_inspector_core.service import EnvInspectorService
 from tests.assertions import ensure
 
-service_module = import_module('env_inspector_core.service')
+service_module = import_module("env_inspector_core.service")
 
 
 def _record(
@@ -134,7 +134,9 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
     calls: Dict[str, object] = {}
 
     def _fake_collect_wsl_records(
-        wsl, include_etc: bool, exclude_distros  # pylint: disable=unused-argument
+        wsl,
+        include_etc: bool,
+        exclude_distros,  # pylint: disable=unused-argument
     ) -> List[EnvRecord]:
         """Fake collect wsl records."""
         calls["exclude"] = exclude_distros
@@ -145,7 +147,10 @@ def test_collect_wsl_rows_uses_linux_exclusion_and_dotenv(
         ]
 
     def _fake_collect_wsl_dotenv_records(
-        wsl, distro: str, root_path: str, max_depth: int  # pylint: disable=unused-argument
+        wsl,
+        distro: str,
+        root_path: str,
+        max_depth: int,  # pylint: disable=unused-argument
     ) -> List[EnvRecord]:
         """Fake collect wsl dotenv records."""
         calls["dotenv"] = (distro, root_path, max_depth)

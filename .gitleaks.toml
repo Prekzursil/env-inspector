@@ -1,0 +1,25 @@
+# gitleaks configuration for the lean secrets gate (pinned tool: gitleaks 8.30.1).
+# The gate runs via pre-commit over the working tree and must report 0 findings.
+# Extends the upstream default ruleset; we only add path allowlists for build
+# output / local-tooling trees (no real secrets live in the repo).
+title = "env-inspector lean secrets gate"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Build output, virtualenvs, and generated trees (not real secrets)."
+
+# Never scan generated / local-tooling trees. These are not our source and
+# produce only false positives.
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)build/''',
+  '''(^|/)htmlcov/''',
+  '''(^|/)coverage_platform/''',
+  '''(^|/)\.tmp_platform/''',
+  '''(^|/)\.git/''',
+  '''.*\.egg-info/''',
+]

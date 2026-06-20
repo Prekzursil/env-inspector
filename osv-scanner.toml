@@ -1,0 +1,16 @@
+# osv-scanner configuration for the lean dependency gate (pinned tool: osv-scanner 2.3.8).
+# The gate runs `osv-scanner scan source --recursive .` and must report 0
+# actionable CVEs.
+#
+# POLICY: ignore entries are allowed ONLY for a genuinely-unfixable vuln (no
+# non-breaking upgrade) OR one that is provably not reachable in THIS product,
+# each with a reason + dated review note (greppable). We do NOT use a baseline
+# file — clean-zero is reached by upgrading where a safe fix exists, and only by
+# a reasoned per-CVE ignore where it does not.
+#
+# Dependency surface scanned: the repo declares only a build-time dependency
+# (requirements-build.txt: pyinstaller). Runtime deps are the Python stdlib plus
+# defusedxml/pytest used in CI; there are no application lockfiles to pin. osv
+# reports 0 issues today, so this file intentionally carries no IgnoredVulns.
+# Add a dated, reasoned entry here only for a future vuln that is genuinely
+# unfixable or provably unreachable in env-inspector.

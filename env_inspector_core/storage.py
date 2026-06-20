@@ -104,7 +104,7 @@ class BackupManager:
         )
 
     @staticmethod
-    def _load_backup_payload(backup_path: Path) -> dict | None:
+    def _load_backup_payload(backup_path: Path) -> Dict[str, object] | None:
         """Load backup payload."""
         try:
             payload = json.loads(_read_text(backup_path))

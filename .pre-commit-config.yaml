@@ -1,0 +1,43 @@
+# Lean quality gates — local auto-fixers + fast checks (gate 1 + gate 5).
+# `pre-commit run --all-files` is the gate-1/gate-5 entrypoint used by CI
+# (.github/workflows/quality.yml -> reusable-quality.yml). Every rev is pinned;
+# bump versions here together with the reusable template tool pins.
+#
+# env-inspector is a pure-Python project, so lane 1 is Ruff (lint --fix +
+# format) and lane 5 is gitleaks. No JS/TS/Rust/Go fixers are wired because the
+# tree contains none.
+minimum_pre_commit_version: "3.5.0"
+
+default_language_version:
+  python: python3
+
+exclude: |-
+  (?x)^(
+    node_modules/|
+    dist/|
+    build/|
+    htmlcov/|
+    \.venv/|
+    coverage_platform/|
+    \.tmp_platform/|
+    .*\.egg-info/
+  )
+
+repos:
+  # --- Gate 1: Python lint + format (ruff) ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.17
+    hooks:
+      - id: ruff
+        name: ruff (lint --fix)
+        args: ["--fix"]
+      - id: ruff-format
+        name: ruff (format)
+
+  # --- Gate 5: secrets (gitleaks) ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secrets)
+        args: ["--config", ".gitleaks.toml"]

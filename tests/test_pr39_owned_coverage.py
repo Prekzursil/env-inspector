@@ -18,9 +18,9 @@ from env_inspector_core.service_ops import OperationResultInput, operation_resul
 from scripts.quality import assert_coverage_100 as coverage_mod
 from tests.assertions import ensure
 
-cli_module = import_module('env_inspector_core.cli')
-service_module = import_module('env_inspector_core.service')
-service_listing_module = import_module('env_inspector_core.service_listing')
+cli_module = import_module("env_inspector_core.cli")
+service_module = import_module("env_inspector_core.service")
+service_listing_module = import_module("env_inspector_core.service_listing")
 
 
 def _record(
@@ -361,6 +361,70 @@ def test_service_listing_filters_cover_registry_fallback(
     )
     ensure(len(filtered_rows) == 1)
     ensure(filtered_rows[0].source_type == "powershell_profile")
+
+
+def test_service_init_skips_registry_off_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Off Windows, ``__init__`` must not construct a registry provider.
+
+    Pins the false edge of ``if is_windows():`` deterministically so the gate
+    is green on both Windows and Linux runners rather than depending on the host
+    OS to exercise this platform seam.
+    """
+    monkeypatch.setattr(service_module, "is_windows", lambda: False)
+
+    class _NeverProvider:
+        """Registry provider stub that fails if ever constructed."""
+
+        def __init__(self) -> None:
+            """Fail the test if a registry provider is built off Windows."""
+            raise AssertionError("registry provider must not be built off Windows")
+
+    monkeypatch.setattr(service_module, "WindowsRegistryProvider", _NeverProvider)
+    svc = EnvInspectorService(state_dir=tmp_path / "state")
+    ensure(svc.win_provider is None)
+
+
+def test_service_listing_skips_registry_when_no_win_provider(
+    tmp_path: Path,
+) -> None:
+    """A ``None`` win_provider must skip the registry block entirely.
+
+    Covers the false edge of ``if request.win_provider is not None`` in
+    ``collect_host_rows``: the registry collector must never be invoked and the
+    Linux branch supplies the host rows.
+    """
+
+    def _fail_if_called(_provider) -> object:
+        """Fail the test if the registry collector is reached."""
+        raise AssertionError(
+            "registry collector must not run when win_provider is None"
+        )
+
+    host_rows = service_listing_module.collect_host_rows(
+        request=service_listing_module.HostCollectionRequest(
+            runtime_context="linux",
+            root_path=tmp_path,
+            scan_depth=1,
+            win_provider=None,
+            powershell_profile_paths=[],
+        ),
+        collectors=service_listing_module.HostRowCollectors(
+            collect_process_records_fn=lambda **kwargs: [],
+            collect_dotenv_records_fn=lambda *args, **kwargs: [],
+            build_registry_records_fn=_fail_if_called,
+            collect_powershell_profile_records_fn=lambda _paths: [
+                _record("powershell_profile", "profile.ps1", context="windows")
+            ],
+            collect_linux_records_fn=lambda **kwargs: [
+                _record("linux_bashrc", "~/.bashrc", context="linux")
+            ],
+        ),
+    )
+
+    ensure(len(host_rows) == 1)
+    ensure(host_rows[0].source_type == "linux_bashrc")
 
 
 def test_privileged_writer_returns_after_direct_write(tmp_path: Path) -> None:

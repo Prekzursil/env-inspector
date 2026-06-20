@@ -65,7 +65,11 @@ collect_wsl_records = _providers_wsl.collect_wsl_records
 
 _winreg: WinregModule | None
 try:
-    _winreg = cast(WinregModule, importlib.import_module("winreg"))
+    # winreg is a real runtime module whose static shape we model with the
+    # WinregModule Protocol. ModuleType and the Protocol do not statically
+    # overlap, so cast via object (per basedpyright guidance) to make the
+    # intentional reinterpretation explicit rather than suppress it.
+    _winreg = cast(WinregModule, cast(object, importlib.import_module("winreg")))
 except ModuleNotFoundError:  # pragma: no cover - non-Windows
     _winreg = None
 

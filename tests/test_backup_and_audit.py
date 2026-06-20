@@ -12,7 +12,7 @@ from env_inspector_core.service import EnvInspectorService
 from env_inspector_core.storage import AuditLogger, BackupManager
 from tests.assertions import ensure
 
-storage_mod = import_module('env_inspector_core.storage')
+storage_mod = import_module("env_inspector_core.storage")
 
 
 def test_backup_manager_retention_and_restore(tmp_path: Path):

@@ -11,9 +11,7 @@ except ImportError:  # pragma: no cover - direct script execution
     from _module_loader import load_quality_module  # type: ignore
 
 
-_impl = load_quality_module(
-    "scripts.quality._codacy_zero_impl", "_codacy_zero_impl"
-)
+_impl = load_quality_module("scripts.quality._codacy_zero_impl", "_codacy_zero_impl")
 _support = load_quality_module(
     "scripts.quality._codacy_zero_support", "_codacy_zero_support"
 )
