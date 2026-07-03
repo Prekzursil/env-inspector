@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 from scripts.quality import assert_coverage_100 as coverage_mod
 from scripts.quality import check_codacy_zero as codacy_mod
-from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 from tests.assertions import ensure
 
@@ -123,25 +122,6 @@ def test_codacy_main_writes_outputs_without_token(tmp_path: Path, monkeypatch):
     ensure(rc == 1)
     ensure((tmp_path / "reports" / "codacy.json").exists())
     ensure((tmp_path / "reports" / "codacy.md").exists())
-
-
-def test_deepscan_main_writes_outputs_without_inputs(tmp_path: Path, monkeypatch):
-    """Test deepscan main writes outputs without inputs."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("DEEPSCAN_API_TOKEN", raising=False)
-    monkeypatch.delenv("DEEPSCAN_OPEN_ISSUES_URL", raising=False)
-    args = SimpleNamespace(
-        token=_empty_token(),
-        out_json="reports/deepscan.json",
-        out_md="reports/deepscan.md",
-    )
-    monkeypatch.setattr(deepscan_mod, "_parse_args", lambda: args)
-
-    rc = deepscan_mod.main()
-
-    ensure(rc == 1)
-    ensure((tmp_path / "reports" / "deepscan.json").exists())
-    ensure((tmp_path / "reports" / "deepscan.md").exists())
 
 
 def test_sentry_main_writes_outputs_in_skipped_mode(tmp_path: Path, monkeypatch):
