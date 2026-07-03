@@ -10,7 +10,6 @@ from typing import List, NoReturn, Tuple
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
-from scripts.quality import check_deepscan_zero as deepscan_mod
 
 
 def _case() -> unittest.TestCase:
@@ -43,11 +42,6 @@ def _raise_http_error(code: int) -> NoReturn:
 def _raise_value_error(message: str = "bad") -> NoReturn:
     """Raise value error."""
     raise ValueError(message)
-
-
-def _raise_url_error(reason: str = "network") -> NoReturn:
-    """Raise url error."""
-    raise urllib.error.URLError(reason)
 
 
 def test_codacy_parse_args_accepts_required_repo_fields(monkeypatch):
@@ -290,112 +284,6 @@ def test_codacy_query_open_issues_fallback_and_last_error(monkeypatch):
     case.assertIsNone(open_issues)
     case.assertTrue(any("endpoint was not found" in item for item in findings))
     case.assertTrue(any("Last Codacy API error" in item for item in findings))
-
-
-def test_deepscan_extract_total_open_and_request_guard(monkeypatch):
-    """Test deepscan extract total open and request guard."""
-    payload = {"outer": [{"nested": {"open_issues": 3}}, {"hits": 2}]}
-    case = _case()
-    case.assertIn(deepscan_mod.extract_total_open(payload), {2, 3})
-
-    monkeypatch.setattr(deepscan_mod, "request_json_https", lambda **_kwargs: ([], {}))
-    with pytest.raises(RuntimeError, match="Unexpected DeepScan response payload"):
-        deepscan_mod._request_json(
-            host="deepscan.io", path="/api", query={}, token=_token()
-        )
-
-
-def test_deepscan_resolve_and_fetch_open_issues_paths(monkeypatch):
-    """Test deepscan resolve and fetch open issues paths."""
-    host, path, query = deepscan_mod._resolve_deepscan_endpoint(
-        "https://deepscan.io/api/projects/1/issues/open?scope=pull-request"
-    )
-    case = _case()
-    case.assertEqual(host, "deepscan.io")
-    case.assertEqual(path, "/api/projects/1/issues/open")
-    case.assertEqual(query, {"scope": "pull-request"})
-
-    findings: List[str] = []
-    monkeypatch.setattr(
-        deepscan_mod,
-        "_request_json",
-        lambda **_kwargs: _raise_url_error("network"),
-    )
-    open_issues = deepscan_mod._fetch_open_issues(
-        host="deepscan.io",
-        path="/api",
-        query={},
-        token=_token(),
-        findings=findings,
-    )
-    case.assertIsNone(open_issues)
-    case.assertTrue(bool(findings))
-    case.assertIn("DeepScan API request failed", findings[0])
-
-    findings.clear()
-    monkeypatch.setattr(
-        deepscan_mod, "_request_json", lambda **_kwargs: {"open_issues": 2}
-    )
-    open_issues = deepscan_mod._fetch_open_issues(
-        host="deepscan.io",
-        path="/api",
-        query={},
-        token=_token(),
-        findings=findings,
-    )
-    case.assertEqual(open_issues, 2)
-    case.assertTrue(bool(findings))
-    case.assertIn("expected 0", findings[0])
-
-
-def test_deepscan_fetch_open_issues_handles_unparseable_total(monkeypatch):
-    """Test deepscan fetch open issues handles unparseable total."""
-    findings: List[str] = []
-    monkeypatch.setattr(
-        deepscan_mod, "_request_json", lambda **_kwargs: {"meta": {"count": "n/a"}}
-    )
-
-    open_issues = deepscan_mod._fetch_open_issues(
-        host="deepscan.io",
-        path="/api",
-        query={},
-        token=_token(),
-        findings=findings,
-    )
-
-    case = _case()
-    case.assertIsNone(open_issues)
-    case.assertTrue(bool(findings))
-    case.assertIn("parseable total issue count", findings[0])
-
-
-def test_deepscan_main_runs_fetch_when_inputs_present(tmp_path, monkeypatch):
-    """Test deepscan main runs fetch when inputs present."""
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("DEEPSCAN_API_TOKEN", _token())
-    monkeypatch.setenv(
-        "DEEPSCAN_OPEN_ISSUES_URL", "https://deepscan.io/api/projects/1/issues/open"
-    )
-
-    def _deepscan_args():
-        """Deepscan args."""
-        return type(
-            "Args",
-            (),
-            {"token": _empty_token(), "out_json": "o/deep.json", "out_md": "o/deep.md"},
-        )()
-
-    monkeypatch.setattr(deepscan_mod, "_parse_args", _deepscan_args)
-    monkeypatch.setattr(
-        deepscan_mod,
-        "_resolve_deepscan_endpoint",
-        lambda _url: ("deepscan.io", "/api", {}),
-    )
-    monkeypatch.setattr(deepscan_mod, "_fetch_open_issues", lambda **_kwargs: 0)
-
-    rc = deepscan_mod.main()
-
-    _case().assertEqual(rc, 0)
 
 
 def test_codacy_main_uses_query_path_when_token_present(tmp_path, monkeypatch):

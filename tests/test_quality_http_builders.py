@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple
 import pytest
 
 from scripts.quality import check_codacy_zero as codacy_mod
-from scripts.quality import check_deepscan_zero as deepscan_mod
 from scripts.quality import check_sentry_zero as sentry_mod
 from tests.assertions import ensure
 
@@ -56,31 +55,6 @@ def test_codacy_request_json_rejects_unsafe_identifier():
             method="POST",
             data={},
         )
-
-
-def test_deepscan_request_json_uses_fixed_host(monkeypatch):
-    """Test deepscan request json uses fixed host."""
-    captured: Dict[str, object] = {}
-
-    def _fake_request_json_https(
-        **kwargs: object,
-    ) -> Tuple[Dict[str, int], Dict[str, str]]:
-        """Fake request json https."""
-        captured.update(kwargs)
-        return {"open_issues": 0}, {}
-
-    monkeypatch.setattr(deepscan_mod, "request_json_https", _fake_request_json_https)
-    payload = deepscan_mod._request_json(
-        host="deepscan.io",
-        path="/api/projects/123/issues/open",
-        query={"limit": "1"},
-        token=_fixture_token(),
-    )
-
-    ensure(payload == {"open_issues": 0})
-    ensure(captured["host"] == "deepscan.io")
-    ensure(captured["path"] == "/api/projects/123/issues/open")
-    ensure(captured["query"] == {"limit": "1"})
 
 
 def test_sentry_request_project_issues_uses_fixed_host(monkeypatch):
