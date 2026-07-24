@@ -1,6 +1,7 @@
 """Test service path guards module."""
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List, Tuple
 
 from importlib import import_module
@@ -89,13 +90,19 @@ def test_linux_etc_environment_path_guard_handles_platform_semantics(
     _ = EnvInspectorService(state_dir=tmp_path / "state")
     monkeypatch.setattr(EnvInspectorService, "_LINUX_ETC_ENV_PATH", r"\etc\environment")
 
-    monkeypatch.setattr(service_paths_module.os, "name", "nt", raising=False)
+    monkeypatch.setattr(service_paths_module, "os", SimpleNamespace(name="nt"))
     with pytest.raises(RuntimeError, match="Unexpected /etc/environment resolution"):
         EnvInspectorService._linux_etc_environment_path()
 
-    monkeypatch.setattr(service_paths_module.os, "name", "posix", raising=False)
+    monkeypatch.setattr(service_paths_module, "os", SimpleNamespace(name="posix"))
     resolved = EnvInspectorService._linux_etc_environment_path()
     ensure(resolved.as_posix() == r"\etc\environment")
+
+
+def test_linux_etc_environment_path_guard_rejects_normalized_path():
+    """Test linux etc environment path guard rejects normalized path."""
+    with pytest.raises(RuntimeError, match="Unexpected /etc/environment resolution"):
+        service_paths_module.linux_etc_environment_path("/etc//environment")
 
 
 def test_write_linux_etc_environment_with_privilege_rejects_non_fixed_path(
