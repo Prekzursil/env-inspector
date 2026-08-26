@@ -20,3 +20,8 @@ dist/*
 .DS_Store
 Thumbs.db
 reports/
+
+# Local coverage outputs
+.coverage
+coverage.xml
+coverage-sonar.xml
