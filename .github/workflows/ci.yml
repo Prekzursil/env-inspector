@@ -39,12 +39,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          # ``defusedxml`` is the XXE-safe XML parser used by
-          # ``scripts/cobertura_to_sonar_generic.py`` (Semgrep
-          # ``python.lang.security.use-defused-xmltree``).  Tests for
-          # the converter import it; install here so pytest collection
-          # doesn't fail with ModuleNotFoundError.
-          python -m pip install pytest pytest-cov defusedxml
+          python -m pip install pytest pytest-cov
 
       - name: Compile check
         shell: bash
