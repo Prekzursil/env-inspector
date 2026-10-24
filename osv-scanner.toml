@@ -9,8 +9,8 @@
 # a reasoned per-CVE ignore where it does not.
 #
 # Dependency surface scanned: the repo declares only a build-time dependency
-# (requirements-build.txt: pyinstaller). Runtime deps are the Python stdlib plus
-# defusedxml/pytest used in CI; there are no application lockfiles to pin. osv
+# (requirements-build.txt: pyinstaller). Runtime deps are the Python stdlib only
+# (pytest is installed in CI); there are no application lockfiles to pin. osv
 # reports 0 issues today, so this file intentionally carries no IgnoredVulns.
 # Add a dated, reasoned entry here only for a future vuln that is genuinely
 # unfixable or provably unreachable in env-inspector.

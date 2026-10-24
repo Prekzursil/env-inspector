@@ -1,5 +1,6 @@
 """Providers wsl module."""
 
+import ctypes
 import os
 import re
 import shlex
@@ -16,6 +17,25 @@ from .parsing import parse_bash_exports, parse_dotenv_text, parse_etc_environmen
 from .secrets import looks_secret
 
 _HELPER_DISTRO_RE = re.compile(r"^(docker-desktop|docker-desktop-data)$", re.IGNORECASE)
+_MAX_PATH = 260
+
+
+def _windows_system_directory() -> Path | None:
+    """Return the System32 directory reported by the Windows API.
+
+    The location comes from GetSystemDirectoryW, not from the %SystemRoot%
+    environment variable, so a process started with a doctored environment
+    cannot redirect which wsl.exe this module executes. Returns None off
+    Windows or when the API call fails.
+    """
+    windll = getattr(ctypes, "windll", None)
+    if windll is None:
+        return None
+    buffer = ctypes.create_unicode_buffer(_MAX_PATH)
+    length = windll.kernel32.GetSystemDirectoryW(buffer, _MAX_PATH)
+    if not 0 < length < _MAX_PATH:
+        return None
+    return Path(buffer.value)
 
 
 class WslProvider:
@@ -33,10 +53,9 @@ class WslProvider:
     @staticmethod
     def _discover_wsl_exe() -> str | None:
         """Discover wsl exe."""
+        system_dir = _windows_system_directory()
         candidate_paths = (
-            Path(system_root) / "System32" / "wsl.exe"
-            if (system_root := os.environ.get("SystemRoot"))
-            else None,
+            system_dir / "wsl.exe" if system_dir is not None else None,
             Path("/mnt/c/Windows/System32/wsl.exe") if os.name != "nt" else None,
         )
         discovered = next(
