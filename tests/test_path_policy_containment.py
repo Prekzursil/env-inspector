@@ -10,6 +10,7 @@ from env_inspector_core.path_policy import (
     _continues_at_separator,
     _root_prefix,
     normalize_scope_roots,
+    parse_scoped_dotenv_target,
     resolve_scan_root,
     validate_backup_path,
 )
@@ -91,3 +92,23 @@ def test_validate_backup_path_stays_inside_the_backup_directory(
         validate_backup_path(stray, backups_dir=backups)
     with pytest.raises(PathPolicyError, match="does not exist"):
         validate_backup_path(backups, backups_dir=backups)
+
+
+def test_parse_scoped_dotenv_target_scope_rules(tmp_path: Path) -> None:
+    """A filesystem-root scope contains everything; a prefix-sharing sibling does not."""
+    project = tmp_path / "proj"
+    sibling = tmp_path / "proj2"
+    project.mkdir()
+    sibling.mkdir()
+    inside = project / ".env"
+    stray = sibling / ".env"
+
+    from_root = parse_scoped_dotenv_target(
+        f"dotenv:{stray}", roots=[Path(stray.anchor)]
+    )
+    ensure(from_root.path == stray)
+    ensure(
+        parse_scoped_dotenv_target(f"dotenv:{inside}", roots=[project]).path == inside
+    )
+    with pytest.raises(PathPolicyError, match="outside approved roots"):
+        parse_scoped_dotenv_target(f"dotenv:{stray}", roots=[project])

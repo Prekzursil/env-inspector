@@ -117,14 +117,19 @@ def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
     if not target.startswith("dotenv:"):
         raise PathPolicyError("Expected target with 'dotenv:' prefix.")
     raw = target[len("dotenv:") :]
-    path = Path(_normalize_path_text(raw, field_name="dotenv target path"))
+    path_text = _normalize_path_text(raw, field_name="dotenv target path")
+    path = Path(path_text)
     _validate_dotenv_name(path)
 
     in_scope = False
-    path_text = str(path)
     for root in roots:
-        root_text = str(root)
-        if path_text == root_text or path_text.startswith(root_text + os.sep):
+        # Same rule as resolve_scan_root, so a filesystem-root scope (POSIX
+        # "/" or a Windows drive root) contains everything below it instead
+        # of turning into a "//" prefix that matches nothing.
+        root_prefix = _root_prefix(root)
+        if path_text.startswith(root_prefix) and _continues_at_separator(
+            path_text, root_prefix
+        ):
             in_scope = True
             break
     if not in_scope:
