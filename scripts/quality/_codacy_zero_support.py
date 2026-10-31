@@ -56,31 +56,33 @@ def _public_codacy_module() -> Any | None:
     return sys.modules.get("scripts.quality.check_codacy_zero")
 
 
-# Split the public-name export into two cohesive groups joined at runtime
-# so qlty's duplication detector stops flagging the otherwise-structural
-# clone shared with env_inspector_core/service.py's __all__ (two long
-# lists of string literals look identical to the tokenizer).
-_CODACY_NAMES = (
+# The export list is a flat literal on purpose. The two-group split it used
+# to use (two name tuples joined with star-unpacking) existed only to stop
+# qlty's duplication detector flagging the structural clone shared with
+# env_inspector_core/service.py's __all__ — qlty is not part of the lean
+# 6-gate set, and pyright's __all__ analysis only resolves literal sequences:
+# star-unpacking (and name concatenation) report as unsupported operations
+# (reportUnsupportedDunderAll), which the pinned gate now fails on as a
+# warning. The names here share no string with service.py's list, so no
+# active detector sees these two blocks as similar.
+__all__ = [
     "CODACY_API_HOST",
     "CODACY_REQUEST_EXCEPTIONS",
     "TOTAL_KEYS",
     "CodacyRequest",
+    "ZeroReportSpec",
     "_fetch_sample_payload",
     "_format_issue_sample",
     "_first_text",
     "_provider_candidates",
     "_request_json",
     "_sample_issue_findings",
-    "encode_identifier",
-)
-_REPORT_NAMES = (
-    "ZeroReportSpec",
     "emit_zero_report",
+    "encode_identifier",
     "render_findings_md",
     "request_json_https",
     "safe_output_path_in_workspace",
-)
-__all__ = [*_CODACY_NAMES, *_REPORT_NAMES]
+]
 
 
 def _request_json(
