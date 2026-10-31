@@ -40,24 +40,39 @@ def _normalize_path_text(value: str | Path, *, field_name: str) -> str:
     return os.path.normpath(os.path.abspath(os.path.expanduser(raw)))
 
 
+def _root_prefix(root: str | Path) -> str:
+    """Return ``root`` as text without a trailing separator ('/' becomes '')."""
+    return str(root).rstrip(os.sep)
+
+
+def _continues_at_separator(path_text: str, prefix: str) -> bool:
+    """Return True if ``path_text`` is ``prefix`` itself or continues with a separator.
+
+    Callers have already checked ``path_text.startswith(prefix)``. This second
+    step rejects a sibling that merely shares the prefix, such as ``/work2``
+    for the root ``/work``.
+    """
+    rest = path_text[len(prefix) :]
+    return not rest or rest.startswith(os.sep)
+
+
 def normalize_scope_roots(roots: Iterable[str | Path]) -> List[Path]:
     """Normalize scope roots."""
     normalized: List[Path] = []
     seen: Set[str] = set()
-    workspace_root = Path.cwd()
-    workspace_text = str(workspace_root)
+    workspace_prefix = _root_prefix(Path.cwd())
     for root in roots:
-        path = Path(_normalize_path_text(root, field_name="scope root"))
-        path_text = str(path)
-        if path_text != workspace_text and not path_text.startswith(
-            workspace_text + os.sep
+        root_text = _normalize_path_text(root, field_name="scope root")
+        # Containment is decided on the normalized text before a Path is built
+        # from it, so only checked text ever reaches the filesystem calls below.
+        if not root_text.startswith(workspace_prefix) or not _continues_at_separator(
+            root_text, workspace_prefix
         ):
             raise PathPolicyError(
-                f"Scope root must be inside the current working directory: {path}"
+                f"Scope root must be inside the current working directory: {root_text}"
             )
-        if (
-            not path.exists() or not path.is_dir()
-        ):  # codeql[py/path-injection] user-approved local path validation
+        path = Path(root_text)
+        if not path.exists() or not path.is_dir():
             raise PathPolicyError(f"Scope root must exist as a directory: {path}")
         key = str(path)
         if key in seen:
@@ -71,19 +86,18 @@ def normalize_scope_roots(roots: Iterable[str | Path]) -> List[Path]:
 
 def resolve_scan_root(root: str | Path) -> Path:
     """Resolve scan root."""
-    path = Path(_normalize_path_text(root, field_name="scan root"))
-    workspace_root = Path.cwd()
-    workspace_text = str(workspace_root)
-    path_text = str(path)
-    if path_text != workspace_text and not path_text.startswith(
-        workspace_text + os.sep
+    root_text = _normalize_path_text(root, field_name="scan root")
+    workspace_prefix = _root_prefix(Path.cwd())
+    # Containment is decided on the normalized text before a Path is built from
+    # it, so only checked text ever reaches the filesystem calls below.
+    if not root_text.startswith(workspace_prefix) or not _continues_at_separator(
+        root_text, workspace_prefix
     ):
         raise PathPolicyError(
-            f"Scan root must be inside the current working directory: {path}"
+            f"Scan root must be inside the current working directory: {root_text}"
         )
-    if (
-        not path.exists() or not path.is_dir()
-    ):  # codeql[py/path-injection] user-approved local path validation
+    path = Path(root_text)
+    if not path.exists() or not path.is_dir():
         raise PathPolicyError(f"Scan root must exist as a directory: {path}")
     return path
 
@@ -103,14 +117,19 @@ def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
     if not target.startswith("dotenv:"):
         raise PathPolicyError("Expected target with 'dotenv:' prefix.")
     raw = target[len("dotenv:") :]
-    path = Path(_normalize_path_text(raw, field_name="dotenv target path"))
+    path_text = _normalize_path_text(raw, field_name="dotenv target path")
+    path = Path(path_text)
     _validate_dotenv_name(path)
 
     in_scope = False
-    path_text = str(path)
     for root in roots:
-        root_text = str(root)
-        if path_text == root_text or path_text.startswith(root_text + os.sep):
+        # Same rule as resolve_scan_root, so a filesystem-root scope (POSIX
+        # "/" or a Windows drive root) contains everything below it instead
+        # of turning into a "//" prefix that matches nothing.
+        root_prefix = _root_prefix(root)
+        if path_text.startswith(root_prefix) and _continues_at_separator(
+            path_text, root_prefix
+        ):
             in_scope = True
             break
     if not in_scope:
@@ -123,16 +142,15 @@ def parse_scoped_dotenv_target(target: str, *, roots: List[Path]) -> ScopedPath:
 
 def validate_backup_path(backup: str | Path, *, backups_dir: Path) -> Path:
     """Validate backup path."""
-    backup_path = Path(_normalize_path_text(backup, field_name="backup path"))
-    backups_root = resolve_scan_root(backups_dir)
-    backup_text = str(backup_path)
-    backups_text = str(backups_root)
-    if backup_text != backups_text and not backup_text.startswith(
-        backups_text + os.sep
+    backup_text = _normalize_path_text(backup, field_name="backup path")
+    backups_prefix = _root_prefix(resolve_scan_root(backups_dir))
+    # Same rule as resolve_scan_root: check the normalized text, then build
+    # the Path that touches the filesystem from the checked text only.
+    if not backup_text.startswith(backups_prefix) or not _continues_at_separator(
+        backup_text, backups_prefix
     ):
         raise PathPolicyError("Backup path is outside managed backup directory.")
-    if (
-        not backup_path.exists() or not backup_path.is_file()
-    ):  # codeql[py/path-injection] validated backup scope guard
+    backup_path = Path(backup_text)
+    if not backup_path.exists() or not backup_path.is_file():
         raise PathPolicyError(f"Backup file does not exist: {backup_path}")
     return backup_path
