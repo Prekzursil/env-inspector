@@ -24,6 +24,6 @@ concurrency:
 
 jobs:
   quality:
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality.yml@cc4c6ec12c2b1f204f79414a717e82472e98cb58
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality.yml@c5c470b5f0204ffdb4312302b1ab8399e7b5824e
     with:
       deps-severity-floor: any
