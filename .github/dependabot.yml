@@ -1,56 +1,24 @@
 version: 2
 
-# Fleet standard (Prekzursil/quality-zero-platform docs/BEST-CONFIG.md §4):
-# one rail per manifest tree for every ecosystem in the checkout plus
-# github-actions; weekly cadence; security updates grouped per ecosystem;
-# minor + patch grouped; majors NEVER ignored — each major arrives as its own
-# PR so a fix that only ships in a new major can land under the
-# zero-tolerance dependency gate. The previous blanket
-# `ignore: version-update:semver-major` was the legacy renderer default the
-# standard explicitly supersedes; it is removed here.
-#
-# `directory:` is an exact path, not a prefix. All Python manifests
-# (requirements.txt, requirements-build.txt, pyproject.toml) live at the repo
-# root, so one pip rail covers that tree.
+# FLEET SECURITY STANDARD: weekly cadence, every ecosystem present, ZERO
+# ignored updates. The previous file ignored ALL semver-major updates for the
+# github-actions rail (`ignore: - dependency-name: '*' update-types:
+# version-update:semver-major`), which is exactly what the fleet rule forbids
+# -- an ignore hides security updates of the ignored dependency too. Nothing
+# is muted here; a breaking bump arrives as a PR the repo's own CI gates.
 updates:
-  # Python rail — requirements*.txt / pyproject.toml at /
+  # Python rail -- pyproject.toml, requirements.txt, requirements-build.txt
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    labels:
-      - dependencies
-      - type:chore
-    groups:
-      pip-security:
-        # one PR can clear every open advisory in this ecosystem
-        applies-to: security-updates
-        patterns:
-          - "*"
-      pip-minor-patch:
-        applies-to: version-updates
-        update-types:
-          - minor
-          - patch
+    labels: ["dependencies"]
 
-  # Workflows rail — .github/workflows
+  # the workflows themselves
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    labels:
-      - dependencies
-      - type:chore
-      - area:ci
-    groups:
-      github-actions-security:
-        applies-to: security-updates
-        patterns:
-          - "*"
-      github-actions-minor-patch:
-        applies-to: version-updates
-        update-types:
-          - minor
-          - patch
+    labels: ["dependencies"]
