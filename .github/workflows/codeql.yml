@@ -36,10 +36,19 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    # Key the upload to the PR HEAD commit, not the merge commit: the
+    # branch-protection "Code scanning results required" rule expects an
+    # analysis for the head SHA (the QZP wrapper this file replaced did the
+    # same via its explicit `sha:` input).
+    env:
+      GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     strategy:
       fail-fast: false
       matrix:
-        language: ["python"]
+        # actions = the CodeQL language for .github/workflows/* (action
+        # injection detection); default-setup currently provides it and will
+        # be disabled once this workflow covers it, so nothing is lost.
+        language: ["python", "actions"]
     steps:
       - uses: actions/checkout@v7
 
