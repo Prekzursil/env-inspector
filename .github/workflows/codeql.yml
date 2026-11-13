@@ -50,7 +50,15 @@ jobs:
         # be disabled once this workflow covers it, so nothing is lost.
         language: ["python", "actions"]
     steps:
+      # Analyze the PR HEAD, not the merge commit: the required
+      # code-scanning merge rule expects results for the head SHA, and the
+      # analysis is keyed to the checkout. Same mechanism the QZP wrapper
+      # used (reusable-codeql.yml: ref: inputs.sha). Measured on
+      # Star-Wars PR #45: env-override alone keyed uploads to
+      # refs/pull/N/merge; the head checkout keyed them to refs/pull/N/head.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
